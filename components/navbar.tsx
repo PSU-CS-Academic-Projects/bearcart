@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { signInWithGoogle } from "@/lib/auth";
 import {
   Select,
   SelectContent,
@@ -84,14 +85,9 @@ export function Navbar() {
 
         {/* Desktop Auth Buttons */}
         <div className="hidden items-center gap-3 md:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/auth/login">
-              <User className="size-4" />
-              Login
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/auth/register">Register</Link>
+          <Button size="sm" onClick={signInWithGoogle}>
+            <User className="size-4" />
+            Login with Google
           </Button>
         </div>
 
@@ -160,16 +156,9 @@ export function Navbar() {
 
               {/* Mobile Auth */}
               <div className="flex flex-col gap-2">
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                    <User className="size-4" />
-                    Login
-                  </Link>
-                </Button>
-                <Button asChild className="w-full">
-                  <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
-                    Register
-                  </Link>
+                <Button className="w-full" onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}>
+                  <User className="size-4" />
+                  Login with Google
                 </Button>
               </div>
             </div>
