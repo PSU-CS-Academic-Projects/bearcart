@@ -1,9 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { signInWithGoogle } from "@/lib/auth";
+import { signInWithGoogle, signOut } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -22,7 +33,8 @@ import {
   MagnifyingGlass,
   List,
   ShoppingCart,
-  User,
+  User as UserIcon,
+  SignOut,
 } from "@phosphor-icons/react";
 
 const categories = [
@@ -40,6 +52,75 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const displayName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? "";
+  const firstName = displayName.split(" ")[0];
+
+  const handleSignOut = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+  };
+
+  // ── Reusable avatar + dropdown (desktop) ──────────────────────────────────
+  const UserMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={displayName}
+              width={32}
+              height={32}
+              className="size-8 rounded-full object-cover ring-2 ring-primary/30"
+            />
+          ) : (
+            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              {firstName.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <span className="hidden text-sm font-medium md:block">{firstName}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="flex flex-col gap-0.5">
+          <span className="text-sm font-semibold">{displayName}</span>
+          <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile" className="flex cursor-pointer items-center gap-2">
+            <UserIcon className="size-4" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleSignOut}
+          className="flex cursor-pointer items-center gap-2 text-destructive focus:text-destructive"
+        >
+          <SignOut className="size-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card">
@@ -83,12 +164,16 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Desktop Auth Buttons */}
+        {/* Desktop Auth */}
         <div className="hidden items-center gap-3 md:flex">
-          <Button size="sm" onClick={signInWithGoogle}>
-            <User className="size-4" />
-            Login with Google
-          </Button>
+          {user ? (
+            <UserMenu />
+          ) : (
+            <Button size="sm" onClick={signInWithGoogle}>
+              <UserIcon className="size-4" />
+              Login with Google
+            </Button>
+          )}
         </div>
 
         {/* Mobile Menu */}
@@ -156,10 +241,58 @@ export function Navbar() {
 
               {/* Mobile Auth */}
               <div className="flex flex-col gap-2">
-                <Button className="w-full" onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}>
-                  <User className="size-4" />
-                  Login with Google
-                </Button>
+                {user ? (
+                  <>
+                    {/* User info row */}
+                    <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-2">
+                      {avatarUrl ? (
+                        <Image
+                          src={avatarUrl}
+                          alt={displayName}
+                          width={36}
+                          height={36}
+                          className="size-9 rounded-full object-cover ring-2 ring-primary/30"
+                        />
+                      ) : (
+                        <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                          {firstName.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate text-sm font-semibold">{displayName}</span>
+                        <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                      </div>
+                    </div>
+
+                    {/* Profile link */}
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+                    >
+                      <UserIcon className="size-4" />
+                      Profile
+                    </Link>
+
+                    {/* Sign Out */}
+                    <Button
+                      variant="outline"
+                      className="w-full text-destructive hover:text-destructive"
+                      onClick={handleSignOut}
+                    >
+                      <SignOut className="size-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}
+                  >
+                    <UserIcon className="size-4" />
+                    Login with Google
+                  </Button>
+                )}
               </div>
             </div>
           </SheetContent>

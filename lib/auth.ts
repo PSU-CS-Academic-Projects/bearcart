@@ -1,4 +1,3 @@
-import { collectSegmentData } from 'next/dist/server/app-render/collect-segment-data'
 import { supabase } from './supabase'
 
 // SSO google
