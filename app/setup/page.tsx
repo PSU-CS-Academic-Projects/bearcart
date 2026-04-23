@@ -60,11 +60,11 @@ export default function SetupPage() {
     });
   }, [router]);
 
-  const firstName = (
+  const firstName =
+    (user?.user_metadata?.given_name as string | undefined) ??
     (user?.user_metadata?.full_name as string | undefined) ??
     user?.email ??
-    ""
-  ).split(" ")[0];
+    "";
 
   const canSubmit = role !== null && college !== "";
 
@@ -72,9 +72,18 @@ export default function SetupPage() {
     if (!user || !canSubmit) return;
     setSaving(true);
 
+    const fullName =
+      (user.user_metadata?.full_name as string | undefined) ??
+      (user.user_metadata?.name as string | undefined) ??
+      user.email ??
+      "";
+
     const { error } = await supabase
       .from("users")
-      .upsert({ id: user.id, role, college }, { onConflict: "id" });
+      .upsert(
+        { id: user.id, full_name: fullName, email: user.email, role, college },
+        { onConflict: "id" }
+      );
 
     if (error) {
       console.error("Setup error:", error.message);
