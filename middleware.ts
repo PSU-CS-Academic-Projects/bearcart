@@ -25,8 +25,39 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — keeps cookies alive and syncs to client
-  await supabase.auth.getUser()
+  // Refresh session — keeps cookies alive
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+
+  // Auth routes are always accessible — OAuth flow must never be blocked
+  const isAuthRoute = pathname.startsWith('/auth')
+
+  // If not logged in, only allow public pages (homepage + auth routes)
+  if (!user && !isAuthRoute && pathname !== '/') {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // For logged-in users, enforce setup on every route except /auth/*
+  if (user && !isAuthRoute) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('college')
+      .eq('id', user.id)
+      .single()
+
+    const needsSetup = !userData || !userData.college
+
+    // Needs setup → force to /setup (even from homepage)
+    if (needsSetup && pathname !== '/setup') {
+      return NextResponse.redirect(new URL('/setup', request.url))
+    }
+
+    // Already set up → block going back to /setup
+    if (!needsSetup && pathname === '/setup') {
+      return NextResponse.redirect(new URL('/listings', request.url))
+    }
+  }
 
   return supabaseResponse
 }
