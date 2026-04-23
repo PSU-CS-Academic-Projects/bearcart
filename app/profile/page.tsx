@@ -40,7 +40,7 @@ const initialProfile = {
   memberSince: "September 2024",
   bio: "BSBA student, 3rd year. Looking for affordable textbooks and supplies!",
   avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-  meetupSpots: ["Library", "Cafeteria"],
+  meetupSpots: ["Library", "Canteen"],
 };
 
 // Stats data

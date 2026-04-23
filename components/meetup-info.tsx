@@ -3,7 +3,7 @@ import { MapPin, Buildings } from "@phosphor-icons/react/dist/ssr";
 
 const suggestedSpots = [
   "Library",
-  "Cafeteria",
+  "Canteen",
   "Main Building Lobby",
 ];
 

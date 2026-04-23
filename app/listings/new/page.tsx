@@ -44,10 +44,12 @@ const categories = [
 
 const meetupLocations = [
   "Library",
-  "Cafeteria",
+  "Canteen",
   "Main Building Lobby",
-  "Covered Court",
-  "Department Office",
+  "Gym",
+  "IT Building",
+  "CS Lobby",
+  "Others"
 ];
 
 const weekDays = [
@@ -409,7 +411,7 @@ export default function PostListingPage() {
                   </Label>
                   <Textarea
                     id="description"
-                    placeholder="Describe your item — condition details, reason for selling, etc."
+                    placeholder="Describe your item - condition details, reason for selling, etc."
                     value={formData.description}
                     onChange={(e) => updateField("description", e.target.value)}
                     maxLength={500}
@@ -853,7 +855,7 @@ export default function PostListingPage() {
                 </Label>
                 <Textarea
                   id="desktop-description"
-                  placeholder="Describe your item — condition details, reason for selling, etc."
+                  placeholder="Describe your item - condition details, reason for selling, etc."
                   value={formData.description}
                   onChange={(e) => updateField("description", e.target.value)}
                   maxLength={500}

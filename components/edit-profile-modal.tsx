@@ -53,9 +53,9 @@ const departments = [
 
 const meetupSpotOptions = [
   "Library",
-  "Cafeteria",
+  "Canteen",
   "Main Building Lobby",
-  "Covered Court",
+  "Gym",
 ];
 
 export function EditProfileModal({
