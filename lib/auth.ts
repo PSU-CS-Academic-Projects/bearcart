@@ -1,19 +1,38 @@
 import { supabase } from './supabase'
+import { toast } from 'sonner'
 
 // SSO google
 export async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
-            queryParams: {
-                hd: 'psu.palawan.edu.ph' //palsu accounts
+    try {
+        const redirectUrl = `${window.location.origin}/auth/callback`
+        console.log('SSO redirect URL:', redirectUrl)
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectUrl,
+                queryParams: {
+                    hd: 'psu.palawan.edu.ph' //palsu accounts
+                }
+            }
+        })
+
+        if (error) {
+            console.error('Login error:', error.message)
+            toast.error(`Login error: ${error.message}`)
+            alert(`Login error: ${error.message}`)
+        } else {
+            console.log('OAuth response:', data)
+            // If signInWithOAuth didn't auto-redirect, manually redirect
+            if (data?.url) {
+                window.location.href = data.url
             }
         }
-    })
-
-    if (error) {
-        console.error('Login error:', error.message)
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('SSO exception:', msg)
+        toast.error(`SSO exception: ${msg}`)
+        alert(`SSO exception: ${msg}`)
     }
 }
 
@@ -27,8 +46,8 @@ export async function signOut() {
 
 // Get current logged in user
 export async function getUser() {
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+    const { data: { user } } = await supabase.auth.getUser()
+    return user
 }
 
 export function isPSUEmail(email: string) {

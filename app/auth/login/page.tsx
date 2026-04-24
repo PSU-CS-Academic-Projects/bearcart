@@ -1,11 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "@phosphor-icons/react";
-import { signInWithGoogle } from "@/lib/auth";
 
 export default function LoginPage() {
+  useEffect(() => {
+    console.log("LoginPage mounted successfully");
+    alert("Page loaded! JavaScript is active.");
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 items-center justify-center p-4 md:p-8">
@@ -26,9 +31,24 @@ export default function LoginPage() {
               <p className="text-muted-foreground">Welcome back to PalMart</p>
             </div>
 
+            {/* Debug Button to check if JS is running */}
+            <button 
+              className="w-full mb-4 p-2 bg-red-500 text-white rounded" 
+              onClick={() => alert("JavaScript is working!")}
+            >
+              1. Click me first (Debug)
+            </button>
+
             {/* Google Login Button */}
-            <Button className="w-full" onClick={signInWithGoogle}>
-              Login with Google
+            <Button 
+              className="w-full" 
+              onClick={async () => {
+                alert("Login button clicked, contacting Supabase...");
+                const { signInWithGoogle } = await import("@/lib/auth");
+                await signInWithGoogle();
+              }}
+            >
+              2. Login with Google
             </Button>
           </div>
         </div>

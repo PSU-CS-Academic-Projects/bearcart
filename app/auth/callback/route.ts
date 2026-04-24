@@ -2,8 +2,13 @@ import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+    const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
+
+    // Handle Ngrok/Proxy origins correctly
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+    const protocol = request.headers.get('x-forwarded-proto') || 'http'
+    const origin = `${protocol}://${host}`
 
     if (code) {
         const supabase = await createClient()
