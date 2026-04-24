@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { ProfileListingCard } from "@/components/profile-listing-card";
 import { EditProfileModal } from "@/components/edit-profile-modal";
+import { ProfileListingCard } from "@/components/profile-listing-card";
 import { DeleteListingDialog } from "@/components/delete-listing-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,10 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   User,
-  Camera,
   PencilSimple,
   GearSix,
   Envelope,
   Buildings,
-  MapPin,
   Calendar,
   Package,
   ShoppingCart,
@@ -28,22 +26,12 @@ import {
   Heart,
   Storefront,
   MagnifyingGlass,
+  GraduationCap,
+  Chalkboard,
 } from "@phosphor-icons/react";
+import { supabase } from "@/lib/supabase";
 
-// Placeholder profile data
-const initialProfile = {
-  name: "Maria Santos",
-  email: "maria.santos@psu.palawan.edu.ph",
-  role: "Student",
-  department: "College of Business and Accountancy",
-  campus: "Main Campus, Puerto Princesa",
-  memberSince: "September 2024",
-  bio: "BSBA student, 3rd year. Looking for affordable textbooks and supplies!",
-  avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-  meetupSpots: ["Library", "Canteen"],
-};
-
-// Stats data
+// Stats data (placeholder until listings are wired up)
 const stats = [
   { label: "Total Listings", value: 12, icon: Package },
   { label: "Items Sold", value: 8, icon: ShoppingCart },
@@ -60,7 +48,8 @@ const activeListings = [
     category: "Books",
     condition: "Like New",
     timePosted: "2 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=400&fit=crop",
   },
   {
     id: "2",
@@ -69,7 +58,8 @@ const activeListings = [
     category: "Electronics",
     condition: "Good",
     timePosted: "5 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1564466809058-bf4114d55352?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1564466809058-bf4114d55352?w=400&h=400&fit=crop",
   },
   {
     id: "3",
@@ -78,7 +68,8 @@ const activeListings = [
     category: "Books",
     condition: "Good",
     timePosted: "1 week ago",
-    imageUrl: "https://images.unsplash.com/photo-1553729784-e91953dec042?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1553729784-e91953dec042?w=400&h=400&fit=crop",
   },
   {
     id: "4",
@@ -87,7 +78,8 @@ const activeListings = [
     category: "Electronics",
     condition: "New",
     timePosted: "1 week ago",
-    imageUrl: "https://images.unsplash.com/photo-1618410320928-25228d811631?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1618410320928-25228d811631?w=400&h=400&fit=crop",
   },
 ];
 
@@ -101,7 +93,8 @@ const soldListings = [
     condition: "Good",
     timePosted: "3 weeks ago",
     dateSold: "Apr 10, 2026",
-    imageUrl: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400&h=400&fit=crop",
   },
   {
     id: "6",
@@ -111,7 +104,8 @@ const soldListings = [
     condition: "Like New",
     timePosted: "1 month ago",
     dateSold: "Apr 5, 2026",
-    imageUrl: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=400&h=400&fit=crop",
   },
 ];
 
@@ -124,7 +118,8 @@ const savedListings = [
     category: "Supplies",
     condition: "New",
     timePosted: "3 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=400&fit=crop",
   },
   {
     id: "8",
@@ -133,7 +128,8 @@ const savedListings = [
     category: "Electronics",
     condition: "Like New",
     timePosted: "4 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&h=400&fit=crop",
   },
   {
     id: "9",
@@ -142,12 +138,22 @@ const savedListings = [
     category: "Books",
     condition: "Good",
     timePosted: "1 week ago",
-    imageUrl: "https://images.unsplash.com/photo-1592496431122-2349e0fbc666?w=400&h=400&fit=crop",
+    imageUrl:
+      "https://images.unsplash.com/photo-1592496431122-2349e0fbc666?w=400&h=400&fit=crop",
   },
 ];
 
+interface UserProfile {
+  full_name: string;
+  email: string;
+  role: "student" | "faculty" | null;
+  college: string | null;
+  avatar_url: string | null;
+  joined: string;
+}
+
 export default function ProfilePage() {
-  const [profile, setProfile] = useState(initialProfile);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [listingToDelete, setListingToDelete] = useState<{
@@ -156,17 +162,63 @@ export default function ProfilePage() {
   } | null>(null);
   const [activeTab, setActiveTab] = useState("active");
 
-  const handleEditProfile = (updatedProfile: {
+  useEffect(() => {
+    const load = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("full_name, role, college, created_at")
+        .eq("id", user.id)
+        .single();
+
+      const joined = userData?.created_at
+        ? new Date(userData.created_at).toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          })
+        : "";
+
+      setProfile({
+        full_name:
+          userData?.full_name ||
+          (user.user_metadata?.full_name as string) ||
+          user.email ||
+          "",
+        email: user.email || "",
+        role: userData?.role ?? null,
+        college: userData?.college ?? null,
+        avatar_url:
+          (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        joined,
+      });
+    };
+
+    load();
+  }, []);
+
+  const handleEditSave = async (updated: {
     name: string;
     bio: string;
     department: string;
     avatar: string;
     meetupSpots: string[];
   }) => {
-    setProfile((prev) => ({
-      ...prev,
-      ...updatedProfile,
-    }));
+    if (!profile) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from("users")
+      .update({ full_name: updated.name, college: updated.department })
+      .eq("id", user.id);
+
+    setProfile((prev) =>
+      prev ? { ...prev, full_name: updated.name, college: updated.department } : prev
+    );
   };
 
   const handleDeleteClick = (id: string, title: string) => {
@@ -176,11 +228,24 @@ export default function ProfilePage() {
 
   const handleConfirmDelete = () => {
     if (listingToDelete) {
-      // In a real app, this would delete the listing from the database
       console.log("Deleting listing:", listingToDelete.id);
     }
     setListingToDelete(null);
   };
+
+  const roleLabel =
+    profile?.role === "student"
+      ? "Student"
+      : profile?.role === "faculty"
+        ? "Faculty"
+        : null;
+
+  const RoleIcon =
+    profile?.role === "student"
+      ? GraduationCap
+      : profile?.role === "faculty"
+        ? Chalkboard
+        : null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -196,46 +261,53 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="relative mb-4 inline-block">
               <div className="relative size-28 overflow-hidden rounded-full border-4 border-background bg-muted shadow-lg sm:size-36">
-                {profile.avatar ? (
+                {profile?.avatar_url ? (
                   <Image
-                    src={profile.avatar}
-                    alt={profile.name}
+                    src={profile.avatar_url}
+                    alt={profile.full_name}
                     fill
                     className="object-cover"
                   />
                 ) : (
-                  <User className="size-full p-6 text-muted-foreground" />
+                  <div className="flex size-full items-center justify-center bg-primary text-primary-foreground">
+                    <span className="text-4xl font-bold">
+                      {profile?.full_name?.charAt(0).toUpperCase() ?? "?"}
+                    </span>
+                  </div>
                 )}
               </div>
-              <button className="absolute bottom-1 right-1 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90 sm:size-10">
-                <Camera className="size-4 sm:size-5" />
-              </button>
             </div>
 
             {/* Profile Info & Actions */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                  {profile.name}
-                </h1>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <Badge className="bg-primary/10 text-primary">
-                    PSU {profile.role}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {profile.department}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+                    {profile?.full_name || "Loading…"}
+                  </h1>
+                  {roleLabel && RoleIcon && (
+                    <Badge className="flex items-center gap-1 bg-primary/10 text-primary">
+                      <RoleIcon className="size-3" />
+                      {roleLabel}
+                    </Badge>
+                  )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Member since {profile.memberSince}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {profile?.college && (
+                    <span className="text-sm text-muted-foreground">
+                      {profile.college}
+                    </span>
+                  )}
+                </div>
+                {profile?.joined && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Member since {profile.joined}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setEditModalOpen(true)}
-                >
+                <Button variant="outline" onClick={() => setEditModalOpen(true)}>
                   <PencilSimple className="size-4" />
                   Edit Profile
                 </Button>
@@ -264,33 +336,34 @@ export default function ProfilePage() {
             ))}
           </div>
 
-          {/* Profile Info Section */}
+          {/* About Card */}
           <Card className="mb-6 p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">About</h2>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <Envelope className="size-5 text-muted-foreground" />
-                <span className="text-sm text-foreground">{profile.email}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Buildings className="size-5 text-muted-foreground" />
-                <span className="text-sm text-foreground">
-                  {profile.department}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="size-5 text-muted-foreground" />
-                <span className="text-sm text-foreground">{profile.campus}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="size-5 text-muted-foreground" />
-                <span className="text-sm text-foreground">
-                  Joined {profile.memberSince}
-                </span>
-              </div>
-              {profile.bio && (
-                <div className="mt-2 border-t pt-4">
-                  <p className="text-sm text-muted-foreground">{profile.bio}</p>
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+              About
+            </h2>
+            <div className="flex flex-col gap-3">
+              {profile?.email && (
+                <div className="flex items-center gap-3">
+                  <Envelope className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
+                    {profile.email}
+                  </span>
+                </div>
+              )}
+              {profile?.college && (
+                <div className="flex items-center gap-3">
+                  <Buildings className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
+                    {profile.college}
+                  </span>
+                </div>
+              )}
+              {profile?.joined && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="size-5 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
+                    Joined {profile.joined}
+                  </span>
                 </div>
               )}
             </div>
@@ -424,12 +497,20 @@ export default function ProfilePage() {
       <Footer />
 
       {/* Edit Profile Modal */}
-      <EditProfileModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        profile={profile}
-        onSave={handleEditProfile}
-      />
+      {profile && (
+        <EditProfileModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          profile={{
+            name: profile.full_name,
+            bio: "",
+            department: profile.college ?? "",
+            avatar: profile.avatar_url ?? "",
+            meetupSpots: [],
+          }}
+          onSave={handleEditSave}
+        />
+      )}
 
       {/* Delete Listing Dialog */}
       <DeleteListingDialog
