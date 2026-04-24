@@ -196,7 +196,11 @@ export async function getListingById(id: string) {
     .eq("id", id)
     .maybeSingle();
 
-  if (error) throw new Error(`Listing fetch error: ${error.message}`);
+  // Return null for invalid UUIDs (triggers 404) or actual DB errors
+  if (error) {
+    if (error.message.includes("invalid input syntax")) return null;
+    throw new Error(`Listing fetch error: ${error.message}`);
+  }
   if (!data) return null;
 
   // Increment view count (fire and forget)
