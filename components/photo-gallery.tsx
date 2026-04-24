@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, ShoppingBag } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,18 @@ interface PhotoGalleryProps {
 
 export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Empty state — no photos
+  if (!photos || photos.length === 0) {
+    return (
+      <div className="flex aspect-square items-center justify-center rounded-xl bg-muted">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <ShoppingBag className="size-16" />
+          <span className="text-sm">No photos available</span>
+        </div>
+      </div>
+    );
+  }
 
   const goToPrevious = () => {
     setActiveIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
