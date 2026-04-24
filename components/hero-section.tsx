@@ -1,12 +1,8 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MagnifyingGlass, Storefront, Tag } from "@phosphor-icons/react";
+import { MagnifyingGlass, Storefront, Tag } from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <section className="relative overflow-hidden bg-card py-16 md:py-24">
@@ -37,25 +33,7 @@ export function HeroSection() {
             campus.
           </p>
 
-          {/* Search Bar */}
-          <div className="mx-auto mb-8 flex max-w-xl items-center gap-2 rounded-xl border bg-background p-2 shadow-sm">
-            <div className="flex flex-1 items-center gap-2 px-3">
-              <MagnifyingGlass className="size-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="What are you looking for?"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground md:text-base"
-              />
-            </div>
-            <Button size="lg" className="hidden sm:flex">
-              Search
-            </Button>
-            <Button size="icon-lg" className="sm:hidden">
-              <MagnifyingGlass className="size-5" />
-            </Button>
-          </div>
+
 
           {/* CTA Buttons */}
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">

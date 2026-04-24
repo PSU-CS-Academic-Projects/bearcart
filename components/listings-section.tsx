@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { ListingCard } from "@/components/listing-card";
+import { Button } from "@/components/ui/button";
 import { FiltersSidebar, MobileFiltersSheet } from "@/components/filters-sidebar";
 
 // Placeholder listings data
@@ -97,6 +99,7 @@ export function ListingsSection() {
               {listings.map((listing) => (
                 <ListingCard
                   key={listing.id}
+                  id={listing.id}
                   title={listing.title}
                   price={listing.price}
                   category={listing.category}
@@ -111,9 +114,11 @@ export function ListingsSection() {
 
             {/* Load More */}
             <div className="mt-8 text-center">
-              <button className="text-sm font-medium text-primary hover:underline">
-                View all listings →
-              </button>
+              <Button asChild variant="link">
+                <Link href="/listings">
+                  View all listings →
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

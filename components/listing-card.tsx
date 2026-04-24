@@ -1,9 +1,11 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Clock, User } from "@phosphor-icons/react/dist/ssr";
 
 interface ListingCardProps {
+  id: number;
   title: string;
   price: number;
   category: string;
@@ -15,6 +17,7 @@ interface ListingCardProps {
 }
 
 export function ListingCard({
+  id,
   title,
   price,
   category,
@@ -25,6 +28,7 @@ export function ListingCard({
   imageUrl,
 }: ListingCardProps) {
   return (
+    <Link href={`/listings/${id}`} className="block">
     <Card className="group cursor-pointer overflow-hidden p-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
@@ -77,5 +81,6 @@ export function ListingCard({
         </div>
       </div>
     </Card>
+    </Link>
   );
 }

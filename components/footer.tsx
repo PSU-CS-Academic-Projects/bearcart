@@ -6,23 +6,23 @@ import {
   Phone,
   FacebookLogo,
   InstagramLogo,
-  TwitterLogo,
+  TiktokLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 const quickLinks = [
-  { name: "Browse Listings", href: "#" },
-  { name: "Post a Listing", href: "#" },
-  { name: "How It Works", href: "#" },
-  { name: "Safety Tips", href: "#" },
-  { name: "FAQs", href: "#" },
+  { name: "Browse Listings", href: "/listings" },
+  { name: "Post a Listing", href: "/listings/new" },
+  { name: "How It Works", href: "/listings" },
+  { name: "Safety Tips", href: "/listings" },
+  { name: "FAQs", href: "/listings" },
 ];
 
 const categories = [
-  { name: "Books", href: "#" },
-  { name: "Electronics", href: "#" },
-  { name: "Clothing", href: "#" },
-  { name: "Food", href: "#" },
-  { name: "Services", href: "#" },
+  { name: "Books", href: "/listings?category=Books" },
+  { name: "Electronics", href: "/listings?category=Electronics" },
+  { name: "Clothing", href: "/listings?category=Clothing" },
+  { name: "Food", href: "/listings?category=Food" },
+  { name: "Services", href: "/listings?category=Services" },
 ];
 
 export function Footer() {
@@ -59,9 +59,9 @@ export function Footer() {
               <a
                 href="#"
                 className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-                aria-label="Twitter"
+                aria-label="TikTok"
               >
-                <TwitterLogo className="size-4" />
+                <TiktokLogo className="size-4" />
               </a>
             </div>
           </div>
@@ -135,13 +135,13 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-4">
               <Link
-                href="#"
+                href="/privacy"
                 className="text-sm text-muted-foreground hover:text-primary"
               >
                 Privacy Policy
               </Link>
               <Link
-                href="#"
+                href="/terms"
                 className="text-sm text-muted-foreground hover:text-primary"
               >
                 Terms of Service
