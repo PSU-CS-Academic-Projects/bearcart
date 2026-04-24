@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Clock, User } from "@phosphor-icons/react/dist/ssr";
 
 interface ListingCardProps {
-  id: number;
+  id: string;
   title: string;
   price: number;
   category: string;
