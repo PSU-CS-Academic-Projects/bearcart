@@ -132,14 +132,14 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Search */}
-        <div className="hidden flex-1 items-center justify-center gap-2 px-8 md:flex">
-          <div className="flex w-full max-w-xl items-center rounded-lg border bg-background">
+        <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-8 md:flex">
+          <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
             <div className="flex items-center border-r px-3">
               <Select
                 value={selectedCategory}
                 onValueChange={setSelectedCategory}
               >
-                <SelectTrigger className="h-9 w-36 border-0 bg-transparent shadow-none focus:ring-0">
+                <SelectTrigger className="h-9 w-36 shrink-0 border-0 bg-transparent shadow-none focus:ring-0">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -151,21 +151,21 @@ export function Navbar() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-1 items-center gap-2 px-3">
-              <MagnifyingGlass className="size-4 text-muted-foreground" />
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+              <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search listings..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
           </div>
         </div>
 
         {/* Desktop Auth */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="relative z-10 hidden shrink-0 items-center gap-3 md:flex">
           {user ? (
             <UserMenu />
           ) : (
