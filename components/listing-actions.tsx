@@ -57,7 +57,7 @@ export function ListingActions({
     startTransition(async () => {
       try {
         const conversationId = await getOrCreateConversation(listingId, sellerId);
-        router.push(`/messages?c=${conversationId}`);
+        router.push(`/messages?conversation=${conversationId}`);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to start conversation"

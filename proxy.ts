@@ -34,7 +34,7 @@ export default async function proxy(request: NextRequest) {
   const isAuthRoute = pathname.startsWith('/auth')
 
   // Public routes accessible without login
-  const isPublicRoute = pathname === '/' || pathname === '/listings' || pathname.startsWith('/listings/')
+  const isPublicRoute = pathname === '/' || pathname === '/listings' || pathname.startsWith('/listings/') || (pathname.startsWith('/profile/') && pathname !== '/profile/')
 
   // If not logged in, only allow public pages + auth routes
   if (!user && !isAuthRoute && !isPublicRoute) {
