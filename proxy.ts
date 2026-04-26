@@ -33,8 +33,11 @@ export default async function proxy(request: NextRequest) {
   // Auth routes are always accessible — OAuth flow must never be blocked
   const isAuthRoute = pathname.startsWith('/auth')
 
-  // If not logged in, only allow public pages (homepage + auth routes)
-  if (!user && !isAuthRoute && pathname !== '/') {
+  // Public routes accessible without login
+  const isPublicRoute = pathname === '/' || pathname === '/listings' || pathname.startsWith('/listings/')
+
+  // If not logged in, only allow public pages + auth routes
+  if (!user && !isAuthRoute && !isPublicRoute) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
