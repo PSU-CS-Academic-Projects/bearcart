@@ -74,8 +74,8 @@ export function ProfileListingCard({
           <Badge variant="secondary">{condition}</Badge>
         </div>
 
-        {/* Action menu for active listings */}
-        {variant === "active" && (
+        {/* Action menu for active listings — only shown when handlers are provided */}
+        {variant === "active" && (onEdit || onMarkSold || onDelete) && (
           <div className="absolute right-2 top-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -88,21 +88,27 @@ export function ProfileListingCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <PencilSimple className="size-4" />
-                  Edit Listing
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onMarkSold}>
-                  <CheckCircle className="size-4" />
-                  Mark as Sold
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash className="size-4" />
-                  Delete Listing
-                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <PencilSimple className="size-4" />
+                    Edit Listing
+                  </DropdownMenuItem>
+                )}
+                {onMarkSold && (
+                  <DropdownMenuItem onClick={onMarkSold}>
+                    <CheckCircle className="size-4" />
+                    Mark as Sold
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash className="size-4" />
+                    Delete Listing
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
