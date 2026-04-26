@@ -1,23 +1,27 @@
 "use client";
 
-import { MagnifyingGlass, Storefront } from "@phosphor-icons/react";
+import { ChatCircle, MagnifyingGlass } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface Conversation {
   id: string;
   otherUser: {
+    id: string;
     name: string;
     avatar: string;
     role: "Student" | "Faculty";
     isOnline: boolean;
   };
-  listing: {
+  listing?: {
     id: string;
     title: string;
     thumbnail: string;
     price: number;
+    status: string;
   };
   lastMessage: {
     text: string;
@@ -35,6 +39,39 @@ interface ConversationListProps {
   onSearchChange: (query: string) => void;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?";
+}
+
+function formatTime(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (days === 0) {
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } else if (days === 1) {
+    return "Yesterday";
+  } else if (days < 7) {
+    return date.toLocaleDateString("en-US", { weekday: "short" });
+  } else {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function ConversationList({
   conversations,
   selectedId,
@@ -45,31 +82,10 @@ export function ConversationList({
   const filteredConversations = conversations.filter(
     (c) =>
       c.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.listing.title.toLowerCase().includes(searchQuery.toLowerCase())
+      (c.listing?.title ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } else if (days === 1) {
-      return "Yesterday";
-    } else if (days < 7) {
-      return date.toLocaleDateString("en-US", { weekday: "short" });
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    }
-  };
+  // ── Empty state ──────────────────────────────────────────────────
 
   if (conversations.length === 0) {
     return (
@@ -79,14 +95,13 @@ export function ConversationList({
         </div>
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-            <Storefront className="size-8 text-muted-foreground" />
+            <ChatCircle className="size-8 text-muted-foreground" />
           </div>
           <h3 className="mb-2 text-lg font-semibold text-foreground">
             No messages yet
           </h3>
           <p className="mb-6 max-w-xs text-sm text-muted-foreground">
-            When you contact a seller or receive messages about your listings,
-            they&apos;ll appear here.
+            Browse listings to find something you like and message the seller.
           </p>
           <Button asChild>
             <Link href="/listings">Browse Listings</Link>
@@ -113,7 +128,7 @@ export function ConversationList({
         </div>
       </div>
 
-      {/* Conversation List */}
+      {/* Conversation Items */}
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-6 text-center">
@@ -127,47 +142,75 @@ export function ConversationList({
               key={conversation.id}
               onClick={() => onSelectConversation(conversation.id)}
               className={`flex w-full items-start gap-3 border-b p-4 text-left transition-colors hover:bg-accent ${
-                selectedId === conversation.id ? "bg-accent" : ""
+                selectedId === conversation.id
+                  ? "bg-primary/5 border-l-2 border-l-primary"
+                  : ""
               }`}
             >
-              {/* Avatar */}
+              {/* Avatar with initials fallback */}
               <div className="relative shrink-0">
-                <Image
-                  src={conversation.otherUser.avatar}
-                  alt={conversation.otherUser.name}
-                  width={48}
-                  height={48}
-                  className="size-12 rounded-full object-cover"
-                />
-                {conversation.otherUser.isOnline && (
-                  <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-card bg-green-500" />
-                )}
+                <div className="relative size-12 overflow-hidden rounded-full bg-muted">
+                  {conversation.otherUser.avatar ? (
+                    <Image
+                      src={conversation.otherUser.avatar}
+                      alt={conversation.otherUser.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-primary text-primary-foreground">
+                      <span className="text-sm font-bold">
+                        {getInitials(conversation.otherUser.name)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Content */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold text-foreground">
+                  <span
+                    className={`truncate font-semibold ${
+                      conversation.unreadCount > 0 ? "text-foreground" : "text-foreground"
+                    }`}
+                  >
                     {conversation.otherUser.name}
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {formatTime(conversation.lastMessage.timestamp)}
                   </span>
                 </div>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <Image
-                    src={conversation.listing.thumbnail}
-                    alt={conversation.listing.title}
-                    width={24}
-                    height={24}
-                    className="size-6 shrink-0 rounded object-cover"
-                  />
-                  <span className="truncate text-xs text-muted-foreground">
-                    {conversation.listing.title}
-                  </span>
-                </div>
+
+                {/* Listing context */}
+                {conversation.listing && (
+                  <div className="mt-0.5 flex items-center gap-2">
+                    {conversation.listing.thumbnail ? (
+                      <Image
+                        src={conversation.listing.thumbnail}
+                        alt={conversation.listing.title}
+                        width={24}
+                        height={24}
+                        className="size-6 shrink-0 rounded object-cover"
+                      />
+                    ) : (
+                      <div className="size-6 shrink-0 rounded bg-muted" />
+                    )}
+                    <span className="truncate text-xs text-muted-foreground">
+                      {conversation.listing.title}
+                    </span>
+                  </div>
+                )}
+
+                {/* Last message + unread badge */}
                 <div className="mt-1 flex items-center justify-between gap-2">
-                  <p className="truncate text-sm text-muted-foreground">
+                  <p
+                    className={`truncate text-sm ${
+                      conversation.unreadCount > 0
+                        ? "font-medium text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {conversation.lastMessage.isFromMe && (
                       <span className="text-muted-foreground">You: </span>
                     )}
