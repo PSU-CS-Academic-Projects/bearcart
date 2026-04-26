@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/navbar";
+
 import { Footer } from "@/components/footer";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
@@ -533,7 +533,6 @@ export function PostListingForm() {
   if (isMobile) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
-        <Navbar />
         <main className="flex-1">
           {/* Mobile Progress */}
           <div className="sticky top-16 z-40 border-b bg-card px-4 py-3">
@@ -604,7 +603,6 @@ export function PostListingForm() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Navbar />
       <main className="flex-1">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
