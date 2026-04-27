@@ -17,6 +17,7 @@ import {
   Handshake,
   Tag,
   Warning,
+  PencilSimple,
 } from "@phosphor-icons/react/dist/ssr";
 import { getListingById, getRelatedListings } from "@/lib/actions/listings";
 import { isListingSaved } from "@/lib/actions/saved";
@@ -166,6 +167,15 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   </span>
                 </div>
 
+                {/* Updated time */}
+                {listing.updated_at && listing.created_at &&
+                  Math.abs(new Date(listing.updated_at).getTime() - new Date(listing.created_at).getTime()) > 60000 && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <PencilSimple className="size-3.5" />
+                    Updated {formatTimeAgo(listing.updated_at)}
+                  </div>
+                )}
+
                 {/* Views count */}
                 <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <Eye className="size-3.5" />
@@ -181,6 +191,16 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   currentUserId={user?.id ?? null}
                   initialSaved={saved}
                 />
+              )}
+
+              {/* Edit button for owner */}
+              {user?.id === listing.seller_id && !isUnavailable && (
+                <Link href={`/listings/${listing.id}/edit`}>
+                  <Button variant="outline" className="w-full gap-2">
+                    <PencilSimple className="size-4" />
+                    Edit Listing
+                  </Button>
+                </Link>
               )}
 
               {/* Seller Info Card */}
