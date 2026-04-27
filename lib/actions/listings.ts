@@ -267,6 +267,142 @@ export async function updateListingStatus(
   if (error) throw new Error(`Failed to update listing: ${error.message}`);
 }
 
+// ─── UPDATE (full) ───────────────────────────────────────────────────────────
+
+export interface UpdateListingInput {
+  listingId: string;
+  title: string;
+  description: string;
+  price: number;
+  is_negotiable: boolean;
+  category: string;
+  condition: "new" | "like_new" | "good" | "fair" | "poor";
+  tags: string[];
+  /** Existing image URLs to keep (in the new order) */
+  existingPhotos: string[];
+  /** Image IDs that were removed by the user */
+  removedImageIds: string[];
+  /** New base64-encoded images to upload */
+  newPhotos: string[];
+}
+
+export async function updateListing(input: UpdateListingInput) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Verify ownership
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("seller_id, status")
+    .eq("id", input.listingId)
+    .single();
+
+  if (!listing) throw new Error("Listing not found");
+  if (listing.seller_id !== user.id) throw new Error("Not authorized");
+  if (listing.status === "sold" || listing.status === "deleted") {
+    throw new Error("This listing cannot be edited");
+  }
+
+  // 1. Update listing fields
+  const { error: updateError } = await supabase
+    .from("listings")
+    .update({
+      title: input.title,
+      description: input.description,
+      price: input.price,
+      is_negotiable: input.is_negotiable,
+      category: input.category,
+      condition: input.condition,
+      tags: input.tags.length > 0 ? input.tags : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.listingId)
+    .eq("seller_id", user.id);
+
+  if (updateError) throw new Error(`Failed to update listing: ${updateError.message}`);
+
+  // 2. Delete removed images (storage + DB)
+  if (input.removedImageIds.length > 0) {
+    // Get URLs for storage deletion
+    const { data: removedImages } = await supabase
+      .from("listing_images")
+      .select("id, image_url")
+      .in("id", input.removedImageIds);
+
+    if (removedImages) {
+      // Delete from storage (fire-and-forget, don't block)
+      for (const img of removedImages) {
+        try {
+          await deleteImage("listing-images", img.image_url);
+        } catch {
+          console.error(`Failed to delete image from storage: ${img.image_url}`);
+        }
+      }
+    }
+
+    // Delete from DB
+    await supabase
+      .from("listing_images")
+      .delete()
+      .in("id", input.removedImageIds);
+  }
+
+  // 3. Upload new photos
+  const newImageRows: { listing_id: string; image_url: string; is_cover: boolean; order: number }[] = [];
+  const startOrder = input.existingPhotos.length;
+
+  for (let i = 0; i < input.newPhotos.length; i++) {
+    try {
+      const imageUrl = await uploadImage("listing-images", input.newPhotos[i], `${user.id}/${input.listingId}`);
+      newImageRows.push({
+        listing_id: input.listingId,
+        image_url: imageUrl,
+        is_cover: false, // Will be updated in step 4
+        order: startOrder + i,
+      });
+    } catch (err) {
+      console.error(`Failed to upload new photo ${i}:`, err);
+    }
+  }
+
+  if (newImageRows.length > 0) {
+    await supabase.from("listing_images").insert(newImageRows);
+  }
+
+  // 4. Update order and is_cover for all remaining images
+  // existingPhotos are URLs in their new order position
+  // We need to find image IDs by URL and update their order
+  const { data: allImages } = await supabase
+    .from("listing_images")
+    .select("id, image_url")
+    .eq("listing_id", input.listingId);
+
+  if (allImages) {
+    const updatePromises = allImages.map((img) => {
+      // Find position: check existing photos first, then new uploads
+      let order = input.existingPhotos.indexOf(img.image_url);
+      if (order === -1) {
+        // Might be a newly uploaded image
+        const newIdx = newImageRows.findIndex((r) => r.image_url === img.image_url);
+        if (newIdx !== -1) order = startOrder + newIdx;
+      }
+      if (order === -1) order = 999; // Fallback
+
+      return supabase
+        .from("listing_images")
+        .update({ order, is_cover: order === 0 })
+        .eq("id", img.id);
+    });
+
+    await Promise.all(updatePromises);
+  }
+
+  return { id: input.listingId };
+}
+
 // ─── DELETE (soft) ────────────────────────────────────────────────────────────
 
 export async function deleteListing(listingId: string) {
