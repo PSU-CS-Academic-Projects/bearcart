@@ -1,6 +1,10 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase-server";
 import { getUnreadMessageCount } from "@/lib/actions/messages";
+import {
+  getRecentNotifications,
+  getUnreadNotificationCount,
+  type NotificationRow,
+} from "@/lib/actions/notifications";
 import { NavbarClient } from "@/components/navbar-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,6 +27,8 @@ export async function Navbar() {
 
   let navbarUser: NavbarUser | null = null;
   let initialUnreadCount = 0;
+  let initialNotificationCount = 0;
+  let initialNotifications: NotificationRow[] = [];
 
   if (authUser) {
     // Fetch full user record from users table
@@ -36,14 +42,23 @@ export async function Navbar() {
       navbarUser = profile as NavbarUser;
     }
 
-    // Fetch unread count server-side for initial render
-    initialUnreadCount = await getUnreadMessageCount();
+    // Fetch initial counts and notifications in parallel
+    const [unreadMsgs, unreadNotifs, recentNotifs] = await Promise.all([
+      getUnreadMessageCount(),
+      getUnreadNotificationCount(),
+      getRecentNotifications(10),
+    ]);
+    initialUnreadCount = unreadMsgs;
+    initialNotificationCount = unreadNotifs;
+    initialNotifications = recentNotifs;
   }
 
   return (
     <NavbarClient
       user={navbarUser}
       initialUnreadCount={initialUnreadCount}
+      initialNotificationCount={initialNotificationCount}
+      initialNotifications={initialNotifications}
     />
   );
 }

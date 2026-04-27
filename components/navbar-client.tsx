@@ -36,10 +36,13 @@ import {
   ChatCircle,
   ListBullets,
   Plus,
+  Bell,
 } from "@phosphor-icons/react";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
+import { NotificationsBell } from "@/components/notifications-bell";
+import type { NotificationRow } from "@/lib/actions/notifications";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -176,9 +179,16 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
 interface NavbarClientProps {
   user: NavbarUser | null;
   initialUnreadCount: number;
+  initialNotificationCount: number;
+  initialNotifications: NotificationRow[];
 }
 
-export function NavbarClient({ user, initialUnreadCount }: NavbarClientProps) {
+export function NavbarClient({
+  user,
+  initialUnreadCount,
+  initialNotificationCount,
+  initialNotifications,
+}: NavbarClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
@@ -290,6 +300,13 @@ export function NavbarClient({ user, initialUnreadCount }: NavbarClientProps) {
               {/* Messages with unread badge */}
               <MessagesIcon count={unreadCount} />
 
+              {/* Notifications bell with unread badge */}
+              <NotificationsBell
+                userId={user.id}
+                initialUnreadCount={initialNotificationCount}
+                initialNotifications={initialNotifications}
+              />
+
               {/* Profile avatar dropdown */}
               <ProfileDropdown user={user} />
             </>
@@ -389,6 +406,23 @@ export function NavbarClient({ user, initialUnreadCount }: NavbarClientProps) {
                     {unreadCount > 0 && (
                       <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
                         {formatUnreadCount(unreadCount)}
+                      </span>
+                    )}
+                  </Link>
+
+                  {/* Notifications */}
+                  <Link
+                    href="/notifications"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="size-4" />
+                      Notifications
+                    </span>
+                    {initialNotificationCount > 0 && (
+                      <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
+                        {formatUnreadCount(initialNotificationCount)}
                       </span>
                     )}
                   </Link>
