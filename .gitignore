@@ -22,3 +22,9 @@ skills-lock.json
 node_modules
 .next/
 .DS_Store
+
+# sql
+*.sql
+
+# db
+supabase/
