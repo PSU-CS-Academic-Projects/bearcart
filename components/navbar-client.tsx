@@ -330,8 +330,8 @@ export function NavbarClient({
 
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <ShoppingCart className="size-7 text-primary" weight="fill" />
-          <span className="text-xl font-bold text-foreground">PalMart</span>
+          <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
+          <span className="text-xl font-bold text-foreground">BearCart</span>
         </Link>
 
         {/* ── Desktop Search ────────────────────────────────────────── */}
