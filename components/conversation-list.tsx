@@ -1,6 +1,6 @@
 "use client";
 
-import { ChatCircle, MagnifyingGlass } from "@phosphor-icons/react";
+import { ChatCircle, MagnifyingGlass, ShoppingBag } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -189,12 +189,14 @@ export function ConversationList({
                       <Image
                         src={conversation.listing.thumbnail}
                         alt={conversation.listing.title}
-                        width={24}
-                        height={24}
-                        className="size-6 shrink-0 rounded object-cover"
+                        width={40}
+                        height={40}
+                        className="size-10 shrink-0 rounded object-cover"
                       />
                     ) : (
-                      <div className="size-6 shrink-0 rounded bg-muted" />
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
+                        <ShoppingBag className="size-5 text-muted-foreground/60" />
+                      </div>
                     )}
                     <span className="truncate text-xs text-muted-foreground">
                       {conversation.listing.title}

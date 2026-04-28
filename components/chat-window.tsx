@@ -15,6 +15,7 @@ import {
   ChatCircleDots,
   SpinnerGap,
   WarningCircle,
+  ShoppingBag,
 } from "@phosphor-icons/react";
 import type { Conversation } from "./conversation-list";
 
@@ -296,7 +297,9 @@ export function ChatWindow({
                   className="size-14 shrink-0 rounded-lg object-cover"
                 />
               ) : (
-                <div className="size-14 shrink-0 rounded-lg bg-muted" />
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <ShoppingBag className="size-6 text-muted-foreground/60" />
+                  </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">

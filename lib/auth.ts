@@ -42,6 +42,8 @@ export async function signOut() {
     if (error) {
         console.error('Signout error:', error.message)
     }
+    // Hard redirect so server components re-render with cleared auth
+    window.location.href = '/'
 }
 
 // Get current logged in user
