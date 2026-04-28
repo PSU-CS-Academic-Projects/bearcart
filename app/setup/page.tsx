@@ -116,7 +116,7 @@ export default function SetupPage() {
                 <span className="text-2xl font-bold text-foreground">PalMart</span>
               </Link>
               <h1 className="mt-2 text-xl font-bold text-foreground">
-                Welcome to PalMart, {firstName}! 👋
+                Welcome to PalMart, {firstName}!
               </h1>
               <p className="text-sm text-muted-foreground">
                 Just one quick step before you start
@@ -202,6 +202,9 @@ export default function SetupPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="mt-2 text-xs text-muted-foreground">
+                You can update your college anytime.
+              </p>
             </div>
 
             {/* Submit */}
