@@ -39,8 +39,7 @@ interface EditProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profile: {
-    first_name: string;
-    last_name: string;
+    full_name: string;
     bio: string;
     college: string;
     avatar_url: string;
@@ -57,8 +56,6 @@ export function EditProfileModal({
   profile,
   onSaved,
 }: EditProfileModalProps) {
-  const [firstName, setFirstName] = useState(profile.first_name);
-  const [lastName, setLastName] = useState(profile.last_name);
   const [bio, setBio] = useState(profile.bio);
   const [college, setCollege] = useState(profile.college);
   const [avatarPreview, setAvatarPreview] = useState(profile.avatar_url);
@@ -98,12 +95,7 @@ export function EditProfileModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
-
       await updateProfile({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        full_name: fullName || undefined,
         bio: bio.trim(),
         college: college || undefined,
         avatar_base64: avatarBase64 || undefined,
@@ -169,28 +161,13 @@ export function EditProfileModal({
             )}
           </div>
 
-          {/* First Name */}
+          {/* Name (read-only) */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-first-name">First Name</Label>
-            <Input
-              id="edit-first-name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Juan"
-              disabled={saving}
-            />
-          </div>
-
-          {/* Last Name */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-last-name">Last Name</Label>
-            <Input
-              id="edit-last-name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Dela Cruz"
-              disabled={saving}
-            />
+            <Label>Name</Label>
+            <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
+            <p className="text-xs text-muted-foreground">
+              Your name is pulled from your PSU Google account and cannot be changed here.
+            </p>
           </div>
 
           {/* Bio */}

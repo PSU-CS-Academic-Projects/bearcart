@@ -137,9 +137,6 @@ export async function getUserReviews(userId: string): Promise<ReviewData[]> {
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 
 export async function updateProfile(updates: {
-  first_name?: string;
-  last_name?: string;
-  full_name?: string;
   bio?: string;
   college?: string;
   avatar_base64?: string;
@@ -149,9 +146,6 @@ export async function updateProfile(updates: {
   if (!user) throw new Error("Not authenticated");
 
   const dbUpdates: Record<string, unknown> = {};
-  if (updates.first_name !== undefined) dbUpdates.first_name = updates.first_name;
-  if (updates.last_name !== undefined) dbUpdates.last_name = updates.last_name;
-  if (updates.full_name !== undefined) dbUpdates.full_name = updates.full_name;
   if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
   if (updates.college !== undefined) dbUpdates.college = updates.college;
 

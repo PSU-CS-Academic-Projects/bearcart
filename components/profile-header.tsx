@@ -142,8 +142,7 @@ export function ProfileHeader({
           open={editOpen}
           onOpenChange={setEditOpen}
           profile={{
-            first_name: profile.first_name ?? "",
-            last_name: profile.last_name ?? "",
+            full_name: profile.full_name ?? "",
             bio: profile.bio ?? "",
             college: profile.college ?? "",
             avatar_url: profile.avatar_url ?? "",
