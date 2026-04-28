@@ -289,17 +289,23 @@ export function ChatWindow({
           ) : (
             <div className="flex items-center gap-3">
               {listing.thumbnail ? (
-                <Image
-                  src={listing.thumbnail}
-                  alt={listing.title}
-                  width={56}
-                  height={56}
-                  className="size-14 shrink-0 rounded-lg object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => setLightboxUrl(listing.thumbnail)}
+                  className="shrink-0 cursor-pointer"
+                  aria-label="View listing image">
+                  <Image
+                    src={listing.thumbnail}
+                    alt={listing.title}
+                    width={56}
+                    height={56}
+                    className="size-14 shrink-0 rounded-lg object-cover"
+                  />
+                </button>
               ) : (
                 <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <ShoppingBag className="size-6 text-muted-foreground/60" />
-                  </div>
+                  <ShoppingBag className="size-6 text-muted-foreground/60" />
+                </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">
@@ -351,24 +357,21 @@ export function ChatWindow({
                     className={`mb-1 flex ${message.isFromMe ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${
-                        hasText
-                          ? `rounded-2xl px-4 py-2 ${
-                              message.isFromMe
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-foreground"
-                            }`
+                      className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${hasText
+                          ? `rounded-2xl px-4 py-2 ${message.isFromMe
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                          }`
                           : ""
-                      }`}
+                        }`}
                     >
                       {/* Image */}
                       {hasImage && (
                         <button
                           type="button"
                           onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
-                          className={`relative w-full overflow-hidden rounded-lg ${
-                            hasText ? "" : ""
-                          }`}
+                          className={`relative w-full overflow-hidden rounded-lg ${hasText ? "" : ""
+                            }`}
                           aria-label="Open image"
                           disabled={isPlaceholder}
                         >
@@ -397,13 +400,12 @@ export function ChatWindow({
 
                       {/* Time / read marker */}
                       <div
-                        className={`flex items-center justify-end gap-1 text-[10px] ${
-                          hasText
+                        className={`flex items-center justify-end gap-1 text-[10px] ${hasText
                             ? message.isFromMe
                               ? "text-primary-foreground/70"
                               : "text-muted-foreground"
                             : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
-                        }`}
+                          }`}
                       >
                         <span>{formatMessageTime(message.timestamp)}</span>
                         {message.isFromMe &&
