@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ConversationList, type Conversation } from "@/components/conversation-list";
-import { ChatWindow, type Message } from "@/components/chat-window";
+import { ChatWindow, type Message, type PendingImage } from "@/components/chat-window";
 import {
   getMessages,
   sendMessage as sendMessageAction,
+  uploadMessageImage,
   type ConversationWithDetails,
   type MessageRow,
 } from "@/lib/actions/messages";
@@ -54,6 +56,7 @@ function mapMessage(msg: MessageRow, currentUserId: string): Message {
   return {
     id: msg.id,
     text: msg.content,
+    imageUrl: msg.image_url ?? null,
     timestamp: new Date(msg.created_at),
     isFromMe: msg.sender_id === currentUserId,
     isRead: msg.is_read,
@@ -105,6 +108,8 @@ export function MessagesClient({
           ...prev,
           [initialConversationId]: msgs.map((m) => mapMessage(m, currentUserId)),
         }));
+        // Tell navbar to refetch the unread message count
+        window.dispatchEvent(new CustomEvent("palmart:messages-read"));
       } catch (err) {
         console.error("Failed to load initial messages:", err);
       }
@@ -141,10 +146,16 @@ export function MessagesClient({
             ...prev,
             [selectedConversationId]: [...(prev[selectedConversationId] || []), mapped],
           }));
+          const preview =
+            newMsg.image_url && newMsg.content
+              ? `📷 ${newMsg.content}`
+              : newMsg.image_url
+                ? "📷 Photo"
+                : newMsg.content;
           setConversations((prev) =>
             prev.map((c) =>
               c.id === selectedConversationId
-                ? { ...c, lastMessage: { text: newMsg.content, timestamp: new Date(newMsg.created_at), isFromMe: false } }
+                ? { ...c, lastMessage: { text: preview, timestamp: new Date(newMsg.created_at), isFromMe: false } }
                 : c
             )
           );
@@ -188,6 +199,8 @@ export function MessagesClient({
         ...prev,
         [id]: msgs.map((m) => mapMessage(m, currentUserId)),
       }));
+      // Tell navbar to refetch the unread message count
+      window.dispatchEvent(new CustomEvent("palmart:messages-read"));
     } catch (err) {
       console.error("Failed to load messages:", err);
     }
@@ -196,25 +209,69 @@ export function MessagesClient({
 
   // ── Send message ───────────────────────────────────────────────────
 
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, image: PendingImage | null) => {
     if (!selectedConversationId) return;
+    if (!text && !image) return;
+
+    const convId = selectedConversationId;
     setSending(true);
-    try {
-      const newMsg = await sendMessageAction(selectedConversationId, text);
-      const mapped = mapMessage(newMsg, currentUserId);
+
+    // Optimistic skeleton for image-bearing messages
+    const placeholderId = image ? `pending-${crypto.randomUUID()}` : null;
+    if (placeholderId && image) {
+      const placeholder: Message = {
+        id: placeholderId,
+        text,
+        imageUrl: image.dataUrl,
+        timestamp: new Date(),
+        isFromMe: true,
+        isRead: false,
+        type: "text",
+      };
       setMessages((prev) => ({
         ...prev,
-        [selectedConversationId]: [...(prev[selectedConversationId] || []), mapped],
+        [convId]: [...(prev[convId] || []), placeholder],
       }));
+    }
+
+    try {
+      let imageUrl: string | null = null;
+      if (image) {
+        imageUrl = await uploadMessageImage(convId, image.dataUrl);
+      }
+
+      const newMsg = await sendMessageAction(convId, text, imageUrl);
+      const mapped = mapMessage(newMsg, currentUserId);
+
+      setMessages((prev) => ({
+        ...prev,
+        [convId]: [
+          ...(prev[convId] || []).filter((m) => m.id !== placeholderId),
+          mapped,
+        ],
+      }));
+
+      const preview = imageUrl && text ? `📷 ${text}` : imageUrl ? "📷 Photo" : text;
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === selectedConversationId
-            ? { ...c, lastMessage: { text, timestamp: new Date(), isFromMe: true } }
+          c.id === convId
+            ? { ...c, lastMessage: { text: preview, timestamp: new Date(), isFromMe: true } }
             : c
         )
       );
     } catch (err) {
       console.error("Failed to send message:", err);
+      if (placeholderId) {
+        setMessages((prev) => ({
+          ...prev,
+          [convId]: (prev[convId] || []).filter((m) => m.id !== placeholderId),
+        }));
+      }
+      toast.error(
+        image
+          ? "Failed to send image. Please try again."
+          : "Failed to send message. Please try again."
+      );
     } finally {
       setSending(false);
     }

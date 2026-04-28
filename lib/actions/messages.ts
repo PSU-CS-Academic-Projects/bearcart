@@ -29,6 +29,7 @@ export interface MessageRow {
   conversation_id: string;
   sender_id: string;
   content: string;
+  image_url: string | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;
@@ -130,13 +131,21 @@ export async function getMessages(conversationId: string) {
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
-export async function sendMessage(conversationId: string, content: string) {
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  imageUrl?: string | null,
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const trimmed = content.trim();
-  if (!trimmed) throw new Error("Message cannot be empty");
+  const cleanImageUrl = imageUrl?.trim() || null;
+
+  if (!trimmed && !cleanImageUrl) {
+    throw new Error("Message cannot be empty");
+  }
 
   const { data: message, error } = await supabase
     .from("messages")
@@ -144,19 +153,85 @@ export async function sendMessage(conversationId: string, content: string) {
       conversation_id: conversationId,
       sender_id: user.id,
       content: trimmed,
+      image_url: cleanImageUrl,
     })
     .select("*")
     .single();
 
   if (error) throw new Error(`Failed to send message: ${error.message}`);
 
-  // Update conversation last_message
+  // Build conversation list preview
+  let preview: string;
+  if (cleanImageUrl && trimmed) preview = `📷 ${trimmed}`;
+  else if (cleanImageUrl) preview = "📷 Photo";
+  else preview = trimmed;
+
   await supabase
     .from("conversations")
-    .update({ last_message: trimmed, last_message_at: new Date().toISOString() })
+    .update({ last_message: preview, last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
 
   return message as MessageRow;
+}
+
+// ─── UPLOAD MESSAGE IMAGE ─────────────────────────────────────────────────────
+
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+export async function uploadMessageImage(
+  conversationId: string,
+  base64Data: string,
+): Promise<string> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Verify the user is a participant of this conversation
+  const { data: conv } = await supabase
+    .from("conversations")
+    .select("buyer_id, seller_id")
+    .eq("id", conversationId)
+    .single();
+  if (!conv) throw new Error("Conversation not found");
+  if (conv.buyer_id !== user.id && conv.seller_id !== user.id) {
+    throw new Error("Not a participant of this conversation");
+  }
+
+  // Parse the base64 data URL — accept jpeg, png, webp, gif
+  const match = base64Data.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/);
+  if (!match) {
+    throw new Error("Invalid image format. Only JPG, PNG, WEBP, and GIF are allowed.");
+  }
+  const mimeType = match[1];
+  const extension = match[2] === "jpeg" ? "jpg" : match[2];
+  const rawBase64 = match[3];
+
+  const binaryString = atob(rawBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  if (bytes.byteLength > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error("Image is larger than the 5MB limit.");
+  }
+
+  // Path: message-images/<conversation_id>/<message_uuid>/<filename>
+  const messageUuid = crypto.randomUUID();
+  const filename = `image.${extension}`;
+  const filePath = `${conversationId}/${messageUuid}/${filename}`;
+
+  const { error } = await supabase.storage
+    .from("message-images")
+    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  const { data: urlData } = supabase.storage
+    .from("message-images")
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
 }
 
 // ─── UNREAD COUNT ─────────────────────────────────────────────────────────────

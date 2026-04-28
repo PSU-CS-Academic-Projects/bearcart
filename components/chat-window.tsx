@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   PaperPlaneTilt,
+  PaperclipHorizontal,
+  X,
   Check,
   Checks,
   ChatCircleDots,
@@ -21,20 +23,31 @@ import type { Conversation } from "./conversation-list";
 export interface Message {
   id: string;
   text: string;
+  imageUrl: string | null;
   timestamp: Date;
   isFromMe: boolean;
   isRead: boolean;
   type: "text";
 }
 
+export interface PendingImage {
+  dataUrl: string;
+  filename: string;
+}
+
 interface ChatWindowProps {
   conversation: Conversation | null;
   messages: Message[];
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, image: PendingImage | null) => void;
   onBack?: () => void;
   showBackButton?: boolean;
   sending?: boolean;
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +101,15 @@ function getListingStatusBadge(status: string) {
   }
 }
 
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ChatWindow({
@@ -99,8 +121,12 @@ export function ChatWindow({
   sending = false,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -115,12 +141,27 @@ export function ChatWindow({
     }
   }, [inputValue]);
 
+  // Lightbox: close on Escape
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxUrl(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxUrl]);
+
+  const canSend =
+    !sending && (inputValue.trim().length > 0 || pendingImage !== null);
+
   const handleSend = () => {
-    if (inputValue.trim() && !sending) {
-      onSendMessage(inputValue.trim());
-      setInputValue("");
-      if (textareaRef.current) textareaRef.current.style.height = "auto";
-    }
+    if (!canSend) return;
+    onSendMessage(inputValue.trim(), pendingImage);
+    setInputValue("");
+    setPendingImage(null);
+    setImageError(null);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -128,6 +169,42 @@ export function ChatWindow({
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handlePickFile = () => {
+    setImageError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setImageError("Only JPG, PNG, WEBP, or GIF images are allowed.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setImageError("Image must be 5MB or smaller.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      setPendingImage({ dataUrl, filename: file.name });
+      setImageError(null);
+    } catch {
+      setImageError("Failed to read image. Please try again.");
+    }
+    e.target.value = "";
+  };
+
+  const handleClearPendingImage = () => {
+    setPendingImage(null);
+    setImageError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // ── Empty state (no conversation selected) ──────────────────────────
@@ -250,58 +327,146 @@ export function ChatWindow({
           </div>
         ) : (
           <div className="flex flex-col gap-1">
-            {messages.map((message, index) => (
-              <div key={message.id}>
-                {/* Date Separator */}
-                {shouldShowDateSeparator(message, messages[index - 1] || null) && (
-                  <div className="my-4 flex items-center justify-center">
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                      {formatDateSeparator(message.timestamp)}
-                    </span>
-                  </div>
-                )}
+            {messages.map((message, index) => {
+              const hasImage = !!message.imageUrl;
+              const hasText = message.text.length > 0;
+              const isPlaceholder = message.id.startsWith("pending-");
 
-                {/* Message Bubble */}
-                <div
-                  className={`mb-1 flex ${message.isFromMe ? "justify-end" : "justify-start"}`}
-                >
+              return (
+                <div key={message.id}>
+                  {/* Date Separator */}
+                  {shouldShowDateSeparator(message, messages[index - 1] || null) && (
+                    <div className="my-4 flex items-center justify-center">
+                      <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                        {formatDateSeparator(message.timestamp)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Message Bubble */}
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2 sm:max-w-xs ${
-                      message.isFromMe
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
-                    }`}
+                    className={`mb-1 flex ${message.isFromMe ? "justify-end" : "justify-start"}`}
                   >
-                    <p className="whitespace-pre-wrap break-words text-sm">
-                      {message.text}
-                    </p>
                     <div
-                      className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
-                        message.isFromMe
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground"
+                      className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${
+                        hasText
+                          ? `rounded-2xl px-4 py-2 ${
+                              message.isFromMe
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-foreground"
+                            }`
+                          : ""
                       }`}
                     >
-                      <span>{formatMessageTime(message.timestamp)}</span>
-                      {message.isFromMe &&
-                        (message.isRead ? (
-                          <Checks className="size-3.5" />
-                        ) : (
-                          <Check className="size-3.5" />
-                        ))}
+                      {/* Image */}
+                      {hasImage && (
+                        <button
+                          type="button"
+                          onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
+                          className={`relative w-full overflow-hidden rounded-lg ${
+                            hasText ? "" : ""
+                          }`}
+                          aria-label="Open image"
+                          disabled={isPlaceholder}
+                        >
+                          {isPlaceholder ? (
+                            <div className="flex aspect-square w-[200px] max-w-full items-center justify-center bg-muted">
+                              <SpinnerGap className="size-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={message.imageUrl ?? ""}
+                              alt="Sent image"
+                              className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
+                              loading="lazy"
+                            />
+                          )}
+                        </button>
+                      )}
+
+                      {/* Text */}
+                      {hasText && (
+                        <p className="whitespace-pre-wrap break-words text-sm">
+                          {message.text}
+                        </p>
+                      )}
+
+                      {/* Time / read marker */}
+                      <div
+                        className={`flex items-center justify-end gap-1 text-[10px] ${
+                          hasText
+                            ? message.isFromMe
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                            : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
+                        }`}
+                      >
+                        <span>{formatMessageTime(message.timestamp)}</span>
+                        {message.isFromMe &&
+                          (message.isRead ? (
+                            <Checks className="size-3.5" />
+                          ) : (
+                            <Check className="size-3.5" />
+                          ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
+      {/* ── Pending Image Preview ───────────────────────────────── */}
+      {(pendingImage || imageError) && (
+        <div className="border-t bg-card px-4 pt-3">
+          {imageError && (
+            <p className="mb-2 text-xs text-destructive">{imageError}</p>
+          )}
+          {pendingImage && (
+            <div className="relative inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={pendingImage.dataUrl}
+                alt="Pending attachment"
+                className="h-24 w-24 rounded-lg border object-cover"
+              />
+              <button
+                type="button"
+                onClick={handleClearPendingImage}
+                className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-foreground/80"
+                aria-label="Remove image"
+              >
+                <X className="size-3.5" weight="bold" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Message Input ────────────────────────────────────────── */}
       <div className="border-t bg-card p-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES.join(",")}
+          onChange={handleFileChange}
+          className="hidden"
+        />
         <div className="flex items-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handlePickFile}
+            disabled={sending}
+            aria-label="Attach image"
+          >
+            <PaperclipHorizontal className="size-5" />
+          </Button>
           <div className="flex flex-1 items-end rounded-lg border bg-background px-3">
             <textarea
               ref={textareaRef}
@@ -316,8 +481,9 @@ export function ChatWindow({
           <Button
             size="icon"
             onClick={handleSend}
-            disabled={!inputValue.trim() || sending}
-            className={inputValue.trim() && !sending ? "" : "bg-muted text-muted-foreground"}
+            disabled={!canSend}
+            className={canSend ? "" : "bg-muted text-muted-foreground"}
+            aria-label="Send message"
           >
             {sending ? (
               <SpinnerGap className="size-5 animate-spin" />
@@ -328,6 +494,36 @@ export function ChatWindow({
           </Button>
         </div>
       </div>
+
+      {/* ── Lightbox ────────────────────────────────────────────── */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxUrl(null);
+            }}
+            aria-label="Close"
+          >
+            <X className="size-5" weight="bold" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt="Full size"
+            className="max-h-full max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

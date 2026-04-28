@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -56,8 +56,6 @@ const CATEGORIES = [
   "Services",
   "Others",
 ];
-
-const UNREAD_REFRESH_MS = 30_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -194,37 +192,121 @@ export function NavbarClient({
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const [notifCount, setNotifCount] = useState(initialNotificationCount);
 
-  // ── Poll unread count every 30 seconds using browser Supabase client ──
+  // ── Realtime: notifications INSERT/UPDATE → keep mobile bell badge live ─
   useEffect(() => {
     if (!user) return;
 
-    const refresh = async () => {
-      try {
-        // Get all conversation IDs for this user
-        const { data: convos } = await supabase
-          .from("conversations")
-          .select("id")
-          .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+    const channel = supabase
+      .channel(`navbar-notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => setNotifCount((c) => c + 1)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        async () => {
+          const { count } = await supabase
+            .from("notifications")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("is_read", false);
+          setNotifCount(count ?? 0);
+        }
+      )
+      .subscribe();
 
-        if (!convos || convos.length === 0) { setUnreadCount(0); return; }
-
-        const { count } = await supabase
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .in("conversation_id", convos.map((c) => c.id))
-          .neq("sender_id", user.id)
-          .eq("is_read", false);
-
-        setUnreadCount(count ?? 0);
-      } catch {
-        // Silently fail — unread count is non-critical
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    const interval = setInterval(refresh, UNREAD_REFRESH_MS);
-    return () => clearInterval(interval);
   }, [user]);
+
+  // ── Recompute unread message count from current conversations ─────────
+  const refetchUnreadCount = useCallback(async (userId: string) => {
+    try {
+      const { data: convos } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+
+      if (!convos || convos.length === 0) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .in("conversation_id", convos.map((c) => c.id))
+        .neq("sender_id", userId)
+        .eq("is_read", false);
+
+      setUnreadCount(count ?? 0);
+    } catch {
+      // Silently fail — unread count is non-critical
+    }
+  }, []);
+
+  // ── Realtime: messages INSERT/UPDATE → keep message badge in sync ────
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`navbar-messages:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const msg = payload.new as { sender_id: string; is_read: boolean };
+          // Only count messages from someone else as unread
+          if (msg.sender_id !== user.id && msg.is_read === false) {
+            setUnreadCount((c) => c + 1);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+        },
+        () => {
+          // is_read flipping → recompute the count from server
+          refetchUnreadCount(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refetchUnreadCount]);
+
+  // ── Listen for in-app "messages-read" event from chat-window ─────────
+  useEffect(() => {
+    if (!user) return;
+    const handler = () => refetchUnreadCount(user.id);
+    window.addEventListener("palmart:messages-read", handler);
+    return () => window.removeEventListener("palmart:messages-read", handler);
+  }, [user, refetchUnreadCount]);
 
   // ── Search submit ──────────────────────────────────────────────────────
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -420,9 +502,9 @@ export function NavbarClient({
                       <Bell className="size-4" />
                       Notifications
                     </span>
-                    {initialNotificationCount > 0 && (
+                    {notifCount > 0 && (
                       <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
-                        {formatUnreadCount(initialNotificationCount)}
+                        {formatUnreadCount(notifCount)}
                       </span>
                     )}
                   </Link>
