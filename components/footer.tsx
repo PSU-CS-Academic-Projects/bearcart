@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ShoppingCart,
   Envelope,
@@ -33,8 +34,8 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center gap-2">
-              <ShoppingCart className="size-7 text-primary" weight="fill" />
-              <span className="text-xl font-bold text-foreground">PalMart</span>
+              <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
+              <span className="text-xl font-bold text-foreground">BearCart</span>
             </Link>
             <p className="mb-4 text-sm text-muted-foreground">
               The official campus marketplace for Palawan State University.
@@ -113,8 +114,8 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Envelope className="size-4 shrink-0" />
-                <a href="mailto:support@palmart.ph" className="hover:text-primary">
-                  support@palmart.ph
+                <a href="mailto:support@bearcart.ph" className="hover:text-primary">
+                  support@bearcart.ph
                 </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -131,7 +132,7 @@ export function Footer() {
         <div className="mt-10 border-t pt-6">
           <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} PalMart. All rights reserved.
+              © {new Date().getFullYear()} BearCart. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <Link
