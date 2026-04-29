@@ -369,6 +369,14 @@ export function NavbarClient({
 
         {/* ── Desktop Right ─────────────────────────────────────────── */}
         <div className="relative z-10 hidden shrink-0 items-center gap-2 md:flex">
+          {/* Looking For — visible to everyone */}
+          <Link
+            href="/requests"
+            className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Looking For
+          </Link>
+
           {user ? (
             <>
               {/* Post a Listing */}
@@ -449,6 +457,16 @@ export function NavbarClient({
               </form>
 
               <div className="h-px bg-border" />
+
+              {/* Looking For — visible to everyone */}
+              <Link
+                href="/requests"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+              >
+                <MagnifyingGlass className="size-4" />
+                Looking For
+              </Link>
 
               {/* Mobile Auth Section */}
               {user ? (

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-server";
 import { getOwnProfile, getProfileStats } from "@/lib/actions/profile";
 import { getListingsBySeller } from "@/lib/actions/listings";
 import { getSavedListings } from "@/lib/actions/saved";
+import { getRequestsByRequester } from "@/lib/actions/requests";
 
 export const metadata = {
   title: "My Profile — PalMart",
@@ -19,12 +20,13 @@ export default async function ProfilePage() {
   if (!user) redirect("/auth/login?returnTo=/profile");
 
   // ── Fetch Data ──────────────────────────────────────────────────────────
-  const [profile, stats, activeListings, soldListings, savedData] = await Promise.all([
+  const [profile, stats, activeListings, soldListings, savedData, ownRequests] = await Promise.all([
     getOwnProfile(),
     getProfileStats(user.id),
     getListingsBySeller(user.id, "available"),
     getListingsBySeller(user.id, "sold"),
     getSavedListings(),
+    getRequestsByRequester(user.id),
   ]);
 
   if (!profile) redirect("/auth/login?returnTo=/profile");
@@ -59,6 +61,8 @@ export default async function ProfilePage() {
             activeListings={activeListings}
             soldListings={soldListings}
             savedListings={savedListings}
+            ownRequests={ownRequests}
+            currentUserId={user.id}
           />
         </div>
       </main>

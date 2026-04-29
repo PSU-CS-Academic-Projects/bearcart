@@ -14,11 +14,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Tag, ShoppingCart, BookmarkSimple, Storefront, Package,
-  MagnifyingGlass, Star, User,
+  MagnifyingGlass, Star, User, Plus, PencilSimple, XCircle, Check,
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
+import { RequestRow } from "@/components/request-row";
 import { updateListingStatus } from "@/lib/actions/listings";
 import { removeSavedListing } from "@/lib/actions/saved";
+import {
+  markRequestFulfilled,
+  closeRequest,
+  type RequestRow as RequestRowType,
+} from "@/lib/actions/requests";
 import { formatTimeAgo, formatCondition } from "@/lib/listing-helpers";
 import { toast } from "sonner";
 
@@ -57,6 +63,8 @@ interface OwnProfileTabsProps {
   activeListings: ListingRow[];
   soldListings: ListingRow[];
   savedListings: SavedRow[];
+  ownRequests: RequestRowType[];
+  currentUserId: string;
 }
 
 interface PublicProfileTabsProps {
@@ -97,6 +105,14 @@ export function ProfileTabs(props: ProfileTabsProps) {
   const [activeItems, setActiveItems] = useState(props.activeListings);
   const [soldItems, setSoldItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).soldListings : []);
   const [savedItems, setSavedItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).savedListings : []);
+  const [requestItems, setRequestItems] = useState<RequestRowType[]>(
+    props.variant === "own" ? (props as OwnProfileTabsProps).ownRequests : []
+  );
+  const [requestAction, setRequestAction] = useState<{
+    id: string;
+    type: "fulfilled" | "closed";
+  } | null>(null);
+  const ownUserId = props.variant === "own" ? (props as OwnProfileTabsProps).currentUserId : "";
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
 
@@ -126,6 +142,45 @@ export function ProfileTabs(props: ProfileTabsProps) {
     } catch {
       toast.error("Failed to remove saved listing");
     }
+  };
+
+  // ── Request Status Action ─────────────────────────────────────────────
+
+  const handleRequestAction = async () => {
+    if (!requestAction) return;
+    const { id, type } = requestAction;
+    try {
+      if (type === "fulfilled") {
+        await markRequestFulfilled(id);
+        setRequestItems((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: "fulfilled" } : r))
+        );
+        toast.success("Request marked as fulfilled!");
+      } else {
+        await closeRequest(id);
+        setRequestItems((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: "closed" } : r))
+        );
+        toast.success("Request closed");
+      }
+    } catch {
+      toast.error("Action failed");
+    }
+    setRequestAction(null);
+  };
+
+  const requestStatusBadge = (status: RequestRowType["status"]) => {
+    const styles: Record<RequestRowType["status"], string> = {
+      open: "bg-emerald-100 text-emerald-800",
+      fulfilled: "bg-blue-100 text-blue-800",
+      closed: "bg-muted text-muted-foreground",
+    };
+    const labels: Record<RequestRowType["status"], string> = {
+      open: "Open",
+      fulfilled: "Fulfilled",
+      closed: "Closed",
+    };
+    return <Badge className={styles[status]}>{labels[status]}</Badge>;
   };
 
   // ── Listing Grid ──────────────────────────────────────────────────────
@@ -256,7 +311,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
     return (
       <>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full justify-start">
+          <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="active" className="gap-2">
               <Tag className="size-4" />
               Active ({activeItems.length})
@@ -264,6 +319,10 @@ export function ProfileTabs(props: ProfileTabsProps) {
             <TabsTrigger value="sold" className="gap-2">
               <ShoppingCart className="size-4" />
               Sold ({soldItems.length})
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="gap-2">
+              <MagnifyingGlass className="size-4" />
+              Requests ({requestItems.length})
             </TabsTrigger>
             <TabsTrigger value="saved" className="gap-2">
               <BookmarkSimple className="size-4" />
@@ -279,10 +338,101 @@ export function ProfileTabs(props: ProfileTabsProps) {
             {soldItems.length > 0 ? renderGrid(soldItems, "sold") : emptySold}
           </TabsContent>
 
+          <TabsContent value="requests" className="mt-6">
+            {requestItems.length > 0 ? (
+              <div className="overflow-hidden rounded-xl border bg-card">
+                {requestItems.map((req, idx) => (
+                  <div key={req.id} className={idx > 0 ? "border-t" : ""}>
+                    <RequestRow
+                      request={req}
+                      currentUserId={ownUserId}
+                      rightAction={
+                        <div className="flex flex-wrap items-center gap-2">
+                          {requestStatusBadge(req.status)}
+                          {req.status === "open" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5"
+                                onClick={() => router.push(`/requests/${req.id}/edit`)}
+                              >
+                                <PencilSimple className="size-3.5" />
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5"
+                                onClick={() => setRequestAction({ id: req.id, type: "fulfilled" })}
+                              >
+                                <Check className="size-3.5 text-emerald-600" />
+                                Fulfilled
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5"
+                                onClick={() => setRequestAction({ id: req.id, type: "closed" })}
+                              >
+                                <XCircle className="size-3.5 text-muted-foreground" />
+                                Close
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Card className="flex flex-col items-center justify-center p-12 text-center">
+                <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+                  <MagnifyingGlass className="size-8 text-muted-foreground" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-foreground">No requests posted yet</h3>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Post what you&apos;re looking for and let sellers find you
+                </p>
+                <Button asChild>
+                  <Link href="/requests/new">
+                    <Plus className="size-4" />
+                    Post a Request
+                  </Link>
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+
           <TabsContent value="saved" className="mt-6">
             {savedItems.length > 0 ? renderGrid(savedItems, "saved") : emptySaved}
           </TabsContent>
         </Tabs>
+
+        {/* Request Action Confirmation */}
+        <AlertDialog open={!!requestAction} onOpenChange={(o) => { if (!o) setRequestAction(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {requestAction?.type === "fulfilled"
+                  ? "Mark as fulfilled?"
+                  : "Close this request?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {requestAction?.type === "fulfilled"
+                  ? "This marks the request as completed. Sellers will no longer see it as open."
+                  : "This closes the request without marking it as fulfilled."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRequestAction}>
+                {requestAction?.type === "fulfilled" ? "Mark as Fulfilled" : "Close Request"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Mark as Sold Confirmation */}
         <AlertDialog open={!!markSoldId} onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}>
