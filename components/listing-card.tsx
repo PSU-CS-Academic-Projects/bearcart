@@ -1,9 +1,11 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Clock, User } from "@phosphor-icons/react/dist/ssr";
+import { Clock, User, ShoppingBag } from "@phosphor-icons/react/dist/ssr";
 
 interface ListingCardProps {
+  id: string;
   title: string;
   price: number;
   category: string;
@@ -15,6 +17,7 @@ interface ListingCardProps {
 }
 
 export function ListingCard({
+  id,
   title,
   price,
   category,
@@ -25,15 +28,22 @@ export function ListingCard({
   imageUrl,
 }: ListingCardProps) {
   return (
+    <Link href={`/listings/${id}`} className="block">
     <Card className="group cursor-pointer overflow-hidden p-0 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
-        <Image
-          src={imageUrl}
-          alt={title}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center">
+            <ShoppingBag className="size-12 text-muted-foreground/40" />
+          </div>
+        )}
         {/* Badges overlay */}
         <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
           <Badge className="bg-primary text-primary-foreground">{category}</Badge>
@@ -77,5 +87,6 @@ export function ListingCard({
         </div>
       </div>
     </Card>
+    </Link>
   );
 }

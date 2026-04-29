@@ -1,77 +1,41 @@
+import Link from "next/link";
 import { ListingCard } from "@/components/listing-card";
+import { Button } from "@/components/ui/button";
 import { FiltersSidebar, MobileFiltersSheet } from "@/components/filters-sidebar";
+import { getListings } from "@/lib/actions/listings";
+import { formatTimeAgo, getCoverImage, getSellerName, formatCondition } from "@/lib/listing-helpers";
+import { Storefront, Plus } from "@phosphor-icons/react/dist/ssr";
 
-// Placeholder listings data
-const listings = [
-  {
-    id: 1,
-    title: "Calculus Early Transcendentals 8th Edition - James Stewart",
-    price: 450,
-    category: "Books",
-    condition: "Good",
-    sellerName: "Maria Santos",
-    sellerAvatar: "https://i.pravatar.cc/100?img=1",
-    timePosted: "2h ago",
-    imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=400&fit=crop",
-  },
-  {
-    id: 2,
-    title: "iPhone 13 Mini 128GB - Midnight Black",
-    price: 28500,
-    category: "Electronics",
-    condition: "Like New",
-    sellerName: "Juan Dela Cruz",
-    sellerAvatar: "https://i.pravatar.cc/100?img=3",
-    timePosted: "5h ago",
-    imageUrl: "https://images.unsplash.com/photo-1632661674596-df8be59a3d40?w=400&h=400&fit=crop",
-  },
-  {
-    id: 3,
-    title: "PSU College of Engineering Jacket - Size L",
-    price: 850,
-    category: "Clothing",
-    condition: "New",
-    sellerName: "Ana Reyes",
-    sellerAvatar: "https://i.pravatar.cc/100?img=5",
-    timePosted: "1d ago",
-    imageUrl: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=400&fit=crop",
-  },
-  {
-    id: 4,
-    title: "Homemade Empanadas - 12 pieces (Beef/Chicken)",
-    price: 180,
-    category: "Food",
-    condition: "New",
-    sellerName: "Rosa Garcia",
-    sellerAvatar: "https://i.pravatar.cc/100?img=9",
-    timePosted: "3h ago",
-    imageUrl: "https://images.unsplash.com/photo-1604579839181-8682c58e47e6?w=400&h=400&fit=crop",
-  },
-  {
-    id: 5,
-    title: "Complete Art Supplies Kit - Watercolors, Brushes, Canvas",
-    price: 1200,
-    category: "Supplies",
-    condition: "New",
-    sellerName: "Carlos Mendoza",
-    sellerAvatar: "https://i.pravatar.cc/100?img=12",
-    timePosted: "6h ago",
-    imageUrl: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&h=400&fit=crop",
-  },
-  {
-    id: 6,
-    title: "Tutoring Services - Math & Physics (Per Hour)",
-    price: 300,
-    category: "Services",
-    condition: "New",
-    sellerName: "Miguel Torres",
-    sellerAvatar: "https://i.pravatar.cc/100?img=15",
-    timePosted: "1d ago",
-    imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop",
-  },
-];
+// ─── Empty State ──────────────────────────────────────────────────────────────
 
-export function ListingsSection() {
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-accent">
+        <Storefront className="size-8 text-primary" weight="duotone" />
+      </div>
+      <h3 className="mb-2 text-lg font-semibold text-foreground">
+        No listings yet
+      </h3>
+      <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+        Be the first to post something for sale on campus. Your classmates are
+        waiting!
+      </p>
+      <Button asChild>
+        <Link href="/listings/new">
+          <Plus className="size-4" />
+          Post a Listing
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+// ─── Main Section ─────────────────────────────────────────────────────────────
+
+export async function ListingsSection() {
+  const { listings } = await getListings({ pageSize: 12 });
+
   return (
     <section className="py-10">
       <div className="mx-auto max-w-7xl px-4">
@@ -93,28 +57,37 @@ export function ListingsSection() {
 
           {/* Listings Grid */}
           <div className="flex-1">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {listings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  title={listing.title}
-                  price={listing.price}
-                  category={listing.category}
-                  condition={listing.condition}
-                  sellerName={listing.sellerName}
-                  sellerAvatar={listing.sellerAvatar}
-                  timePosted={listing.timePosted}
-                  imageUrl={listing.imageUrl}
-                />
-              ))}
-            </div>
+            {listings.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {listings.map((listing) => (
+                    <ListingCard
+                      key={listing.id}
+                      id={listing.id}
+                      title={listing.title}
+                      price={listing.price}
+                      category={listing.category}
+                      condition={formatCondition(listing.condition)}
+                      sellerName={getSellerName(listing)}
+                      sellerAvatar={listing.seller?.avatar_url ?? ""}
+                      timePosted={formatTimeAgo(listing.created_at)}
+                      imageUrl={getCoverImage(listing)}
+                    />
+                  ))}
+                </div>
 
-            {/* Load More */}
-            <div className="mt-8 text-center">
-              <button className="text-sm font-medium text-primary hover:underline">
-                View all listings →
-              </button>
-            </div>
+                {/* View All */}
+                <div className="mt-8 text-center">
+                  <Button asChild variant="link">
+                    <Link href="/listings">
+                      View all listings →
+                    </Link>
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

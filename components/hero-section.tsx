@@ -1,13 +1,29 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MagnifyingGlass, Storefront, Tag } from "@phosphor-icons/react";
+import {
+  MagnifyingGlass,
+  Storefront,
+  Tag,
+  Book,
+  Desktop,
+  TShirt,
+  Hamburger,
+  GraduationCap,
+  Wrench,
+  DotsThree,
+} from "@phosphor-icons/react/dist/ssr";
+
+const CATEGORY_CHIPS = [
+  { name: "Books", icon: Book },
+  { name: "Electronics", icon: Desktop },
+  { name: "Clothing", icon: TShirt },
+  { name: "Food", icon: Hamburger },
+  { name: "School Supplies", icon: GraduationCap },
+  { name: "Services", icon: Wrench },
+  { name: "Others", icon: DotsThree },
+];
 
 export function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
-
   return (
     <section className="relative overflow-hidden bg-card py-16 md:py-24">
       {/* Background decoration */}
@@ -37,28 +53,8 @@ export function HeroSection() {
             campus.
           </p>
 
-          {/* Search Bar */}
-          <div className="mx-auto mb-8 flex max-w-xl items-center gap-2 rounded-xl border bg-background p-2 shadow-sm">
-            <div className="flex flex-1 items-center gap-2 px-3">
-              <MagnifyingGlass className="size-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="What are you looking for?"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground md:text-base"
-              />
-            </div>
-            <Button size="lg" className="hidden sm:flex">
-              Search
-            </Button>
-            <Button size="icon-lg" className="sm:hidden">
-              <MagnifyingGlass className="size-5" />
-            </Button>
-          </div>
-
           {/* CTA Buttons */}
-          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="w-full sm:w-auto">
               <Link href="/listings">
                 <MagnifyingGlass className="size-4" />
@@ -71,6 +67,20 @@ export function HeroSection() {
                 Post a Listing
               </Link>
             </Button>
+          </div>
+
+          {/* Category quick-links */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {CATEGORY_CHIPS.map(({ name, icon: Icon }) => (
+              <Link
+                key={name}
+                href={`/listings?category=${encodeURIComponent(name)}`}
+                className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-accent hover:text-primary"
+              >
+                <Icon className="size-3.5" />
+                {name}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

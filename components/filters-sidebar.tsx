@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -17,47 +18,78 @@ import {
   Desktop,
   TShirt,
   Hamburger,
-  Package,
+  GraduationCap,
   Wrench,
   DotsThree,
   Faders,
 } from "@phosphor-icons/react";
 
-const categories = [
+const CATEGORIES = [
   { name: "Books", icon: Book },
   { name: "Electronics", icon: Desktop },
   { name: "Clothing", icon: TShirt },
   { name: "Food", icon: Hamburger },
-  { name: "Supplies", icon: Package },
+  { name: "School Supplies", icon: GraduationCap },
   { name: "Services", icon: Wrench },
   { name: "Others", icon: DotsThree },
 ];
 
-const conditions = ["New", "Like New", "Good", "Fair"];
+const CONDITIONS = [
+  { display: "New", value: "new" },
+  { display: "Like New", value: "like_new" },
+  { display: "Good", value: "good" },
+  { display: "Fair", value: "fair" },
+];
 
 interface FiltersSidebarProps {
   className?: string;
 }
 
-function FiltersContent() {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 10000]);
-  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+function buildListingsUrl(
+  cats: string[],
+  conds: string[],
+  price: [number, number]
+): string {
+  const params = new URLSearchParams();
+  if (cats.length > 0) params.set("category", cats.join(","));
+  if (conds.length > 0) params.set("condition", conds.join(","));
+  if (price[0] > 0) params.set("min", String(price[0]));
+  if (price[1] < 10000) params.set("max", String(price[1]));
+  const qs = params.toString();
+  return qs ? `/listings?${qs}` : "/listings";
+}
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
+function FiltersContent() {
+  const router = useRouter();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  const toggleCategory = (name: string) => {
+    const next = selectedCategories.includes(name)
+      ? selectedCategories.filter((c) => c !== name)
+      : [...selectedCategories, name];
+    setSelectedCategories(next);
+    router.push(buildListingsUrl(next, selectedConditions, priceRange));
   };
 
-  const toggleCondition = (condition: string) => {
-    setSelectedConditions((prev) =>
-      prev.includes(condition)
-        ? prev.filter((c) => c !== condition)
-        : [...prev, condition]
-    );
+  const toggleCondition = (value: string) => {
+    const next = selectedConditions.includes(value)
+      ? selectedConditions.filter((c) => c !== value)
+      : [...selectedConditions, value];
+    setSelectedConditions(next);
+    router.push(buildListingsUrl(selectedCategories, next, priceRange));
+  };
+
+  const applyPrice = () => {
+    router.push(buildListingsUrl(selectedCategories, selectedConditions, priceRange));
+  };
+
+  const clearAll = () => {
+    setSelectedCategories([]);
+    setSelectedConditions([]);
+    setPriceRange([0, 10000]);
+    router.push("/listings");
   };
 
   return (
@@ -66,7 +98,7 @@ function FiltersContent() {
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
         <div className="flex flex-col gap-2">
-          {categories.map(({ name, icon: Icon }) => (
+          {CATEGORIES.map(({ name, icon: Icon }) => (
             <button
               key={name}
               onClick={() => toggleCategory(name)}
@@ -89,7 +121,7 @@ function FiltersContent() {
         <div className="px-1">
           <Slider
             value={priceRange}
-            onValueChange={setPriceRange}
+            onValueChange={(v) => setPriceRange(v as [number, number])}
             min={0}
             max={10000}
             step={100}
@@ -100,24 +132,32 @@ function FiltersContent() {
             <span>₱{priceRange[1].toLocaleString()}</span>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 w-full"
+          onClick={applyPrice}
+        >
+          Apply Price
+        </Button>
       </div>
 
       {/* Condition */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Condition</h3>
         <div className="flex flex-col gap-2">
-          {conditions.map((condition) => (
-            <div key={condition} className="flex items-center gap-2">
+          {CONDITIONS.map(({ display, value }) => (
+            <div key={value} className="flex items-center gap-2">
               <Checkbox
-                id={condition}
-                checked={selectedConditions.includes(condition)}
-                onCheckedChange={() => toggleCondition(condition)}
+                id={`home-cond-${value}`}
+                checked={selectedConditions.includes(value)}
+                onCheckedChange={() => toggleCondition(value)}
               />
               <Label
-                htmlFor={condition}
+                htmlFor={`home-cond-${value}`}
                 className="cursor-pointer text-sm font-normal"
               >
-                {condition}
+                {display}
               </Label>
             </div>
           ))}
@@ -139,11 +179,7 @@ function FiltersContent() {
       <Button
         variant="outline"
         className="mt-2"
-        onClick={() => {
-          setSelectedCategories([]);
-          setPriceRange([0, 10000]);
-          setSelectedConditions([]);
-        }}
+        onClick={clearAll}
       >
         Clear All Filters
       </Button>

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
+    const returnTo = searchParams.get('returnTo') || '/listings'
 
     // Handle Ngrok/Proxy origins correctly
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
@@ -31,8 +32,12 @@ export async function GET(request: Request) {
 
         const needsSetup = !userData?.college
 
+        // If user needs onboarding, go to setup first (then returnTo after setup)
+        // Otherwise, go directly to the returnTo destination
         return NextResponse.redirect(
-            needsSetup ? `${origin}/setup` : `${origin}/listings`
+            needsSetup
+                ? `${origin}/setup?returnTo=${encodeURIComponent(returnTo)}`
+                : `${origin}${returnTo}`
         )
     }
 
