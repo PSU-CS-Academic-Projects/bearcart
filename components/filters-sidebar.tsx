@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -48,13 +48,14 @@ interface FiltersSidebarProps {
 function buildListingsUrl(
   cats: string[],
   conds: string[],
-  price: [number, number]
+  min: string,
+  max: string
 ): string {
   const params = new URLSearchParams();
   if (cats.length > 0) params.set("category", cats.join(","));
   if (conds.length > 0) params.set("condition", conds.join(","));
-  if (price[0] > 0) params.set("min", String(price[0]));
-  if (price[1] < 10000) params.set("max", String(price[1]));
+  if (min && parseInt(min) > 0) params.set("min", min);
+  if (max && parseInt(max) > 0) params.set("max", max);
   const qs = params.toString();
   return qs ? `/listings?${qs}` : "/listings";
 }
@@ -63,14 +64,15 @@ function FiltersContent() {
   const router = useRouter();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
 
   const toggleCategory = (name: string) => {
     const next = selectedCategories.includes(name)
       ? selectedCategories.filter((c) => c !== name)
       : [...selectedCategories, name];
     setSelectedCategories(next);
-    router.push(buildListingsUrl(next, selectedConditions, priceRange));
+    router.push(buildListingsUrl(next, selectedConditions, minPrice, maxPrice));
   };
 
   const toggleCondition = (value: string) => {
@@ -78,17 +80,20 @@ function FiltersContent() {
       ? selectedConditions.filter((c) => c !== value)
       : [...selectedConditions, value];
     setSelectedConditions(next);
-    router.push(buildListingsUrl(selectedCategories, next, priceRange));
+    router.push(buildListingsUrl(selectedCategories, next, minPrice, maxPrice));
   };
 
-  const applyPrice = () => {
-    router.push(buildListingsUrl(selectedCategories, selectedConditions, priceRange));
+  const applyPrice = (min: string, max: string) => {
+    setMinPrice(min);
+    setMaxPrice(max);
+    router.push(buildListingsUrl(selectedCategories, selectedConditions, min, max));
   };
 
   const clearAll = () => {
     setSelectedCategories([]);
     setSelectedConditions([]);
-    setPriceRange([0, 10000]);
+    setMinPrice("");
+    setMaxPrice("");
     router.push("/listings");
   };
 
@@ -115,33 +120,6 @@ function FiltersContent() {
         </div>
       </div>
 
-      {/* Price Range */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Price Range</h3>
-        <div className="px-1">
-          <Slider
-            value={priceRange}
-            onValueChange={(v) => setPriceRange(v as [number, number])}
-            min={0}
-            max={10000}
-            step={100}
-            className="mb-3"
-          />
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>₱{priceRange[0].toLocaleString()}</span>
-            <span>₱{priceRange[1].toLocaleString()}</span>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3 w-full"
-          onClick={applyPrice}
-        >
-          Apply Price
-        </Button>
-      </div>
-
       {/* Condition */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Condition</h3>
@@ -162,6 +140,50 @@ function FiltersContent() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Price Range */}
+      <div>
+        <h3 className="mb-3 font-semibold text-foreground">Price Range</h3>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            const min = fd.get("min") as string;
+            const max = fd.get("max") as string;
+            applyPrice(min, max);
+          }}
+          className="flex flex-col gap-3"
+        >
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Label htmlFor="home-min-price" className="sr-only">Min price</Label>
+              <Input
+                id="home-min-price"
+                name="min"
+                type="number"
+                placeholder="₱ Min"
+                defaultValue={minPrice}
+                className="h-9 text-sm"
+              />
+            </div>
+            <span className="text-muted-foreground">–</span>
+            <div className="flex-1">
+              <Label htmlFor="home-max-price" className="sr-only">Max price</Label>
+              <Input
+                id="home-max-price"
+                name="max"
+                type="number"
+                placeholder="₱ Max"
+                defaultValue={maxPrice}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <Button type="submit" variant="outline" size="sm" className="w-full">
+            Apply Price
+          </Button>
+        </form>
       </div>
 
       {/* Listing Type */}
