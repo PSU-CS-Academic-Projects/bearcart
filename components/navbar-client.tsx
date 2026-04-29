@@ -312,7 +312,7 @@ export function NavbarClient({
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (searchQuery.trim()) params.set("search", searchQuery.trim());
     if (selectedCategory && selectedCategory !== "All Categories") {
       params.set("category", selectedCategory);
     }

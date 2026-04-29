@@ -19,7 +19,10 @@ export interface CreateListingInput {
 
 export interface ListingFilters {
   search?: string;
+  /** Single category or comma-separated list of categories */
   category?: string;
+  /** Parsed array of categories; takes precedence over the string `category` field */
+  categories?: string[];
   condition?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -105,7 +108,6 @@ export async function getListings(filters: ListingFilters = {}) {
   const supabase = await createClient();
   const {
     search,
-    category,
     condition,
     minPrice,
     maxPrice,
@@ -113,6 +115,14 @@ export async function getListings(filters: ListingFilters = {}) {
     page = 1,
     pageSize = 12,
   } = filters;
+
+  // Resolve multi-category: prefer parsed array, fall back to comma-split string
+  const resolvedCategories: string[] =
+    filters.categories && filters.categories.length > 0
+      ? filters.categories
+      : filters.category
+        ? filters.category.split(",").map((c) => c.trim()).filter(Boolean)
+        : [];
 
   let query = supabase
     .from("listings")
@@ -132,8 +142,11 @@ export async function getListings(filters: ListingFilters = {}) {
   if (search) {
     query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
   }
-  if (category && category !== "All Categories") {
-    query = query.ilike("category", category);
+  const activeCategories = resolvedCategories.filter((c) => c !== "All Categories");
+  if (activeCategories.length === 1) {
+    query = query.ilike("category", activeCategories[0]);
+  } else if (activeCategories.length > 1) {
+    query = query.in("category", activeCategories);
   }
   if (condition) {
     query = query.eq("condition", condition);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const categories = [
+const CATEGORIES = [
   { name: "Books", icon: Book },
   { name: "Electronics", icon: Desktop },
   { name: "Clothing", icon: TShirt },
@@ -41,13 +41,21 @@ const categories = [
   { name: "Others", icon: DotsThree },
 ];
 
-const conditions = [
+const CONDITIONS = [
   { display: "New", value: "new" },
   { display: "Like New", value: "like_new" },
   { display: "Good", value: "good" },
   { display: "Fair", value: "fair" },
   { display: "Poor", value: "poor" },
 ];
+
+const CONDITION_LABELS: Record<string, string> = {
+  new: "New",
+  like_new: "Like New",
+  good: "Good",
+  fair: "Fair",
+  poor: "Poor",
+};
 
 // ─── Hook: URL Param Filters ──────────────────────────────────────────────────
 
@@ -64,10 +72,7 @@ function useFilterParams() {
   const set = useCallback(
     (updates: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString());
-
-      // Reset to page 1 on any filter change
       params.delete("page");
-
       for (const [key, value] of Object.entries(updates)) {
         if (value === null || value === "") {
           params.delete(key);
@@ -75,7 +80,6 @@ function useFilterParams() {
           params.set(key, value);
         }
       }
-
       const qs = params.toString();
       router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
@@ -86,63 +90,113 @@ function useFilterParams() {
     router.push(pathname, { scroll: false });
   }, [router, pathname]);
 
-  const category = get("category");
+  // Multi-category: stored as comma-separated in ?category=
+  const categoryParam = get("category");
+  const categories: string[] = categoryParam
+    ? categoryParam.split(",").map((c) => c.trim()).filter(Boolean)
+    : [];
+
+  const toggleCategory = useCallback(
+    (name: string) => {
+      const next = categories.includes(name)
+        ? categories.filter((c) => c !== name)
+        : [...categories, name];
+      set({ category: next.length > 0 ? next.join(",") : null });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categories.join(","), set]
+  );
+
+  const removeCategory = useCallback(
+    (name: string) => {
+      const next = categories.filter((c) => c !== name);
+      set({ category: next.length > 0 ? next.join(",") : null });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categories.join(","), set]
+  );
+
   const condition = get("condition");
   const search = get("search");
   const minPrice = get("min");
   const maxPrice = get("max");
 
-  const hasActiveFilters = !!(category || condition || search || minPrice || maxPrice);
+  const hasActiveFilters = !!(categoryParam || condition || search || minPrice || maxPrice);
 
-  return { get, set, clearAll, category, condition, search, minPrice, maxPrice, hasActiveFilters };
+  return {
+    get,
+    set,
+    clearAll,
+    categories,
+    toggleCategory,
+    removeCategory,
+    condition,
+    search,
+    minPrice,
+    maxPrice,
+    hasActiveFilters,
+  };
 }
 
 // ─── Active Filter Badges ─────────────────────────────────────────────────────
 
 export function ActiveFilterBadges() {
-  const { category, condition, search, minPrice, maxPrice, set, hasActiveFilters, clearAll } =
-    useFilterParams();
+  const {
+    categories,
+    removeCategory,
+    condition,
+    search,
+    minPrice,
+    maxPrice,
+    set,
+    hasActiveFilters,
+    clearAll,
+  } = useFilterParams();
 
   if (!hasActiveFilters) return null;
-
-  const conditionDisplay: Record<string, string> = {
-    new: "New",
-    like_new: "Like New",
-    good: "Good",
-    fair: "Fair",
-    poor: "Poor",
-  };
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {search && (
-        <Badge variant="secondary" className="gap-1 pl-2.5 pr-1.5 py-1">
+        <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
           Search: &quot;{search}&quot;
-          <button onClick={() => set({ search: null })} className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5">
+          <button
+            onClick={() => set({ search: null })}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
             <X className="size-3" />
           </button>
         </Badge>
       )}
-      {category && (
-        <Badge variant="secondary" className="gap-1 pl-2.5 pr-1.5 py-1">
-          {category}
-          <button onClick={() => set({ category: null })} className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5">
+      {categories.map((cat) => (
+        <Badge key={cat} variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
+          {cat}
+          <button
+            onClick={() => removeCategory(cat)}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
             <X className="size-3" />
           </button>
         </Badge>
-      )}
+      ))}
       {condition && (
-        <Badge variant="secondary" className="gap-1 pl-2.5 pr-1.5 py-1">
-          {conditionDisplay[condition] ?? condition}
-          <button onClick={() => set({ condition: null })} className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5">
+        <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
+          {CONDITION_LABELS[condition] ?? condition}
+          <button
+            onClick={() => set({ condition: null })}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
             <X className="size-3" />
           </button>
         </Badge>
       )}
       {(minPrice || maxPrice) && (
-        <Badge variant="secondary" className="gap-1 pl-2.5 pr-1.5 py-1">
+        <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
           ₱{minPrice || "0"} – ₱{maxPrice || "∞"}
-          <button onClick={() => set({ min: null, max: null })} className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5">
+          <button
+            onClick={() => set({ min: null, max: null })}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+          >
             <X className="size-3" />
           </button>
         </Badge>
@@ -160,8 +214,23 @@ export function ActiveFilterBadges() {
 // ─── Filter Content (shared between sidebar and sheet) ────────────────────────
 
 function FiltersContent() {
-  const { category, condition, search, minPrice, maxPrice, set, clearAll, hasActiveFilters } =
-    useFilterParams();
+  const {
+    categories,
+    toggleCategory,
+    condition,
+    search,
+    minPrice,
+    maxPrice,
+    set,
+    clearAll,
+    hasActiveFilters,
+  } = useFilterParams();
+
+  // Controlled search input — stays in sync when URL changes externally
+  const [searchInput, setSearchInput] = useState(search);
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -171,41 +240,43 @@ function FiltersContent() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            set({ search: (formData.get("search") as string) || null });
+            set({ search: searchInput.trim() || null });
           }}
         >
           <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
             <MagnifyingGlass className="size-4 text-muted-foreground" />
             <input
               type="text"
-              name="search"
               placeholder="Search listings..."
-              defaultValue={search}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
         </form>
       </div>
 
-      {/* Categories */}
+      {/* Categories — multi-select */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
         <div className="flex flex-col gap-1">
-          {categories.map(({ name, icon: Icon }) => (
-            <button
-              key={name}
-              onClick={() => set({ category: category === name ? null : name })}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                category === name
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent"
-              }`}
-            >
-              <Icon className="size-4" />
-              {name}
-            </button>
-          ))}
+          {CATEGORIES.map(({ name, icon: Icon }) => {
+            const active = categories.includes(name);
+            return (
+              <button
+                key={name}
+                onClick={() => toggleCategory(name)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent"
+                }`}
+              >
+                <Icon className="size-4" />
+                {name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -213,7 +284,7 @@ function FiltersContent() {
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Condition</h3>
         <div className="flex flex-col gap-2">
-          {conditions.map(({ display, value }) => (
+          {CONDITIONS.map(({ display, value }) => (
             <div key={value} className="flex items-center gap-2">
               <Checkbox
                 id={`cond-${value}`}
@@ -239,9 +310,9 @@ function FiltersContent() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const min = formData.get("min") as string;
-            const max = formData.get("max") as string;
+            const fd = new FormData(e.currentTarget);
+            const min = fd.get("min") as string;
+            const max = fd.get("max") as string;
             set({
               min: min && parseInt(min) > 0 ? min : null,
               max: max && parseInt(max) > 0 ? max : null,
@@ -251,9 +322,7 @@ function FiltersContent() {
         >
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <Label htmlFor="min-price" className="sr-only">
-                Min price
-              </Label>
+              <Label htmlFor="min-price" className="sr-only">Min price</Label>
               <Input
                 id="min-price"
                 name="min"
@@ -265,9 +334,7 @@ function FiltersContent() {
             </div>
             <span className="text-muted-foreground">–</span>
             <div className="flex-1">
-              <Label htmlFor="max-price" className="sr-only">
-                Max price
-              </Label>
+              <Label htmlFor="max-price" className="sr-only">Max price</Label>
               <Input
                 id="max-price"
                 name="max"

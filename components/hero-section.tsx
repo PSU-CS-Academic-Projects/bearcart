@@ -1,9 +1,29 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MagnifyingGlass, Storefront, Tag } from "@phosphor-icons/react/dist/ssr";
+import {
+  MagnifyingGlass,
+  Storefront,
+  Tag,
+  Book,
+  Desktop,
+  TShirt,
+  Hamburger,
+  GraduationCap,
+  Wrench,
+  DotsThree,
+} from "@phosphor-icons/react/dist/ssr";
+
+const CATEGORY_CHIPS = [
+  { name: "Books", icon: Book },
+  { name: "Electronics", icon: Desktop },
+  { name: "Clothing", icon: TShirt },
+  { name: "Food", icon: Hamburger },
+  { name: "School Supplies", icon: GraduationCap },
+  { name: "Services", icon: Wrench },
+  { name: "Others", icon: DotsThree },
+];
 
 export function HeroSection() {
-
   return (
     <section className="relative overflow-hidden bg-card py-16 md:py-24">
       {/* Background decoration */}
@@ -33,10 +53,8 @@ export function HeroSection() {
             campus.
           </p>
 
-
-
           {/* CTA Buttons */}
-          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mb-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="w-full sm:w-auto">
               <Link href="/listings">
                 <MagnifyingGlass className="size-4" />
@@ -49,6 +67,20 @@ export function HeroSection() {
                 Post a Listing
               </Link>
             </Button>
+          </div>
+
+          {/* Category quick-links */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {CATEGORY_CHIPS.map(({ name, icon: Icon }) => (
+              <Link
+                key={name}
+                href={`/listings?category=${encodeURIComponent(name)}`}
+                className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-accent hover:text-primary"
+              >
+                <Icon className="size-3.5" />
+                {name}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
