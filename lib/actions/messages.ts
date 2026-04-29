@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { sendMessageNotificationEmail } from "@/lib/email";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,8 @@ export async function getMessages(conversationId: string) {
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
+const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
 export async function sendMessage(
   conversationId: string,
   content: string,
@@ -173,6 +176,73 @@ export async function sendMessage(
     .from("conversations")
     .update({ last_message: preview, last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
+
+  // ─── Email Notification ────────────────────────────────────────────────────
+  // Fire-and-forget: don't block message delivery on email errors
+  void (async () => {
+    try {
+      // 1. Fetch conversation details (seller, buyer, listing, cooldown)
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select(`
+          buyer_id, seller_id, last_notified_at,
+          listing:listings ( title ),
+          seller:users!conversations_seller_id_fkey ( full_name, email ),
+          buyer:users!conversations_buyer_id_fkey ( full_name )
+        `)
+        .eq("id", conversationId)
+        .single();
+
+      if (!conv) return;
+
+      // Only notify if the current sender is the buyer
+      if (user.id !== conv.buyer_id) return;
+
+      const seller  = conv.seller  as unknown as { full_name: string; email: string } | null;
+      const buyer   = conv.buyer   as unknown as { full_name: string } | null;
+      const listing = conv.listing as unknown as { title: string } | null;
+
+      if (!seller?.email) return;
+
+      // 2. Check if seller already has unread messages in this conversation
+      //    (i.e., previous messages that they haven't opened yet)
+      //    If yes → seller is already aware → skip email
+      const { count: unreadCount } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conversationId)
+        .eq("sender_id", user.id)       // messages from this buyer
+        .neq("id", message.id)          // exclude the one we just sent
+        .eq("is_read", false);
+
+      if ((unreadCount ?? 0) > 0) return; // seller already has unread → no extra ping
+
+      // 3. 30-minute cooldown on last_notified_at
+      if (conv.last_notified_at) {
+        const elapsed = Date.now() - new Date(conv.last_notified_at).getTime();
+        if (elapsed < COOLDOWN_MS) return;
+      }
+
+      // 4. Send the email
+      const messagePreview = trimmed || "📷 Sent a photo";
+      await sendMessageNotificationEmail({
+        toEmail:        seller.email,
+        sellerName:     seller.full_name,
+        buyerName:      buyer?.full_name ?? "Someone",
+        listingTitle:   listing?.title ?? "your listing",
+        messagePreview,
+        conversationId,
+      });
+
+      // 5. Update cooldown timestamp
+      await supabase
+        .from("conversations")
+        .update({ last_notified_at: new Date().toISOString() })
+        .eq("id", conversationId);
+    } catch (err) {
+      console.error("[sendMessage] Email notification error:", err);
+    }
+  })();
 
   return message as MessageRow;
 }
