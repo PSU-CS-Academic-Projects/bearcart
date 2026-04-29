@@ -16,7 +16,7 @@ export async function POST() {
     // Fetch the user's profile to get their first name
     const { data: profile } = await supabase
       .from("users")
-      .select("full_name, welcome_email_sent")
+      .select("first_name, full_name, welcome_email_sent")
       .eq("id", user.id)
       .single();
 
@@ -26,8 +26,9 @@ export async function POST() {
     }
 
     const firstName =
-      (user.user_metadata?.given_name as string | undefined) ??
-      profile?.full_name?.split(" ")[0] ??
+      profile?.first_name?.trim() ||
+      (user.user_metadata?.given_name as string | undefined) ||
+      profile?.full_name?.split(" ")[0] ||
       user.email.split("@")[0];
 
     await sendWelcomeEmail({ toEmail: user.email, firstName });

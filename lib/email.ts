@@ -12,8 +12,116 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM = `"${process.env.BREVO_FROM_NAME ?? "BearCart"}" <${process.env.BREVO_FROM_EMAIL}>`;
+const FROM = `"${process.env.BREVO_FROM_NAME ?? "PalMart"}" <${process.env.BREVO_FROM_EMAIL}>`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const LOGO_URL = `${APP_URL}/bearcart.png`;
+
+// ─── Brand Tokens (inlined into email HTML) ──────────────────────────────────
+
+const BRAND = {
+  primary: "#DD7B2C",
+  primaryHover: "#C56E25",
+  ink: "#1a1a1a",
+  muted: "#666666",
+  border: "#e5e5e5",
+  bg: "#ffffff",
+  wash: "#f9f7f3",
+  font: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+} as const;
+
+// ─── Shared Layout ───────────────────────────────────────────────────────────
+
+interface LayoutSection {
+  body: string;
+  preheader?: string;
+}
+
+function emailShell({ body, preheader }: LayoutSection): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PalMart</title>
+</head>
+<body style="margin:0;padding:0;background-color:${BRAND.wash};font-family:${BRAND.font};color:${BRAND.ink};">
+  ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;color:transparent;">${escapeHtml(preheader)}</div>` : ""}
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.wash};padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:${BRAND.bg};border:1px solid ${BRAND.border};border-radius:8px;overflow:hidden;">
+
+          <!-- Header / Brand -->
+          <tr>
+            <td style="padding:24px 28px;border-bottom:1px solid ${BRAND.border};">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="middle" style="vertical-align:middle;">
+                    <img src="${LOGO_URL}" alt="PalMart" width="36" height="36" style="display:inline-block;vertical-align:middle;border:0;" />
+                    <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:20px;font-weight:700;color:${BRAND.primary};letter-spacing:-0.3px;">PalMart</span>
+                    <span style="display:block;margin-left:46px;margin-top:2px;font-size:12px;color:${BRAND.muted};font-weight:500;">The PSU Marketplace</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 28px;">
+              ${body}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 28px;background-color:${BRAND.wash};border-top:1px solid ${BRAND.border};text-align:center;">
+              <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">PalMart · PSU Exclusive</p>
+              <p style="margin:0;font-size:11px;color:${BRAND.muted};line-height:1.6;">
+                This is an automated email — please do not reply.<br />
+                &copy; ${new Date().getFullYear()} PalMart — Palawan State University Marketplace
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+function ctaButton(href: string, label: string): string {
+  return `
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+  <tr>
+    <td align="center" style="border-radius:8px;background-color:${BRAND.primary};">
+      <a href="${href}"
+         style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;font-family:${BRAND.font};">
+        ${label}
+      </a>
+    </td>
+  </tr>
+</table>
+`.trim();
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function truncate(text: string, max = 200): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max).trimEnd() + "…";
+}
 
 // ─── Welcome Email ─────────────────────────────────────────────────────────────
 
@@ -24,189 +132,126 @@ export async function sendWelcomeEmail({
   toEmail: string;
   firstName: string;
 }) {
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to BearCart!</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f5f5f0;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f0;padding:40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  const safeName = escapeHtml(firstName);
 
-          <!-- Header -->
-          <tr>
-            <td align="center" style="background:linear-gradient(135deg,#6b3a2a 0%,#a05c3c 100%);border-radius:16px 16px 0 0;padding:48px 32px 36px;">
-              <div style="font-size:48px;margin-bottom:12px;">🐻</div>
-              <h1 style="margin:0;color:#fff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">Welcome to BearCart!</h1>
-              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:16px;">The official PalSU student marketplace</p>
-            </td>
-          </tr>
+  const body = `
+<h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.ink};line-height:1.3;">
+  Welcome, ${safeName}! 👋
+</h1>
+<p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BRAND.ink};">
+  You&rsquo;re now part of the official PSU marketplace.
+  Connect with classmates and faculty to buy, sell, and find what you need on campus.
+</p>
 
-          <!-- Body -->
-          <tr>
-            <td style="background:#fff;padding:40px 40px 32px;">
-              <p style="margin:0 0 20px;font-size:18px;color:#1a1a1a;font-weight:600;">Hey ${firstName}! 🎉</p>
-              <p style="margin:0 0 16px;font-size:15px;color:#444;line-height:1.7;">
-                Your PalSU account is all set and you're officially part of the <strong>BearCart</strong> family —
-                the campus marketplace built by Bearcats, for Bearcats!
-              </p>
-              <p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.7;">
-                Here's what you can do:
-              </p>
+<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:${BRAND.ink};">Here&rsquo;s what you can do:</p>
+<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 28px;">
+  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Post items you want to sell</td></tr>
+  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Browse listings from fellow Bearcats</td></tr>
+  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Message sellers directly</td></tr>
+  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Post what you&rsquo;re looking for</td></tr>
+</table>
 
-              <!-- Feature list -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-                <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="font-size:20px;vertical-align:middle;">🛍️</span>
-                    <span style="font-size:14px;color:#333;margin-left:12px;vertical-align:middle;">Browse and buy listings from fellow PalSU students</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
-                    <span style="font-size:20px;vertical-align:middle;">📦</span>
-                    <span style="font-size:14px;color:#333;margin-left:12px;vertical-align:middle;">List your own items and reach the whole campus</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 0;">
-                    <span style="font-size:20px;vertical-align:middle;">💬</span>
-                    <span style="font-size:14px;color:#333;margin-left:12px;vertical-align:middle;">Message sellers and buyers directly — no middlemen</span>
-                  </td>
-                </tr>
-              </table>
+<div style="margin:0 0 28px;text-align:center;">
+  ${ctaButton(`${APP_URL}/listings`, "Start Browsing")}
+</div>
 
-              <!-- CTA -->
-              <div style="text-align:center;margin-top:8px;">
-                <a href="${APP_URL}/listings"
-                   style="display:inline-block;background:linear-gradient(135deg,#6b3a2a,#a05c3c);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:50px;letter-spacing:0.3px;">
-                  Explore BearCart →
-                </a>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f9f6f3;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#999;line-height:1.6;">
-                You're receiving this because you signed up for BearCart with your PalSU account.<br/>
-                &copy; ${new Date().getFullYear()} BearCart — Palawan State University Marketplace
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+<div style="border:1px solid ${BRAND.border};border-radius:8px;padding:16px 18px;background-color:${BRAND.wash};">
+  <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">Quick reminders:</p>
+  <p style="margin:0;font-size:13px;line-height:1.7;color:${BRAND.muted};">
+    → Meetups happen on PSU campus only<br />
+    → Cash on meetup — no shipping<br />
+    → Be respectful 🙏
+  </p>
+</div>
+`;
 
   await transporter.sendMail({
     from: FROM,
     to: toEmail,
-    subject: "🐻 Welcome to BearCart, Bearcat!",
-    html,
+    subject: `Welcome to PalMart, ${firstName}! 🎉`,
+    html: emailShell({
+      body,
+      preheader: `Welcome to PalMart — start browsing campus listings now.`,
+    }),
   });
 }
 
-// ─── Message Inquiry Notification ─────────────────────────────────────────────
+// ─── Message Notification ─────────────────────────────────────────────────────
 
 export async function sendMessageNotificationEmail({
   toEmail,
-  sellerName,
-  buyerName,
+  receiverFirstName,
+  senderFullName,
+  senderFirstName,
   listingTitle,
+  listingPrice,
   messagePreview,
   conversationId,
 }: {
   toEmail: string;
-  sellerName: string;
-  buyerName: string;
-  listingTitle: string;
+  receiverFirstName: string;
+  senderFullName: string;
+  senderFirstName: string;
+  listingTitle: string | null;
+  listingPrice: number | null;
   messagePreview: string;
   conversationId: string;
 }) {
   const conversationUrl = `${APP_URL}/messages?conversation=${conversationId}`;
+  const safeReceiver = escapeHtml(receiverFirstName);
+  const safeSender = escapeHtml(senderFullName);
+  const safeMessage = escapeHtml(truncate(messagePreview, 200));
+  const safeListingTitle = listingTitle ? escapeHtml(listingTitle) : null;
 
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New message on BearCart</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f5f5f0;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f0;padding:40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  const subject = safeListingTitle
+    ? `${senderFirstName} sent you a message about ${listingTitle}`
+    : `${senderFirstName} sent you a message on PalMart`;
 
-          <!-- Header -->
-          <tr>
-            <td align="center" style="background:linear-gradient(135deg,#6b3a2a 0%,#a05c3c 100%);border-radius:16px 16px 0 0;padding:36px 32px 28px;">
-              <div style="font-size:36px;margin-bottom:8px;">💬</div>
-              <h1 style="margin:0;color:#fff;font-size:22px;font-weight:800;">New Message on BearCart</h1>
-            </td>
-          </tr>
+  const listingBlock = safeListingTitle
+    ? `
+<p style="margin:20px 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">About this listing:</p>
+<div style="border:1px solid ${BRAND.border};border-radius:8px;padding:14px 16px;margin:0 0 20px;background-color:${BRAND.wash};">
+  <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};line-height:1.4;">${safeListingTitle}</p>
+  ${
+    listingPrice !== null
+      ? `<p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BRAND.primary};">₱${listingPrice.toLocaleString()}</p>`
+      : ""
+  }
+</div>
+`
+    : `
+<div style="margin:20px 0;"></div>
+`;
 
-          <!-- Body -->
-          <tr>
-            <td style="background:#fff;padding:36px 40px 28px;">
-              <p style="margin:0 0 6px;font-size:15px;color:#666;">Hi ${sellerName},</p>
-              <p style="margin:0 0 24px;font-size:17px;color:#1a1a1a;font-weight:600;line-height:1.5;">
-                <strong>${buyerName}</strong> has messaged about <strong>${listingTitle}</strong>
-              </p>
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${safeReceiver},</p>
+<p style="margin:0 0 4px;font-size:17px;font-weight:600;color:${BRAND.ink};line-height:1.5;">
+  <span style="color:${BRAND.ink};">${safeSender}</span> ${safeListingTitle ? "has messaged you about:" : "has messaged you."}
+</p>
 
-              <!-- Message bubble -->
-              <div style="background:#f7f3f0;border-left:4px solid #a05c3c;border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:28px;">
-                <p style="margin:0;font-size:14px;color:#333;line-height:1.7;font-style:italic;">${messagePreview}</p>
-              </div>
+${listingBlock}
 
-              <!-- CTA -->
-              <div style="text-align:center;">
-                <a href="${conversationUrl}"
-                   style="display:inline-block;background:linear-gradient(135deg,#6b3a2a,#a05c3c);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:50px;letter-spacing:0.3px;">
-                  Reply Now →
-                </a>
-              </div>
+<p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">Their message:</p>
+<div style="border:1px solid ${BRAND.border};border-left:3px solid ${BRAND.primary};border-radius:8px;padding:14px 16px;margin:0 0 28px;background-color:${BRAND.wash};">
+  <p style="margin:0;font-size:14px;line-height:1.6;color:${BRAND.ink};font-style:italic;">&ldquo;${safeMessage}&rdquo;</p>
+</div>
 
-              <p style="margin:24px 0 0;font-size:12px;color:#aaa;text-align:center;line-height:1.6;">
-                Responding quickly increases your chances of a successful sale!
-              </p>
-            </td>
-          </tr>
+<div style="margin:0 0 24px;text-align:center;">
+  ${ctaButton(conversationUrl, "View Conversation")}
+</div>
 
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f9f6f3;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#999;line-height:1.6;">
-                You're receiving this because you have an active listing on BearCart.<br/>
-                &copy; ${new Date().getFullYear()} BearCart — Palawan State University Marketplace
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+<p style="margin:0;font-size:12px;color:${BRAND.muted};text-align:center;line-height:1.6;">
+  If you&rsquo;ve already seen this message, you can ignore this email.
+</p>
+`;
 
   await transporter.sendMail({
     from: FROM,
     to: toEmail,
-    subject: `💬 ${buyerName} has messaged about "${listingTitle}"`,
-    html,
+    subject,
+    html: emailShell({
+      body,
+      preheader: `${senderFirstName} sent you a message — ${truncate(messagePreview, 80)}`,
+    }),
   });
 }
