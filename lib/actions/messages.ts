@@ -135,7 +135,7 @@ export async function getMessages(conversationId: string) {
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
-const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
 export async function sendMessage(
   conversationId: string,
@@ -198,38 +198,38 @@ export async function sendMessage(
       // Only notify if the current sender is the buyer
       if (user.id !== conv.buyer_id) return;
 
-      const seller  = conv.seller  as unknown as { full_name: string; email: string } | null;
-      const buyer   = conv.buyer   as unknown as { full_name: string } | null;
+      const seller = conv.seller as unknown as { full_name: string; email: string } | null;
+      const buyer = conv.buyer as unknown as { full_name: string } | null;
       const listing = conv.listing as unknown as { title: string } | null;
 
       if (!seller?.email) return;
 
-      // 2. Check if seller already has unread messages in this conversation
-      //    (i.e., previous messages that they haven't opened yet)
-      //    If yes → seller is already aware → skip email
-      const { count: unreadCount } = await supabase
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("conversation_id", conversationId)
-        .eq("sender_id", user.id)       // messages from this buyer
-        .neq("id", message.id)          // exclude the one we just sent
-        .eq("is_read", false);
-
-      if ((unreadCount ?? 0) > 0) return; // seller already has unread → no extra ping
-
-      // 3. 30-minute cooldown on last_notified_at
+      // 2. Check cooldown first — if this listing's conversation was notified
+      //    within the last 30 minutes, skip to prevent notification spam.
       if (conv.last_notified_at) {
         const elapsed = Date.now() - new Date(conv.last_notified_at).getTime();
         if (elapsed < COOLDOWN_MS) return;
       }
 
+      // 3. Check if the seller has any unread messages from the buyer in this
+      //    conversation (including the one just sent). Only send the email when
+      //    there are unread messages — i.e. the seller hasn't seen them yet.
+      const { count: unreadCount } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conversationId)
+        .eq("sender_id", user.id)   // messages from this buyer
+        .eq("is_read", false);      // that the seller hasn't read
+
+      if ((unreadCount ?? 0) === 0) return; // no unread → seller is caught up, skip
+
       // 4. Send the email
       const messagePreview = trimmed || "📷 Sent a photo";
       await sendMessageNotificationEmail({
-        toEmail:        seller.email,
-        sellerName:     seller.full_name,
-        buyerName:      buyer?.full_name ?? "Someone",
-        listingTitle:   listing?.title ?? "your listing",
+        toEmail: seller.email,
+        sellerName: seller.full_name,
+        buyerName: buyer?.full_name ?? "Someone",
+        listingTitle: listing?.title ?? "your listing",
         messagePreview,
         conversationId,
       });
