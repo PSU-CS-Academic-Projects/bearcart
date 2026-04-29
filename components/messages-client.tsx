@@ -7,8 +7,11 @@ import { ConversationList, type Conversation } from "@/components/conversation-l
 import { ChatWindow, type Message, type PendingImage } from "@/components/chat-window";
 import {
   getMessages,
+  getArchivedConversations,
   sendMessage as sendMessageAction,
   uploadMessageImage,
+  archiveConversation,
+  unarchiveConversation,
   type ConversationWithDetails,
   type MessageRow,
 } from "@/lib/actions/messages";
@@ -83,6 +86,9 @@ export function MessagesClient({
   const [conversations, setConversations] = useState<Conversation[]>(
     initialConversations.map((c) => mapConversation(c, currentUserId))
   );
+  const [archivedConversations, setArchivedConversations] = useState<Conversation[]>([]);
+  const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -285,6 +291,45 @@ export function MessagesClient({
     window.history.replaceState(null, "", "/messages");
   };
 
+  // ── Tab change ─────────────────────────────────────────────────────
+
+  const handleTabChange = async (tab: "active" | "archived") => {
+    setActiveTab(tab);
+    setSelectedConversationId(null);
+    setShowChatOnMobile(false);
+    if (tab === "archived" && !archivedLoaded) {
+      try {
+        const { conversations: archived } = await getArchivedConversations();
+        setArchivedConversations(archived.map((c) => mapConversation(c, currentUserId)));
+        setArchivedLoaded(true);
+      } catch (err) {
+        console.error("Failed to load archived conversations:", err);
+      }
+    }
+  };
+
+  // ── Archive / unarchive ────────────────────────────────────────────
+
+  const handleArchive = async (id: string, archive: boolean) => {
+    if (archive) {
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (selectedConversationId === id) {
+        setSelectedConversationId(null);
+        setShowChatOnMobile(false);
+      }
+      archiveConversation(id).catch(() => {
+        // Re-add on failure — simplest recovery is a reload
+      });
+    } else {
+      const target = archivedConversations.find((c) => c.id === id);
+      setArchivedConversations((prev) => prev.filter((c) => c.id !== id));
+      if (target) {
+        setConversations((prev) => [target, ...prev]);
+      }
+      unarchiveConversation(id).catch(() => {});
+    }
+  };
+
   const selectedConversation =
     conversations.find((c) => c.id === selectedConversationId) || null;
 
@@ -297,11 +342,14 @@ export function MessagesClient({
         }`}
       >
         <ConversationList
-          conversations={conversations}
+          conversations={activeTab === "archived" ? archivedConversations : conversations}
           selectedId={selectedConversationId}
           onSelectConversation={handleSelectConversation}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onArchive={handleArchive}
         />
       </div>
 

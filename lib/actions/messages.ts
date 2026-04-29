@@ -12,6 +12,8 @@ export interface ConversationWithDetails {
   last_message: string | null;
   last_message_at: string | null;
   created_at: string;
+  archived_by_buyer: boolean;
+  archived_by_seller: boolean;
   listing: {
     id: string;
     title: string;
@@ -46,11 +48,12 @@ export async function getConversations() {
     .from("conversations")
     .select(`
       id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      archived_by_buyer, archived_by_seller,
       listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
       buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
       seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
     `)
-    .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+    .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.false),and(seller_id.eq.${user.id},archived_by_seller.eq.false)`)
     .order("last_message_at", { ascending: false, nullsFirst: false });
 
   if (error) throw new Error(`Failed to fetch conversations: ${error.message}`);
@@ -70,7 +73,7 @@ export async function getConversations() {
     })
   );
 
-  return { conversations: enriched as ConversationWithDetails[], currentUserId: user.id };
+  return { conversations: enriched as unknown as ConversationWithDetails[], currentUserId: user.id };
 }
 
 // ─── GET OR CREATE CONVERSATION ───────────────────────────────────────────────
@@ -232,6 +235,74 @@ export async function uploadMessageImage(
     .getPublicUrl(filePath);
 
   return urlData.publicUrl;
+}
+
+// ─── ARCHIVE / UNARCHIVE CONVERSATION ────────────────────────────────────────
+
+async function resolveArchiveField(
+  supabaseClient: Awaited<ReturnType<typeof createClient>>,
+  conversationId: string,
+  userId: string
+): Promise<"archived_by_buyer" | "archived_by_seller"> {
+  const { data: conv } = await supabaseClient
+    .from("conversations")
+    .select("buyer_id, seller_id")
+    .eq("id", conversationId)
+    .single();
+  if (!conv) throw new Error("Conversation not found");
+  if (conv.buyer_id !== userId && conv.seller_id !== userId) throw new Error("Not a participant");
+  return conv.buyer_id === userId ? "archived_by_buyer" : "archived_by_seller";
+}
+
+export async function archiveConversation(conversationId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const field = await resolveArchiveField(supabase, conversationId, user.id);
+  await supabase.from("conversations").update({ [field]: true }).eq("id", conversationId);
+}
+
+export async function unarchiveConversation(conversationId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const field = await resolveArchiveField(supabase, conversationId, user.id);
+  await supabase.from("conversations").update({ [field]: false }).eq("id", conversationId);
+}
+
+export async function getArchivedConversations() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select(`
+      id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      archived_by_buyer, archived_by_seller,
+      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+    `)
+    .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.true),and(seller_id.eq.${user.id},archived_by_seller.eq.true)`)
+    .order("last_message_at", { ascending: false, nullsFirst: false });
+
+  if (error) throw new Error(`Failed to fetch archived conversations: ${error.message}`);
+
+  const conversations = data ?? [];
+  const enriched = await Promise.all(
+    conversations.map(async (conv) => {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conv.id)
+        .neq("sender_id", user.id)
+        .eq("is_read", false);
+      return { ...conv, unreadCount: count ?? 0 };
+    })
+  );
+
+  return { conversations: enriched as unknown as ConversationWithDetails[], currentUserId: user.id };
 }
 
 // ─── UNREAD COUNT ─────────────────────────────────────────────────────────────
