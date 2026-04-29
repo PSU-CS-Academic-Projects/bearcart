@@ -11,6 +11,7 @@ import {
   Star,
   CaretLeft,
   CaretRight,
+  X,
 } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import { formatTimeAgo } from "@/lib/listing-helpers";
@@ -18,6 +19,8 @@ import {
   getAllNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
+  deleteReadNotifications,
   type NotificationRow,
   type NotificationType,
   type PaginatedNotifications,
@@ -59,51 +62,66 @@ function getNotificationHref(n: NotificationRow): string {
 function NotificationRowItem({
   notification,
   onClick,
+  onDelete,
 }: {
   notification: NotificationRow;
   onClick: (n: NotificationRow) => void;
+  onDelete: (id: string) => void;
 }) {
   const Icon = getNotificationIcon(notification.type);
   const isUnread = !notification.is_read;
 
   return (
-    <button
-      type="button"
-      onClick={() => onClick(notification)}
-      className={cn(
-        "flex w-full items-start gap-4 border-l-2 rounded-md px-4 py-4 text-left transition-colors hover:bg-accent/50",
-        isUnread
-          ? "border-l-primary bg-amber-tint/30"
-          : "border-l-transparent bg-card"
-      )}
-    >
-      <div
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={() => onClick(notification)}
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-full",
-          isUnread ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          "flex w-full items-start gap-4 border-l-2 px-4 py-4 pr-12 text-left transition-colors hover:bg-accent/50",
+          isUnread
+            ? "border-l-primary bg-amber-tint/30"
+            : "border-l-transparent bg-card"
         )}
       >
-        <Icon className="size-5" />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-start justify-between gap-3">
-          <p
-            className={cn(
-              "text-sm leading-snug",
-              isUnread ? "font-semibold text-foreground" : "font-normal text-foreground"
-            )}
-          >
-            {notification.title}
-          </p>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {formatTimeAgo(notification.created_at)}
-          </span>
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-full",
+            isUnread ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+          )}
+        >
+          <Icon className="size-5" />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {notification.body}
-        </p>
-      </div>
-    </button>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex items-start justify-between gap-3">
+            <p
+              className={cn(
+                "text-sm leading-snug",
+                isUnread ? "font-semibold text-foreground" : "font-normal text-foreground"
+              )}
+            >
+              {notification.title}
+            </p>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatTimeAgo(notification.created_at)}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {notification.body}
+          </p>
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(notification.id);
+        }}
+        aria-label="Delete notification"
+        className="absolute right-3 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100 focus:opacity-100"
+      >
+        <X className="size-4 text-muted-foreground" />
+      </button>
+    </div>
   );
 }
 
@@ -224,11 +242,36 @@ export function NotificationsClient({
       notifications: prev.notifications.map((n) => ({ ...n, is_read: true })),
     }));
     await markAllNotificationsRead();
-    // If currently on unread tab, refresh to clear list
     if (filter === "unread") load(1, "unread");
   };
 
+  // ── Delete single ─────────────────────────────────────────────────────
+  const handleDelete = (id: string) => {
+    const target = data.notifications.find((n) => n.id === id);
+    setData((prev) => ({
+      ...prev,
+      total: Math.max(0, prev.total - 1),
+      notifications: prev.notifications.filter((n) => n.id !== id),
+    }));
+    deleteNotification(id).catch(() => load(page, filter));
+    // If unread was removed, it won't affect the tab count shown server-side
+    // but optimistic removal is good enough here
+    void target;
+  };
+
+  // ── Clear read ────────────────────────────────────────────────────────
+  const handleClearRead = async () => {
+    const readCount = data.notifications.filter((n) => n.is_read).length;
+    setData((prev) => ({
+      ...prev,
+      total: Math.max(0, prev.total - readCount),
+      notifications: prev.notifications.filter((n) => !n.is_read),
+    }));
+    await deleteReadNotifications();
+  };
+
   const hasUnread = data.notifications.some((n) => !n.is_read);
+  const hasRead = data.notifications.some((n) => n.is_read);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
@@ -240,15 +283,26 @@ export function NotificationsClient({
             {data.total} {data.total === 1 ? "notification" : "notifications"}
           </p>
         </div>
-        {hasUnread && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllRead}
-          >
-            Mark all as read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {hasRead && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearRead}
+            >
+              Clear read
+            </Button>
+          )}
+          {hasUnread && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllRead}
+            >
+              Mark all as read
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Filter Tabs ────────────────────────────────────────────────── */}
@@ -277,6 +331,7 @@ export function NotificationsClient({
                 key={n.id}
                 notification={n}
                 onClick={handleItemClick}
+                onDelete={handleDelete}
               />
             ))}
           </div>

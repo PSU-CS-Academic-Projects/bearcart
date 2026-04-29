@@ -116,12 +116,36 @@ function useFilterParams() {
     [categories.join(","), set]
   );
 
-  const condition = get("condition");
+  const conditionParam = get("condition");
+  const conditions: string[] = conditionParam
+    ? conditionParam.split(",").map((c) => c.trim()).filter(Boolean)
+    : [];
+
+  const toggleCondition = useCallback(
+    (value: string) => {
+      const next = conditions.includes(value)
+        ? conditions.filter((c) => c !== value)
+        : [...conditions, value];
+      set({ condition: next.length > 0 ? next.join(",") : null });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conditions.join(","), set]
+  );
+
+  const removeCondition = useCallback(
+    (value: string) => {
+      const next = conditions.filter((c) => c !== value);
+      set({ condition: next.length > 0 ? next.join(",") : null });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conditions.join(","), set]
+  );
+
   const search = get("search");
   const minPrice = get("min");
   const maxPrice = get("max");
 
-  const hasActiveFilters = !!(categoryParam || condition || search || minPrice || maxPrice);
+  const hasActiveFilters = !!(categoryParam || conditionParam || search || minPrice || maxPrice);
 
   return {
     get,
@@ -130,7 +154,9 @@ function useFilterParams() {
     categories,
     toggleCategory,
     removeCategory,
-    condition,
+    conditions,
+    toggleCondition,
+    removeCondition,
     search,
     minPrice,
     maxPrice,
@@ -144,7 +170,8 @@ export function ActiveFilterBadges() {
   const {
     categories,
     removeCategory,
-    condition,
+    conditions,
+    removeCondition,
     search,
     minPrice,
     maxPrice,
@@ -179,17 +206,17 @@ export function ActiveFilterBadges() {
           </button>
         </Badge>
       ))}
-      {condition && (
-        <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
-          {CONDITION_LABELS[condition] ?? condition}
+      {conditions.map((cond) => (
+        <Badge key={cond} variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
+          {CONDITION_LABELS[cond] ?? cond}
           <button
-            onClick={() => set({ condition: null })}
+            onClick={() => removeCondition(cond)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
             <X className="size-3" />
           </button>
         </Badge>
-      )}
+      ))}
       {(minPrice || maxPrice) && (
         <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
           ₱{minPrice || "0"} – ₱{maxPrice || "∞"}
@@ -217,7 +244,8 @@ function FiltersContent() {
   const {
     categories,
     toggleCategory,
-    condition,
+    conditions,
+    toggleCondition,
     search,
     minPrice,
     maxPrice,
@@ -288,10 +316,8 @@ function FiltersContent() {
             <div key={value} className="flex items-center gap-2">
               <Checkbox
                 id={`cond-${value}`}
-                checked={condition === value}
-                onCheckedChange={() =>
-                  set({ condition: condition === value ? null : value })
-                }
+                checked={conditions.includes(value)}
+                onCheckedChange={() => toggleCondition(value)}
               />
               <Label
                 htmlFor={`cond-${value}`}

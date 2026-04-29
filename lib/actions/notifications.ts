@@ -139,3 +139,31 @@ export async function markAllNotificationsRead(): Promise<void> {
     .eq("user_id", user.id)
     .eq("is_read", false);
 }
+
+// ─── DELETE SINGLE NOTIFICATION ──────────────────────────────────────────────
+
+export async function deleteNotification(notificationId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", notificationId)
+    .eq("user_id", user.id);
+}
+
+// ─── DELETE ALL READ NOTIFICATIONS ───────────────────────────────────────────
+
+export async function deleteReadNotifications(): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("notifications")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("is_read", true);
+}

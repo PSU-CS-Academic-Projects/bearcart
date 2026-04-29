@@ -72,7 +72,10 @@ async function ListingsGrid({
   const categories = categoryParam
     ? categoryParam.split(",").map((c) => c.trim()).filter(Boolean)
     : undefined;
-  const condition = typeof searchParams.condition === "string" ? searchParams.condition : undefined;
+  const conditionParam = typeof searchParams.condition === "string" ? searchParams.condition : undefined;
+  const conditions = conditionParam
+    ? conditionParam.split(",").map((c) => c.trim()).filter(Boolean)
+    : undefined;
   const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
   const minPrice = typeof searchParams.min === "string" ? parseInt(searchParams.min) : undefined;
   const maxPrice = typeof searchParams.max === "string" ? parseInt(searchParams.max) : undefined;
@@ -88,7 +91,7 @@ async function ListingsGrid({
   const filters: ListingFilters = {
     search,
     categories,
-    condition,
+    conditions,
     minPrice: minPrice && !isNaN(minPrice) ? minPrice : undefined,
     maxPrice: maxPrice && !isNaN(maxPrice) ? maxPrice : undefined,
     sortBy: sortMap[sort] ?? "newest",
@@ -96,7 +99,7 @@ async function ListingsGrid({
     pageSize: 12,
   };
 
-  const hasActiveFilters = !!(categoryParam || condition || search || minPrice || maxPrice);
+  const hasActiveFilters = !!(categoryParam || conditionParam || search || minPrice || maxPrice);
 
   const { listings, total, totalPages } = await getListings(filters);
 

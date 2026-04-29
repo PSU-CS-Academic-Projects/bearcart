@@ -23,7 +23,10 @@ export interface ListingFilters {
   category?: string;
   /** Parsed array of categories; takes precedence over the string `category` field */
   categories?: string[];
+  /** Single condition or comma-separated list; kept for back-compat */
   condition?: string;
+  /** Parsed array of conditions; takes precedence over the string `condition` field */
+  conditions?: string[];
   minPrice?: number;
   maxPrice?: number;
   sortBy?: "newest" | "price-low" | "price-high" | "recent";
@@ -108,7 +111,6 @@ export async function getListings(filters: ListingFilters = {}) {
   const supabase = await createClient();
   const {
     search,
-    condition,
     minPrice,
     maxPrice,
     sortBy = "newest",
@@ -122,6 +124,14 @@ export async function getListings(filters: ListingFilters = {}) {
       ? filters.categories
       : filters.category
         ? filters.category.split(",").map((c) => c.trim()).filter(Boolean)
+        : [];
+
+  // Resolve multi-condition: prefer parsed array, fall back to comma-split string
+  const resolvedConditions: string[] =
+    filters.conditions && filters.conditions.length > 0
+      ? filters.conditions
+      : filters.condition
+        ? filters.condition.split(",").map((c) => c.trim()).filter(Boolean)
         : [];
 
   let query = supabase
@@ -148,8 +158,10 @@ export async function getListings(filters: ListingFilters = {}) {
   } else if (activeCategories.length > 1) {
     query = query.in("category", activeCategories);
   }
-  if (condition) {
-    query = query.eq("condition", condition);
+  if (resolvedConditions.length === 1) {
+    query = query.eq("condition", resolvedConditions[0]);
+  } else if (resolvedConditions.length > 1) {
+    query = query.in("condition", resolvedConditions);
   }
   if (minPrice !== undefined) {
     query = query.gte("price", minPrice);
