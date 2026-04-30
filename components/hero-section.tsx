@@ -26,17 +26,11 @@ const CATEGORY_CHIPS = [
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-card py-16 md:py-24">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -right-20 -top-20 size-96 rounded-full bg-primary/5" />
-        <div className="absolute -bottom-32 -left-32 size-96 rounded-full bg-primary/5" />
-      </div>
-
       <div className="relative mx-auto max-w-7xl px-4">
         <div className="mx-auto max-w-3xl text-center">
           {/* Badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground">
-            <Storefront className="size-4 text-primary" weight="fill" />
+            <Storefront className="size-4 text-primary" />
             Exclusive for PSU Community
           </div>
 

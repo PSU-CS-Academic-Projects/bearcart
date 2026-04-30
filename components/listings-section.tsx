@@ -12,7 +12,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-accent">
-        <Storefront className="size-8 text-primary" weight="duotone" />
+        <Storefront className="size-8 text-primary" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">
         No listings yet

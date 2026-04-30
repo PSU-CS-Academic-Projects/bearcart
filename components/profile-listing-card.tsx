@@ -54,7 +54,7 @@ export function ProfileListingCard({
       {/* Sold overlay */}
       {variant === "sold" && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/60">
-          <Badge className="bg-green-600 px-4 py-2 text-lg font-bold text-white">
+          <Badge className="bg-emerald-100 px-4 py-2 text-lg font-bold text-emerald-800">
             SOLD
           </Badge>
         </div>
@@ -84,7 +84,7 @@ export function ProfileListingCard({
                   variant="secondary"
                   className="size-8 bg-background/90 backdrop-blur-sm"
                 >
-                  <DotsThreeVertical className="size-4" weight="bold" />
+                  <DotsThreeVertical className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -123,7 +123,7 @@ export function ProfileListingCard({
               className="size-8 bg-background/90 backdrop-blur-sm"
               onClick={onRemoveSaved}
             >
-              <Heart className="size-4 text-primary" weight="fill" />
+              <Heart className="size-4 text-primary" />
             </Button>
           </div>
         )}

@@ -92,9 +92,9 @@ function shouldShowDateSeparator(
 function getListingStatusBadge(status: string) {
   switch (status) {
     case "sold":
-      return <Badge className="bg-green-600 text-white">Sold</Badge>;
+      return <Badge className="bg-emerald-100 text-emerald-800">Sold</Badge>;
     case "reserved":
-      return <Badge className="bg-amber-500 text-white">Reserved</Badge>;
+      return <Badge className="bg-[#DD7B2C]/10 text-[#DD7B2C]">Reserved</Badge>;
     case "deleted":
       return <Badge variant="destructive">Deleted</Badge>;
     default:
@@ -445,7 +445,7 @@ export function ChatWindow({
                 className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full bg-foreground text-background shadow-md transition hover:bg-foreground/80"
                 aria-label="Remove image"
               >
-                <X className="size-3.5" weight="bold" />
+                <X className="size-3.5" />
               </button>
             </div>
           )}
@@ -518,7 +518,7 @@ export function ChatWindow({
             }}
             aria-label="Close"
           >
-            <X className="size-5" weight="bold" />
+            <X className="size-5" />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

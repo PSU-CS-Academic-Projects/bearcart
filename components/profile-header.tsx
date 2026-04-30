@@ -65,14 +65,14 @@ export function ProfileHeader({
   return (
     <>
       {/* Cover Banner */}
-      <div className="relative h-32 w-full bg-gradient-to-r from-primary to-primary/70 sm:h-48" />
+      <div className="relative h-32 w-full bg-muted sm:h-48" />
 
       <div className="mx-auto max-w-5xl px-4">
         {/* Avatar + Info */}
         <div className="relative -mt-16 pb-6 sm:-mt-20">
           {/* Avatar */}
           <div className="relative mb-4 inline-block">
-            <div className="relative size-28 overflow-hidden rounded-full border-4 border-background bg-muted shadow-lg sm:size-36">
+            <div className="relative size-28 overflow-hidden rounded-full border-4 border-background bg-muted sm:size-36">
               {profile.avatar_url ? (
                 <Image
                   src={profile.avatar_url}

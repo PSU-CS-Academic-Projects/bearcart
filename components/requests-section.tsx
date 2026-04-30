@@ -9,7 +9,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-accent">
-        <MagnifyingGlass className="size-8 text-primary" weight="duotone" />
+        <MagnifyingGlass className="size-8 text-primary" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">No requests yet</h3>
       <p className="mb-6 max-w-sm text-sm text-muted-foreground">

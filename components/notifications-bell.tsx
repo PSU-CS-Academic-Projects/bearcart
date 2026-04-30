@@ -82,7 +82,7 @@ function NotificationItem({
         type="button"
         onClick={() => onClick(notification)}
         className={cn(
-          "flex w-full gap-3 border-l-2 px-3 py-3 pr-8 text-left transition-colors hover:bg-accent/50",
+          "flex w-full gap-3 border-l px-3 py-3 pr-8 text-left transition-colors hover:bg-accent/50",
           isUnread
             ? "border-l-primary bg-amber-tint/40"
             : "border-l-transparent"
