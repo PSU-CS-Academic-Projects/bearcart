@@ -11,7 +11,15 @@ export default function HomePage() {
       <Navbar />
       <main className="flex-1">
         <HeroSection />
-        <div className="pt-6">
+        <div
+          className="pt-6"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+            backgroundColor: "#FAFAF8",
+          }}
+        >
           <HomeTabs
             listingsTab={<ListingsSection />}
             requestsTab={<RequestsSection />}

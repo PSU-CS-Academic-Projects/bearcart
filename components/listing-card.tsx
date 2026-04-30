@@ -29,7 +29,7 @@ export function ListingCard({
 
   return (
     <Link href={`/listings/${id}`} className="group block">
-      <article className="overflow-hidden rounded-xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <article className="overflow-hidden rounded-[8px] border border-border bg-card transition-[box-shadow,transform] duration-[120ms] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_rgba(0,0,0,0.12)]">
         <div className="relative aspect-square overflow-hidden bg-muted">
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill className="object-cover" />
@@ -40,7 +40,7 @@ export function ListingCard({
           )}
         </div>
         <div className="p-3">
-          <p className="text-xl font-extrabold leading-tight text-foreground">₱{price.toLocaleString()}</p>
+          <p className="text-[1.375rem] font-extrabold leading-tight text-primary">₱{price.toLocaleString()}</p>
           <h3 className="mt-1 line-clamp-2 text-sm text-foreground/90">{title}</h3>
           <p className="mt-1.5 text-xs text-muted-foreground">{timePosted} · {condition}</p>
         </div>
