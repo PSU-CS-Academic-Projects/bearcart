@@ -1,21 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ShoppingCart,
-  Envelope,
-  MapPin,
-  Phone,
-  FacebookLogo,
-  InstagramLogo,
-  TiktokLogo,
+  EnvelopeIcon,
+  MapPinIcon,
+  PhoneIcon,
+  FacebookLogoIcon,
+  InstagramLogoIcon,
+  TiktokLogoIcon,
 } from "@phosphor-icons/react/dist/ssr";
 
 const quickLinks = [
   { name: "Browse Listings", href: "/listings" },
   { name: "Post a Listing", href: "/listings/new" },
-  { name: "How It Works", href: "/listings" },
-  { name: "Safety Tips", href: "/listings" },
-  { name: "FAQs", href: "/listings" },
+  { name: "Looking For", href: "/requests" },
 ];
 
 const categories = [
@@ -48,21 +45,21 @@ export function Footer() {
                 className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                 aria-label="Facebook"
               >
-                <FacebookLogo className="size-4" />
+                <FacebookLogoIcon className="size-4" />
               </a>
               <a
                 href="#"
                 className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                 aria-label="Instagram"
               >
-                <InstagramLogo className="size-4" />
+                <InstagramLogoIcon className="size-4" />
               </a>
               <a
                 href="#"
                 className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
                 aria-label="TikTok"
               >
-                <TiktokLogo className="size-4" />
+                <TiktokLogoIcon className="size-4" />
               </a>
             </div>
           </div>
@@ -106,20 +103,20 @@ export function Footer() {
             <h3 className="mb-4 font-semibold text-foreground">Contact Us</h3>
             <ul className="flex flex-col gap-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <MapPinIcon className="mt-0.5 size-4 shrink-0" />
                 <span>
                   Palawan State University, Tiniguiban Heights, Puerto Princesa
                   City, Palawan 5300
                 </span>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Envelope className="size-4 shrink-0" />
+                <EnvelopeIcon className="size-4 shrink-0" />
                 <a href="mailto:support@bearcart.ph" className="hover:text-primary">
                   support@bearcart.ph
                 </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="size-4 shrink-0" />
+                <PhoneIcon className="size-4 shrink-0" />
                 <a href="tel:+639123456789" className="hover:text-primary">
                   +63 912 345 6789
                 </a>

@@ -14,24 +14,24 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  GraduationCap,
-  Wrench,
-  DotsThree,
-  Faders,
+  BookIcon,
+  DesktopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  GraduationCapIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
 } from "@phosphor-icons/react";
 
 const CATEGORIES = [
-  { name: "Books", icon: Book },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "School Supplies", icon: GraduationCap },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+  { name: "Books", icon: BookIcon },
+  { name: "Electronics", icon: DesktopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: GraduationCapIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
 const CONDITIONS = [
@@ -145,55 +145,32 @@ function FiltersContent() {
       {/* Price Range */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Price Range</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            const min = fd.get("min") as string;
-            const max = fd.get("max") as string;
-            applyPrice(min, max);
-          }}
-          className="flex flex-col gap-3"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Label htmlFor="home-min-price" className="sr-only">Min price</Label>
-              <Input
-                id="home-min-price"
-                name="min"
-                type="number"
-                placeholder="₱ Min"
-                defaultValue={minPrice}
-                className="h-9 text-sm"
-              />
-            </div>
-            <span className="text-muted-foreground">–</span>
-            <div className="flex-1">
-              <Label htmlFor="home-max-price" className="sr-only">Max price</Label>
-              <Input
-                id="home-max-price"
-                name="max"
-                type="number"
-                placeholder="₱ Max"
-                defaultValue={maxPrice}
-                className="h-9 text-sm"
-              />
-            </div>
-          </div>
-          <Button type="submit" variant="outline" size="sm" className="w-full">
-            Apply Price
-          </Button>
-        </form>
-      </div>
-
-      {/* Listing Type */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Listing Type</h3>
         <div className="flex items-center gap-2">
-          <Checkbox id="for-sale" defaultChecked />
-          <Label htmlFor="for-sale" className="cursor-pointer text-sm font-normal">
-            For Sale
-          </Label>
+          <div className="flex-1">
+            <Label htmlFor="home-min-price" className="sr-only">Min price</Label>
+            <Input
+              id="home-min-price"
+              type="number"
+              placeholder="₱ Min"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              onBlur={() => applyPrice(minPrice, maxPrice)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <span className="text-muted-foreground">–</span>
+          <div className="flex-1">
+            <Label htmlFor="home-max-price" className="sr-only">Max price</Label>
+            <Input
+              id="home-max-price"
+              type="number"
+              placeholder="₱ Max"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              onBlur={() => applyPrice(minPrice, maxPrice)}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -214,7 +191,7 @@ export function FiltersSidebar({ className }: FiltersSidebarProps) {
     <aside className={className}>
       <div className="rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -230,14 +207,14 @@ export function MobileFiltersSheet() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

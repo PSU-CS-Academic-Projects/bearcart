@@ -425,7 +425,7 @@ export function NavbarClient({
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
                 <ShoppingCart className="size-5 text-primary" />
-                PalMart
+                BearCart
               </SheetTitle>
             </SheetHeader>
 
