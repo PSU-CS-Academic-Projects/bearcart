@@ -9,55 +9,41 @@ import {
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-card py-14 md:py-20">
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/[0.06] to-transparent" />
-      <div className="relative mx-auto max-w-7xl px-4">
-        <div className="mx-auto max-w-2xl text-center">
-          {/* Trust badge */}
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            <CheckCircleIcon weight="fill" className="size-4" />
-            PSU email verified sellers
-          </div>
+    <section
+      className="py-20 md:py-28 w-full flex flex-col items-center text-center px-4 bg-white"
+      style={{ backgroundImage: "radial-gradient(oklch(0.85 0 0) 1.5px, transparent 1.5px)", backgroundSize: "18px 18px" }}
+    >
+      <div className="w-full max-w-4xl flex flex-col items-center relative bg-white border-[3px] border-[oklch(0.2_0_0)] p-8 md:p-12 shadow-[8px_8px_0_oklch(0.585_0.144_55)] -rotate-1">
+        <div className="absolute -top-6 -right-6 bg-[oklch(0.585_0.144_55)] text-white font-black uppercase text-lg px-4 py-2 rotate-6 border-2 border-[oklch(0.2_0_0)] shadow-[4px_4px_0_oklch(0.2_0_0)]">
+          PSU Only!
+        </div>
+        <div className="absolute -bottom-5 -left-5 bg-white border-2 border-[oklch(0.2_0_0)] px-3 py-1 font-bold -rotate-3 text-sm shadow-[2px_2px_0_oklch(0.2_0_0)] flex items-center gap-1">
+          <CheckCircleIcon weight="fill" className="text-[oklch(0.585_0.144_55)]" /> Verified
+        </div>
 
-          {/* Heading */}
-          <h1 className="mb-4 text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-            Buy or sell within{" "}
-            <span className="text-primary">PSU Campus</span>
-          </h1>
+        <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-[oklch(0.2_0_0)] mb-4 mt-4">
+          Bear
+          <span className="inline-block -rotate-2 bg-[oklch(0.585_0.144_55)] text-white px-4 py-1">Cart</span>
+        </h1>
+        <p className="text-lg md:text-xl font-bold text-[oklch(0.2_0_0)]/70 uppercase tracking-wide mb-8">
+          The PSU Campus Marketplace
+        </p>
 
-          {/* Subtext */}
-          <p className="mb-8 text-pretty text-lg text-muted-foreground">
-            No shipping, no strangers. Trade textbooks, gadgets, and more with
-            verified PSU students and faculty — just meet on campus.
-          </p>
+        <p className="text-base font-medium text-[oklch(0.35_0_0)] max-w-lg mb-10 leading-relaxed">
+          Trade textbooks, gadgets &amp; more with verified students. No shipping, no strangers. Meet on campus.
+        </p>
 
-          {/* CTA Buttons */}
-          <div className="mb-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="w-full sm:w-auto">
-              <Link href="/listings">
-                <MagnifyingGlassIcon className="size-4" />
-                Browse Listings
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-              <Link href="/listings/new">
-                <TagIcon className="size-4" />
-                Post a Listing
-              </Link>
-            </Button>
-          </div>
-
-          {/* Looking For callout */}
-          <p className="text-sm text-muted-foreground">
-            Can&apos;t find what you need?{" "}
-            <Link
-              href="/requests"
-              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-            >
-              Post a request
-              <ArrowRightIcon className="size-3.5" />
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center">
+          <Button asChild size="lg" className="h-14 px-8 text-lg bg-[oklch(0.585_0.144_55)] text-white hover:bg-[oklch(0.55_0.144_55)] w-full sm:w-auto rounded-none border-[3px] border-[oklch(0.2_0_0)] shadow-[4px_4px_0_oklch(0.2_0_0)] font-black uppercase">
+            <Link href="/listings">
+              <MagnifyingGlassIcon className="size-5 mr-2" weight="bold" /> Browse
             </Link>
-          </p>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="h-14 px-8 text-lg bg-white text-[oklch(0.2_0_0)] hover:bg-[oklch(0.96_0.01_55)] w-full sm:w-auto rounded-none border-[3px] border-[oklch(0.2_0_0)] shadow-[4px_4px_0_oklch(0.2_0_0)] font-black uppercase">
+            <Link href="/listings/new">
+              <TagIcon className="size-5 mr-2" weight="bold" /> Sell Item
+            </Link>
+          </Button>
         </div>
       </div>
     </section>
