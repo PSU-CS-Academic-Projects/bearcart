@@ -46,18 +46,7 @@ interface SavedRow extends ListingRow {
   seller_avatar?: string;
 }
 
-interface ReviewRow {
-  id: string;
-  rating: number;
-  comment: string | null;
-  created_at: string;
-  reviewer: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-  };
-}
-
+// Reviews type removed
 interface OwnProfileTabsProps {
   variant: "own";
   activeListings: ListingRow[];
@@ -70,7 +59,7 @@ interface OwnProfileTabsProps {
 interface PublicProfileTabsProps {
   variant: "public";
   activeListings: ListingRow[];
-  reviews: ReviewRow[];
+  requests: RequestRowType[];
 }
 
 type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
@@ -256,54 +245,6 @@ export function ProfileTabs(props: ProfileTabsProps) {
     </Card>
   );
 
-  const emptyReviews = (
-    <Card className="flex flex-col items-center justify-center p-12 text-center">
-      <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-        <Star className="size-8 text-muted-foreground" />
-      </div>
-      <h3 className="mb-2 text-lg font-semibold text-foreground">No reviews yet</h3>
-      <p className="text-sm text-muted-foreground">Reviews from buyers will appear here</p>
-    </Card>
-  );
-
-  // ── Reviews List ──────────────────────────────────────────────────────
-
-  const renderReviews = (reviews: ReviewRow[]) => (
-    <div className="space-y-4">
-      {reviews.map((review) => (
-        <Card key={review.id} className="p-4">
-          <div className="flex items-start gap-3">
-            <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-muted">
-              {review.reviewer.avatar_url ? (
-                <Image
-                  src={review.reviewer.avatar_url}
-                  alt={review.reviewer.full_name}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <User className="size-full p-2 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground">
-                  {review.reviewer.full_name}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatTimeAgo(review.created_at)}
-                </span>
-              </div>
-              <StarRating rating={review.rating} />
-              {review.comment && (
-                <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>
-              )}
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
 
   // ─── OWN PROFILE TABS ──────────────────────────────────────────────────
 
@@ -457,7 +398,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ─── PUBLIC PROFILE TABS ────────────────────────────────────────────────
 
-  const { reviews } = props as PublicProfileTabsProps;
+  const { requests } = props as PublicProfileTabsProps;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -466,9 +407,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
           <Tag className="size-4" />
           Active Listings ({activeItems.length})
         </TabsTrigger>
-        <TabsTrigger value="reviews" className="gap-2">
-          <Star className="size-4" />
-          Reviews ({reviews.length})
+        <TabsTrigger value="requests" className="gap-2">
+          <MagnifyingGlass className="size-4" />
+          Looking For ({requests.length})
         </TabsTrigger>
       </TabsList>
 
@@ -492,8 +433,24 @@ export function ProfileTabs(props: ProfileTabsProps) {
         ) : emptyActive}
       </TabsContent>
 
-      <TabsContent value="reviews" className="mt-6">
-        {reviews.length > 0 ? renderReviews(reviews) : emptyReviews}
+      <TabsContent value="requests" className="mt-6">
+        {requests.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border bg-card">
+            {requests.map((req, idx) => (
+              <div key={req.id} className={idx > 0 ? "border-t" : ""}>
+                <RequestRow request={req} currentUserId={null} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Card className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+              <MagnifyingGlass className="size-8 text-muted-foreground" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-foreground">No requests posted</h3>
+            <p className="text-sm text-muted-foreground">This user isn't currently looking for anything</p>
+          </Card>
+        )}
       </TabsContent>
     </Tabs>
   );

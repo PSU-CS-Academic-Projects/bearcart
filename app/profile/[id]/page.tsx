@@ -4,8 +4,9 @@ import { Footer } from "@/components/footer";
 import { ProfileHeader } from "@/components/profile-header";
 import { ProfileTabs } from "@/components/profile-tabs";
 import { createClient } from "@/lib/supabase-server";
-import { getPublicProfile, getProfileStats, getUserReviews } from "@/lib/actions/profile";
+import { getPublicProfile, getProfileStats } from "@/lib/actions/profile";
 import { getListingsBySeller } from "@/lib/actions/listings";
+import { getRequestsByRequester } from "@/lib/actions/requests";
 
 export async function generateMetadata({
   params,
@@ -38,10 +39,10 @@ export default async function PublicProfilePage({
   if (!profile) notFound();
 
   // ── Fetch data ─────────────────────────────────────────────────────────
-  const [stats, activeListings, reviews] = await Promise.all([
+  const [stats, activeListings, requests] = await Promise.all([
     getProfileStats(id),
     getListingsBySeller(id, "available"),
-    getUserReviews(id),
+    getRequestsByRequester(id, "open"),
   ]);
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ export default async function PublicProfilePage({
           <ProfileTabs
             variant="public"
             activeListings={activeListings}
-            reviews={reviews}
+            requests={requests}
           />
         </div>
       </main>
