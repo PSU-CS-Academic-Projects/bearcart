@@ -42,8 +42,8 @@ export async function ListingsSection() {
         {/* Section Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Latest Listings</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-[2.25rem] font-black leading-none tracking-[-0.03em] text-foreground">Latest Listings</h2>
+            <p className="mt-[5px] text-[0.625rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
               Discover what&apos;s available on campus
             </p>
           </div>
