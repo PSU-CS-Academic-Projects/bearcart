@@ -7,6 +7,15 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
+# Generated/external files
+.agents/
+.claude/
+AGENT.md
+DESIGN.json
+DESIGN.md
+PRODUCT.md
+skills-lock.json
+
 # Environment variables
 .env*.local
 
@@ -14,3 +23,9 @@ next.user-config.*
 node_modules
 .next/
 .DS_Store
+
+# sql
+*.sql
+
+# db
+supabase/

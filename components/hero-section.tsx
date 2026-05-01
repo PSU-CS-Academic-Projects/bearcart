@@ -1,77 +1,118 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { MagnifyingGlass, Storefront, Tag } from "@phosphor-icons/react";
+import {
+  MagnifyingGlassIcon,
+  TagIcon,
+  MapPinIcon,
+  ShieldCheckIcon,
+} from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
-
   return (
-    <section className="relative overflow-hidden bg-card py-16 md:py-24">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -right-20 -top-20 size-96 rounded-full bg-primary/5" />
-        <div className="absolute -bottom-32 -left-32 size-96 rounded-full bg-primary/5" />
-      </div>
+    <section className="w-full min-h-[calc(100vh-64px)] flex items-center justify-center bg-white border-b border-gray-100 shadow-sm">
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-14 md:py-20">
+        <div className="flex flex-col md:flex-row md:items-start gap-10 md:gap-16">
 
-      <div className="relative mx-auto max-w-7xl px-4">
-        <div className="mx-auto max-w-3xl text-center">
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-accent-foreground">
-            <Storefront className="size-4 text-primary" weight="fill" />
-            Exclusive for PSU Community
-          </div>
-
-          {/* Heading */}
-          <h1 className="mb-4 text-balance text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-            Buy or Sell within{" "}
-            <span className="text-primary">PSU Campus</span>
-          </h1>
-
-          {/* Subtext */}
-          <p className="mb-8 text-pretty text-lg text-muted-foreground md:text-xl">
-            The official marketplace of Palawan State University. Connect with
-            fellow students and faculty to buy, sell, and trade safely on
-            campus.
-          </p>
-
-          {/* Search Bar */}
-          <div className="mx-auto mb-8 flex max-w-xl items-center gap-2 rounded-xl border bg-background p-2 shadow-sm">
-            <div className="flex flex-1 items-center gap-2 px-3">
-              <MagnifyingGlass className="size-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="What are you looking for?"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground md:text-base"
-              />
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-bold text-[#C85F00] uppercase tracking-widest block mb-5">
+              BearCart
+            </span>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4 leading-[1.15]">
+              The campus marketplace for PSU students.
+            </h1>
+            <p className="text-base text-gray-500 mb-8 leading-relaxed max-w-md">
+              Buy and sell textbooks, electronics, and more. Zero shipping, no strangers — meet on campus with verified classmates.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mb-7">
+              <a
+                href="/listings"
+                className="inline-flex items-center justify-center h-11 px-6 bg-[#C85F00] hover:bg-[#a64e00] text-white font-semibold rounded-lg text-sm shadow-sm transition-colors"
+              >
+                Browse listings
+              </a>
+              <a
+                href="/listings/new"
+                className="inline-flex items-center justify-center h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold rounded-lg text-sm transition-colors"
+              >
+                Sell an item
+              </a>
             </div>
-            <Button size="lg" className="hidden sm:flex">
-              Search
-            </Button>
-            <Button size="icon-lg" className="sm:hidden">
-              <MagnifyingGlass className="size-5" />
-            </Button>
+            <div className="flex flex-wrap items-center gap-5 text-sm text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-green-600">
+                  <path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                Verified PSU accounts
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-gray-400">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                  <circle cx="12" cy="9" r="2.5" />
+                </svg>
+                Campus meetups
+              </span>
+            </div>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="w-full sm:w-auto">
-              <Link href="/listings">
-                <MagnifyingGlass className="size-4" />
-                Browse Listings
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-              <Link href="/listings/new">
-                <Tag className="size-4" />
-                Post a Listing
-              </Link>
-            </Button>
+          {/* Right: category grid */}
+          <div className="w-full md:w-52 shrink-0">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+              Browse by category
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <a href="/listings?category=books" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Books</span>
+              </a>
+              <a href="/listings?category=electronics" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8M12 17v4" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Electronics</span>
+              </a>
+              <a href="/listings?category=clothing" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Clothing</span>
+              </a>
+              <a href="/listings?category=food" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+                  <path d="M7 2v20" />
+                  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Food</span>
+              </a>
+              <a href="/listings?category=supplies" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  <path d="m15 5 4 4" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
+              </a>
+              <a href="/listings?category=services" className="flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Services</span>
+              </a>
+              <a href="/listings?category=others" className="col-span-2 flex flex-row items-center gap-2.5 px-3 py-2.5 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600">
+                  <circle cx="5" cy="12" r="1" />
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="19" cy="12" r="1" />
+                </svg>
+                <span className="text-xs font-semibold text-gray-800">Others</span>
+              </a>
+            </div>
           </div>
+
         </div>
       </div>
     </section>

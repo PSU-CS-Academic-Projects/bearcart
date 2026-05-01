@@ -54,7 +54,7 @@ export function ProfileListingCard({
       {/* Sold overlay */}
       {variant === "sold" && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-foreground/60">
-          <Badge className="bg-green-600 px-4 py-2 text-lg font-bold text-white">
+          <Badge className="bg-emerald-100 px-4 py-2 text-lg font-bold text-emerald-800">
             SOLD
           </Badge>
         </div>
@@ -74,8 +74,8 @@ export function ProfileListingCard({
           <Badge variant="secondary">{condition}</Badge>
         </div>
 
-        {/* Action menu for active listings */}
-        {variant === "active" && (
+        {/* Action menu for active listings — only shown when handlers are provided */}
+        {variant === "active" && (onEdit || onMarkSold || onDelete) && (
           <div className="absolute right-2 top-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -84,25 +84,31 @@ export function ProfileListingCard({
                   variant="secondary"
                   className="size-8 bg-background/90 backdrop-blur-sm"
                 >
-                  <DotsThreeVertical className="size-4" weight="bold" />
+                  <DotsThreeVertical className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <PencilSimple className="size-4" />
-                  Edit Listing
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onMarkSold}>
-                  <CheckCircle className="size-4" />
-                  Mark as Sold
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash className="size-4" />
-                  Delete Listing
-                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <PencilSimple className="size-4" />
+                    Edit Listing
+                  </DropdownMenuItem>
+                )}
+                {onMarkSold && (
+                  <DropdownMenuItem onClick={onMarkSold}>
+                    <CheckCircle className="size-4" />
+                    Mark as Sold
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash className="size-4" />
+                    Delete Listing
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -117,7 +123,7 @@ export function ProfileListingCard({
               className="size-8 bg-background/90 backdrop-blur-sm"
               onClick={onRemoveSaved}
             >
-              <Heart className="size-4 text-primary" weight="fill" />
+              <Heart className="size-4 text-primary" />
             </Button>
           </div>
         )}

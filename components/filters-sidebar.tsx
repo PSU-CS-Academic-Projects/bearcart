@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -13,51 +14,87 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  Package,
-  Wrench,
-  DotsThree,
-  Faders,
+  BookIcon,
+  DesktopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  GraduationCapIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
 } from "@phosphor-icons/react";
 
-const categories = [
-  { name: "Books", icon: Book },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "Supplies", icon: Package },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+const CATEGORIES = [
+  { name: "Books", icon: BookIcon },
+  { name: "Electronics", icon: DesktopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: GraduationCapIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
-const conditions = ["New", "Like New", "Good", "Fair"];
+const CONDITIONS = [
+  { display: "New", value: "new" },
+  { display: "Like New", value: "like_new" },
+  { display: "Good", value: "good" },
+  { display: "Fair", value: "fair" },
+];
 
 interface FiltersSidebarProps {
   className?: string;
 }
 
-function FiltersContent() {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 10000]);
-  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+function buildListingsUrl(
+  cats: string[],
+  conds: string[],
+  min: string,
+  max: string
+): string {
+  const params = new URLSearchParams();
+  if (cats.length > 0) params.set("category", cats.join(","));
+  if (conds.length > 0) params.set("condition", conds.join(","));
+  if (min && parseInt(min) > 0) params.set("min", min);
+  if (max && parseInt(max) > 0) params.set("max", max);
+  const qs = params.toString();
+  return qs ? `/listings?${qs}` : "/listings";
+}
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
+function FiltersContent() {
+  const router = useRouter();
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+
+  const toggleCategory = (name: string) => {
+    const next = selectedCategories.includes(name)
+      ? selectedCategories.filter((c) => c !== name)
+      : [...selectedCategories, name];
+    setSelectedCategories(next);
+    router.push(buildListingsUrl(next, selectedConditions, minPrice, maxPrice));
   };
 
-  const toggleCondition = (condition: string) => {
-    setSelectedConditions((prev) =>
-      prev.includes(condition)
-        ? prev.filter((c) => c !== condition)
-        : [...prev, condition]
-    );
+  const toggleCondition = (value: string) => {
+    const next = selectedConditions.includes(value)
+      ? selectedConditions.filter((c) => c !== value)
+      : [...selectedConditions, value];
+    setSelectedConditions(next);
+    router.push(buildListingsUrl(selectedCategories, next, minPrice, maxPrice));
+  };
+
+  const applyPrice = (min: string, max: string) => {
+    setMinPrice(min);
+    setMaxPrice(max);
+    router.push(buildListingsUrl(selectedCategories, selectedConditions, min, max));
+  };
+
+  const clearAll = () => {
+    setSelectedCategories([]);
+    setSelectedConditions([]);
+    setMinPrice("");
+    setMaxPrice("");
+    router.push("/listings");
   };
 
   return (
@@ -66,7 +103,7 @@ function FiltersContent() {
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
         <div className="flex flex-col gap-2">
-          {categories.map(({ name, icon: Icon }) => (
+          {CATEGORIES.map(({ name, icon: Icon }) => (
             <button
               key={name}
               onClick={() => toggleCategory(name)}
@@ -83,55 +120,57 @@ function FiltersContent() {
         </div>
       </div>
 
-      {/* Price Range */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Price Range</h3>
-        <div className="px-1">
-          <Slider
-            value={priceRange}
-            onValueChange={setPriceRange}
-            min={0}
-            max={10000}
-            step={100}
-            className="mb-3"
-          />
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>₱{priceRange[0].toLocaleString()}</span>
-            <span>₱{priceRange[1].toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
       {/* Condition */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Condition</h3>
         <div className="flex flex-col gap-2">
-          {conditions.map((condition) => (
-            <div key={condition} className="flex items-center gap-2">
+          {CONDITIONS.map(({ display, value }) => (
+            <div key={value} className="flex items-center gap-2">
               <Checkbox
-                id={condition}
-                checked={selectedConditions.includes(condition)}
-                onCheckedChange={() => toggleCondition(condition)}
+                id={`home-cond-${value}`}
+                checked={selectedConditions.includes(value)}
+                onCheckedChange={() => toggleCondition(value)}
               />
               <Label
-                htmlFor={condition}
+                htmlFor={`home-cond-${value}`}
                 className="cursor-pointer text-sm font-normal"
               >
-                {condition}
+                {display}
               </Label>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Listing Type */}
+      {/* Price Range */}
       <div>
-        <h3 className="mb-3 font-semibold text-foreground">Listing Type</h3>
+        <h3 className="mb-3 font-semibold text-foreground">Price Range</h3>
         <div className="flex items-center gap-2">
-          <Checkbox id="for-sale" defaultChecked />
-          <Label htmlFor="for-sale" className="cursor-pointer text-sm font-normal">
-            For Sale
-          </Label>
+          <div className="flex-1">
+            <Label htmlFor="home-min-price" className="sr-only">Min price</Label>
+            <Input
+              id="home-min-price"
+              type="number"
+              placeholder="₱ Min"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              onBlur={() => applyPrice(minPrice, maxPrice)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <span className="text-muted-foreground">–</span>
+          <div className="flex-1">
+            <Label htmlFor="home-max-price" className="sr-only">Max price</Label>
+            <Input
+              id="home-max-price"
+              type="number"
+              placeholder="₱ Max"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              onBlur={() => applyPrice(minPrice, maxPrice)}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
       </div>
 
@@ -139,11 +178,7 @@ function FiltersContent() {
       <Button
         variant="outline"
         className="mt-2"
-        onClick={() => {
-          setSelectedCategories([]);
-          setPriceRange([0, 10000]);
-          setSelectedConditions([]);
-        }}
+        onClick={clearAll}
       >
         Clear All Filters
       </Button>
@@ -156,7 +191,7 @@ export function FiltersSidebar({ className }: FiltersSidebarProps) {
     <aside className={className}>
       <div className="rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -172,14 +207,14 @@ export function MobileFiltersSheet() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-80 overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

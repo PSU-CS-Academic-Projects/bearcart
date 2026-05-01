@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -8,281 +6,309 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { SellerInfoCard } from "@/components/seller-info-card";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { MeetupInfo } from "@/components/meetup-info";
+import { ListingActions } from "@/components/listing-actions";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  ChatCircle,
-  Heart,
-  ShareNetwork,
-  Flag,
   Clock,
-} from "@phosphor-icons/react";
+  Flag,
+  Eye,
+  Handshake,
+  Tag,
+  Warning,
+  PencilSimple,
+  MapPin,
+} from "@phosphor-icons/react/dist/ssr";
+import { getListingById, getRelatedListings } from "@/lib/actions/listings";
+import { isListingSaved } from "@/lib/actions/saved";
+import { createClient } from "@/lib/supabase-server";
+import {
+  formatTimeAgo,
+  formatCondition,
+} from "@/lib/listing-helpers";
 
-// Mock listing data
-const listingData = {
-  id: "1",
-  title: "Calculus: Early Transcendentals 8th Edition by James Stewart",
-  price: 850,
-  condition: "Like New",
-  category: "Books",
-  description: `Selling my Calculus textbook from last semester. This is the 8th edition by James Stewart, widely used in most engineering and math courses.
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-The book is in excellent condition with no highlights or markings. All pages are intact and the binding is perfect. Comes with the original access code (unused).
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-Perfect for BS Math, BS Engineering, or any course that requires Calculus.
+// ─── Condition Badge Colors ───────────────────────────────────────────────────
 
-Reason for selling: Already passed the course and upgrading to a different textbook.`,
-  tags: ["Textbook", "Math", "Engineering", "Calculus", "College"],
-  postedTime: "2 hours ago",
-  photos: [
-    "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=800&h=800&fit=crop",
-    "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&h=800&fit=crop",
-    "https://images.unsplash.com/photo-1553729784-e91953dec042?w=800&h=800&fit=crop",
-    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=800&h=800&fit=crop",
-  ],
-  seller: {
-    id: "seller-1",
-    name: "Maria Santos",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    role: "student" as const,
-    memberSince: "2024",
-    totalListings: 12,
-    rating: 4.8,
-  },
+const conditionColors: Record<string, string> = {
+  new: "bg-green-50 text-green-800 ring-green-200",
+  like_new: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  good: "bg-sky-50 text-sky-800 ring-sky-200",
+  fair: "bg-amber-50 text-amber-800 ring-amber-200",
+  poor: "bg-red-50 text-red-800 ring-red-200",
 };
 
-// Mock related listings
-const relatedListings = [
-  {
-    id: "2",
-    title: "Physics for Scientists and Engineers",
-    price: 750,
-    category: "Books",
-    condition: "Good",
-    sellerName: "Maria Santos",
-    sellerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    timePosted: "1 day ago",
-    imageUrl: "https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&h=400&fit=crop",
-  },
-  {
-    id: "3",
-    title: "Scientific Calculator FX-991ES",
-    price: 1200,
-    category: "Electronics",
-    condition: "Like New",
-    sellerName: "Maria Santos",
-    sellerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    timePosted: "3 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1564466809058-bf4114d55352?w=400&h=400&fit=crop",
-  },
-  {
-    id: "4",
-    title: "Engineering Drawing Set",
-    price: 450,
-    category: "Supplies",
-    condition: "New",
-    sellerName: "Maria Santos",
-    sellerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    timePosted: "5 days ago",
-    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&h=400&fit=crop",
-  },
-  {
-    id: "5",
-    title: "Organic Chemistry Textbook",
-    price: 600,
-    category: "Books",
-    condition: "Good",
-    sellerName: "Maria Santos",
-    sellerAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    timePosted: "1 week ago",
-    imageUrl: "https://images.unsplash.com/photo-1589998059171-988d887df646?w=400&h=400&fit=crop",
-  },
-];
+function formatCasualCondition(condition: string) {
+  const label = formatCondition(condition);
+  if (condition === "new") return "Brand new";
+  if (condition === "like_new") return "Like new";
+  return `${label} condition`;
+}
 
-export default function ListingDetailPage() {
-  const [isSaved, setIsSaved] = useState(false);
-  const isLoggedIn = false; // Mock authentication state
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-  const conditionColors: Record<string, string> = {
-    New: "bg-green-100 text-green-800",
-    "Like New": "bg-emerald-100 text-emerald-800",
-    Good: "bg-blue-100 text-blue-800",
-    Fair: "bg-amber-100 text-amber-800",
-  };
+export default async function ListingDetailPage({ params }: PageProps) {
+  const { id } = await params;
+
+  // Fetch listing data
+  const listing = await getListingById(id);
+  if (!listing) notFound();
+
+  // Check if listing is unavailable (sold or deleted)
+  const isUnavailable = listing.status === "sold" || listing.status === "deleted";
+
+  // Get current user (auth check for save/message buttons)
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Check if user has saved this listing
+  const saved = user ? await isListingSaved(id) : false;
+
+  // Fetch related listings from same seller
+  const related = listing.seller
+    ? await getRelatedListings(id, listing.seller.id)
+    : [];
+
+  // Build photo array sorted by order
+  const photos = (listing.listing_images ?? [])
+    .sort((a, b) => a.order - b.order)
+    .map((img) => img.image_url);
+
+  const seller = listing.seller;
+  const displayTitle = listing.title?.trim() || "Untitled listing";
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mx-auto max-w-7xl px-4 py-4">
           {/* Breadcrumb */}
           <Breadcrumb
             items={[
               { label: "Listings", href: "/listings" },
-              { label: listingData.title },
+              { label: displayTitle },
             ]}
           />
 
-          {/* Main Content */}
-          <div className="mt-6 grid gap-8 lg:grid-cols-5">
-            {/* Left Column - Photos */}
-            <div className="lg:col-span-3">
-              <PhotoGallery
-                photos={listingData.photos}
-                alt={listingData.title}
-              />
+          {/* Unavailable Banner */}
+          {isUnavailable && (
+            <div className="mt-3 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <Warning className="size-4 shrink-0 text-amber-600" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  This listing is no longer available
+                </p>
+                <p className="text-xs text-amber-600">
+                  {listing.status === "sold"
+                    ? "This item has already been sold."
+                    : "This listing has been removed."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <section className="mt-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 lg:grid lg:grid-cols-[minmax(0,55fr)_minmax(340px,45fr)] lg:gap-6">
+            <div>
+              <div className="max-w-[560px] lg:sticky lg:top-20">
+                <PhotoGallery photos={photos} alt={displayTitle} />
+              </div>
             </div>
 
-            {/* Right Column - Details */}
-            <div className="flex flex-col gap-6 lg:col-span-2">
-              {/* Title and Price */}
-              <div>
-                <h1 className="text-2xl font-bold text-foreground text-balance">
-                  {listingData.title}
-                </h1>
-                <p className="mt-2 text-3xl font-bold text-primary">
-                  ₱{listingData.price.toLocaleString()}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge className={conditionColors[listingData.condition]}>
-                    {listingData.condition}
-                  </Badge>
-                  <Badge variant="secondary">{listingData.category}</Badge>
-                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="size-4" />
-                    Posted {listingData.postedTime}
-                  </span>
+            <div className="mt-4 flex w-full max-w-[500px] flex-col gap-3 justify-self-start lg:mt-0">
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-primary/80">
+                    PSU campus listing
+                  </p>
+                  <h1 className="text-balance text-xl font-semibold leading-[1.18] tracking-[-0.015em] text-foreground sm:text-2xl">
+                    {displayTitle}
+                  </h1>
+                </div>
+
+                <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
+                  <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
+                    ₱{listing.price.toLocaleString()}
+                  </p>
+                  {listing.is_negotiable && (
+                    <span className="mb-0.5 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
+                      <Handshake className="size-3.5" />
+                      open to tawad
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Action Buttons - Desktop */}
-              <div className="hidden flex-col gap-3 lg:flex">
-                {isLoggedIn ? (
-                  <Button size="lg" className="w-full">
-                    <ChatCircle className="size-5" />
-                    Message Seller
-                  </Button>
-                ) : (
-                  <Button size="lg" className="w-full" asChild>
-                    <Link href="/login">
-                      <ChatCircle className="size-5" />
-                      Login to Message Seller
-                    </Link>
-                  </Button>
-                )}
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setIsSaved(!isSaved)}
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    className={
+                      "rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset " +
+                      (conditionColors[listing.condition] ??
+                        "bg-gray-50 text-gray-800 ring-gray-200")
+                    }
                   >
-                    <Heart
-                      className="size-4"
-                      weight={isSaved ? "fill" : "regular"}
-                    />
-                    {isSaved ? "Saved" : "Save"}
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <ShareNetwork className="size-4" />
-                    Share
-                  </Button>
+                    {formatCasualCondition(listing.condition)}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                  >
+                    in {listing.category}
+                  </Badge>
+
+                  {listing.status === "sold" && (
+                    <Badge className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                      Sold
+                    </Badge>
+                  )}
+                  {listing.status === "reserved" && (
+                    <Badge className="rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-semibold text-yellow-700 ring-1 ring-inset ring-yellow-200">
+                      Reserved
+                    </Badge>
+                  )}
                 </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3.5" />
+                    Posted {formatTimeAgo(listing.created_at)}
+                  </span>
+
+                  <span className="flex items-center gap-1">
+                    <Eye className="size-3.5" />
+                    {(listing.views_count ?? 0).toLocaleString()} views
+                  </span>
+
+                  {listing.updated_at &&
+                    listing.created_at &&
+                    Math.abs(
+                      new Date(listing.updated_at).getTime() -
+                        new Date(listing.created_at).getTime()
+                    ) > 60000 && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <PencilSimple className="size-3" />
+                        Updated {formatTimeAgo(listing.updated_at)}
+                      </span>
+                    )}
+                </div>
+
+                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-foreground">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-card text-primary">
+                    <MapPin className="size-3.5 text-primary" />
+                  </span>
+                  Campus pickup at PSU
+                </div>
+
+                <div className="rounded-xl bg-secondary/45 px-3 py-2.5">
+                  <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
+                    Seller&apos;s note
+                  </h2>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-5 text-foreground/80">
+                    {listing.description ?? "No description provided."}
+                  </p>
+                </div>
+
+                {listing.tags && listing.tags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="flex items-center gap-1 font-semibold text-muted-foreground">
+                      <Tag className="size-3.5" />
+                      Tags
+                    </span>
+                    {listing.tags.map((tag) => (
+                      <Link
+                        key={tag}
+                        href={`/listings?search=${encodeURIComponent(tag)}`}
+                      >
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer rounded-full bg-card px-2 py-0.5 font-medium hover:bg-accent"
+                        >
+                          #{tag}
+                        </Badge>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Seller Info Card */}
-              <SellerInfoCard seller={listingData.seller} />
+              {!isUnavailable && (
+                <ListingActions
+                  listingId={listing.id}
+                  sellerId={listing.seller_id}
+                  currentUserId={user?.id ?? null}
+                  initialSaved={saved}
+                />
+              )}
 
-              {/* Meetup Info */}
+              {seller && <SellerInfoCard seller={seller} />}
+
               <MeetupInfo />
 
-              {/* Description */}
-              <div>
-                <h2 className="mb-3 text-lg font-semibold text-foreground">
-                  Description
-                </h2>
-                <p className="whitespace-pre-line text-muted-foreground">
-                  {listingData.description}
-                </p>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <h2 className="mb-3 text-lg font-semibold text-foreground">
-                  Tags
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {listingData.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="outline"
-                      className="cursor-pointer hover:bg-accent"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Report Link */}
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-destructive">
-                <Flag className="size-4" />
+              <button className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive">
+                <Flag className="size-3.5" />
                 Report this listing
               </button>
             </div>
-          </div>
-
-          {/* Related Listings */}
-          <section className="mt-12 border-t pt-10">
-            <h2 className="mb-6 text-xl font-bold text-foreground">
-              More from this Seller
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {relatedListings.map((listing) => (
-                <Link key={listing.id} href={`/listings/${listing.id}`}>
-                  <ListingCard {...listing} />
-                </Link>
-              ))}
-            </div>
           </section>
+
+          {/* More from this Seller */}
+          {related.length > 0 && (
+            <section className="mt-8 border-t pt-6">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">
+                More from this Seller
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {related.map((r) => {
+                  const imgs = r.listing_images as {
+                    image_url: string;
+                    is_cover: boolean;
+                    order: number;
+                  }[];
+                  const rawSeller = r.seller as unknown;
+                  const s = (Array.isArray(rawSeller)
+                    ? rawSeller[0]
+                    : rawSeller) as
+                    | {
+                        full_name: string | null;
+                        avatar_url: string | null;
+                      }
+                    | null
+                    | undefined;
+                  const cover =
+                    imgs?.find((i) => i.is_cover)?.image_url ??
+                    imgs?.[0]?.image_url ??
+                    "";
+                  return (
+                    <ListingCard
+                      key={r.id as string}
+                      id={r.id as string}
+                      title={r.title as string}
+                      price={r.price as number}
+                      category={r.category as string}
+                      condition={formatCondition(r.condition as string)}
+                      sellerName={s?.full_name ?? "PSU Student"}
+                      sellerAvatar={s?.avatar_url ?? ""}
+                      timePosted={formatTimeAgo(r.created_at as string)}
+                      imageUrl={cover}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
-      {/* Mobile Sticky Action Buttons */}
-      <div className="sticky bottom-0 border-t bg-card p-4 lg:hidden">
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsSaved(!isSaved)}
-            className="shrink-0"
-          >
-            <Heart
-              className="size-5"
-              weight={isSaved ? "fill" : "regular"}
-            />
-            <span className="sr-only">{isSaved ? "Unsave" : "Save"}</span>
-          </Button>
-          <Button variant="outline" size="icon" className="shrink-0">
-            <ShareNetwork className="size-5" />
-            <span className="sr-only">Share</span>
-          </Button>
-          {isLoggedIn ? (
-            <Button size="lg" className="flex-1">
-              <ChatCircle className="size-5" />
-              Message Seller
-            </Button>
-          ) : (
-            <Button size="lg" className="flex-1" asChild>
-              <Link href="/login">
-                <ChatCircle className="size-5" />
-                Login to Message
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* Spacer for mobile sticky bottom bar */}
+      {!isUnavailable && <div className="h-16 lg:hidden" />}
 
       <Footer />
     </div>

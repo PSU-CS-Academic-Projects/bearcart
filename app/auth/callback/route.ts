@@ -1,0 +1,46 @@
+import { createClient } from '@/lib/supabase-server'
+import { NextResponse } from 'next/server'
+
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url)
+    const code = searchParams.get('code')
+    const returnTo = searchParams.get('returnTo') || '/listings'
+
+    // Handle Ngrok/Proxy origins correctly
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+    const protocol = request.headers.get('x-forwarded-proto') || 'http'
+    const origin = `${protocol}://${host}`
+
+    if (code) {
+        const supabase = await createClient()
+
+        // exchangeCodeForSession returns the session + user directly —
+        // no need for a second getUser() call that would miss the new cookies.
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (error || !data.user) {
+            console.error('OAuth callback error:', error?.message)
+            return NextResponse.redirect(`${origin}/`)
+        }
+
+        // Use the same authenticated client to query the users table.
+        const { data: userData } = await supabase
+            .from('users')
+            .select('college')
+            .eq('id', data.user.id)
+            .single()
+
+        const needsSetup = !userData?.college
+
+        // If user needs onboarding, go to setup first (then returnTo after setup)
+        // Otherwise, go directly to the returnTo destination
+        return NextResponse.redirect(
+            needsSetup
+                ? `${origin}/setup?returnTo=${encodeURIComponent(returnTo)}`
+                : `${origin}${returnTo}`
+        )
+    }
+
+    // No code in URL — something went wrong with the OAuth flow
+    return NextResponse.redirect(`${origin}/`)
+}
