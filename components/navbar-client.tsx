@@ -152,9 +152,9 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href="/listings/new" className="flex cursor-pointer items-center gap-2">
+          <Link href="/post" className="flex cursor-pointer items-center gap-2">
             <Plus className="size-4" />
-            Post a Listing
+            Create a Post
           </Link>
         </DropdownMenuItem>
 
@@ -341,7 +341,7 @@ export function NavbarClient({
         {/* ── Desktop Search ────────────────────────────────────────── */}
         <form
           onSubmit={handleSearchSubmit}
-          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 md:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 lg:flex"
         >
           <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
             <div className="flex items-center border-r px-3">
@@ -372,7 +372,7 @@ export function NavbarClient({
         </form>
 
         {/* ── Desktop Right ─────────────────────────────────────────── */}
-        <div className="relative z-10 hidden shrink-0 items-center gap-2 md:flex">
+        <div className="relative z-10 hidden shrink-0 items-center gap-2 lg:flex">
           <Link
             href="/listings"
             className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
@@ -389,28 +389,12 @@ export function NavbarClient({
 
           {user ? (
             <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="size-4" />
-                    Post
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href="/listings/new" className="flex cursor-pointer items-center gap-2">
-                      <Plus className="size-4" />
-                      Sell an Item
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/requests/new" className="flex cursor-pointer items-center gap-2">
-                      <MagnifyingGlass className="size-4" />
-                      Post a Request
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button size="sm" asChild>
+                <Link href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}>
+                  <Plus className="size-4" />
+                  Post
+                </Link>
+              </Button>
 
               {/* Messages with unread badge */}
               <MessagesIcon count={unreadCount} />
@@ -435,7 +419,7 @@ export function NavbarClient({
 
         {/* ── Mobile Menu Trigger ───────────────────────────────────── */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild className="md:hidden">
+          <SheetTrigger asChild className="lg:hidden">
             <Button variant="ghost" size="icon" className="relative">
               <List className="size-5" />
               {/* Unread dot on hamburger when logged in */}
@@ -571,23 +555,13 @@ export function NavbarClient({
                     My Profile
                   </Link>
 
-                  {/* Post a Listing */}
                   <Link
-                    href="/listings/new"
+                    href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <Plus className="size-4" />
-                    Sell an Item
-                  </Link>
-
-                  <Link
-                    href="/requests/new"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
-                  >
-                    <MagnifyingGlass className="size-4" />
-                    Post a Request
+                    Create a Post
                   </Link>
 
                   <div className="h-px bg-border" />
