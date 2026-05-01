@@ -119,39 +119,57 @@ export function RequestRow({
       }}
       className="group flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/50 sm:gap-4 sm:px-5 sm:py-4"
     >
-      {/* Left section */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {/* Line 1: icon + urgency + title */}
+      {/* Left section: image thumbnail */}
+      <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
+        {cover ? (
+          <Image
+            src={cover}
+            alt={request.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 64px, 80px"
+          />
+        ) : (
+          <Icon className="size-8 text-muted-foreground opacity-50 sm:size-10" />
+        )}
+      </div>
+
+      {/* Right section: content & actions */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        
+        {/* Title + Urgency */}
         <div className="flex flex-wrap items-center gap-2">
-          <Icon className="size-4 shrink-0 text-muted-foreground" />
           <UrgencyBadge urgency={request.urgency} />
-          <h3 className="line-clamp-2 min-w-0 font-semibold text-foreground transition-colors group-hover:text-primary">
+          <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground transition-colors group-hover:text-primary">
             {request.title}
           </h3>
         </div>
 
-        {/* Line 2: metadata */}
-        <p className="text-xs text-muted-foreground">
+        {/* Metadata */}
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">
             {getRequesterShortName(request.requester)}
           </span>
-          {" · "}
-          {request.category}
-          {" · "}
-          {formatBudget(request.budget_min, request.budget_max)}
-          {" · "}
-          {formatTimeAgo(request.created_at)}
+          <span>&middot;</span>
+          <span className="flex items-center gap-1">
+            <Icon className="size-3.5" />
+            {request.category}
+          </span>
+          <span>&middot;</span>
+          <span>{formatBudget(request.budget_min, request.budget_max)}</span>
+          <span>&middot;</span>
+          <span>{formatTimeAgo(request.created_at)}</span>
         </p>
 
-        {/* Line 3: action button */}
-        <div className="mt-1.5">
+        {/* Action row */}
+        <div className="mt-1 flex items-center gap-2 text-xs">
           {rightAction ? (
             <div onClick={(e) => e.stopPropagation()}>{rightAction}</div>
           ) : variant === "owner" || isOwn ? (
             <button
               type="button"
               onClick={handleEdit}
-              className="text-xs font-medium text-primary transition-colors hover:underline"
+              className="font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               Edit
             </button>
@@ -161,26 +179,13 @@ export function RequestRow({
               size="sm"
               variant="outline"
               onClick={handleIHaveThis}
-              className="h-8"
+              className="h-7 px-3 text-xs"
             >
               I Have This
             </Button>
           )}
         </div>
       </div>
-
-      {/* Right section: image (if exists) */}
-      {cover && (
-        <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted sm:size-16">
-          <Image
-            src={cover}
-            alt={request.title}
-            fill
-            className="object-cover"
-            sizes="64px"
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -190,13 +195,16 @@ export function RequestRow({
 export function RequestRowSkeleton() {
   return (
     <div className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
+      {/* Thumbnail skeleton */}
+      <div className="size-16 shrink-0 animate-pulse rounded-md bg-muted sm:size-20" />
+      
+      {/* Content skeleton */}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center gap-2">
-          <div className="size-4 shrink-0 animate-pulse rounded bg-muted" />
           <div className="h-5 w-16 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-3/5 animate-pulse rounded bg-muted" />
+          <div className="h-5 w-3/5 animate-pulse rounded bg-muted" />
         </div>
-        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-4/5 animate-pulse rounded bg-muted" />
         <div className="mt-1 h-7 w-24 animate-pulse rounded bg-muted" />
       </div>
     </div>

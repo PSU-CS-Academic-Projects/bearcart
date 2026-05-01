@@ -80,21 +80,21 @@ async function uploadRequestImage(
   const filePath = `${requesterId}/${requestId}/${fileId}.${extension}`;
 
   const { error } = await supabase.storage
-    .from("request-images")
+    .from("request_images")
     .upload(filePath, bytes, { contentType: mimeType, upsert: false });
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
-  const { data: urlData } = supabase.storage.from("request-images").getPublicUrl(filePath);
+  const { data: urlData } = supabase.storage.from("request_images").getPublicUrl(filePath);
   return urlData.publicUrl;
 }
 
 async function deleteRequestImageByUrl(publicUrl: string): Promise<void> {
   const supabase = await createClient();
-  const bucketUrl = `/storage/v1/object/public/request-images/`;
+  const bucketUrl = `/storage/v1/object/public/request_images/`;
   const idx = publicUrl.indexOf(bucketUrl);
   if (idx === -1) return; // Not our bucket, ignore
   const filePath = decodeURIComponent(publicUrl.slice(idx + bucketUrl.length));
-  await supabase.storage.from("request-images").remove([filePath]);
+  await supabase.storage.from("request_images").remove([filePath]);
 }
 
 // ─── READ (list) ──────────────────────────────────────────────────────────────
