@@ -14,8 +14,8 @@ interface SellerInfoCardProps {
   seller: {
     id: string;
     full_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
     avatar_url: string | null;
     role: string;
     college: string | null;
