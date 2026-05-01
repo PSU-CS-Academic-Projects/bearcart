@@ -31,6 +31,56 @@ function EmptyState() {
   );
 }
 
+// ─── Landing Page Section (no filters, 6 items) ──────────────────────────────
+
+export async function LandingListingsSection({ showHeader = true }: { showHeader?: boolean } = {}) {
+  const { listings } = await getListings({ pageSize: 6 });
+
+  return (
+    <section className="py-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6">
+        {showHeader && (
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">Latest Listings</h2>
+            <Link href="/listings" className="text-sm font-medium text-[#C85F00] hover:underline">
+              View all →
+            </Link>
+          </div>
+        )}
+        {listings.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  id={listing.id}
+                  title={listing.title}
+                  price={listing.price}
+                  category={listing.category}
+                  condition={formatCondition(listing.condition)}
+                  sellerName={getSellerName(listing)}
+                  sellerAvatar={listing.seller?.avatar_url ?? ""}
+                  timePosted={formatTimeAgo(listing.created_at)}
+                  imageUrl={getCoverImage(listing)}
+                />
+              ))}
+            </div>
+            {!showHeader && (
+              <div className="mt-8 text-center">
+                <Link href="/listings" className="text-sm font-semibold text-[#C85F00] hover:underline">
+                  Browse all listings →
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Section ─────────────────────────────────────────────────────────────
 
 export async function ListingsSection() {
