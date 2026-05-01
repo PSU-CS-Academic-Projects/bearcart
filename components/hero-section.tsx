@@ -9,7 +9,7 @@ import {
 
 export function HeroSection() {
   return (
-    <section className="w-full bg-white border-b border-gray-100 shadow-sm">
+    <section className="w-full min-h-[calc(100vh-64px)] flex items-center justify-center bg-white border-b border-gray-100 shadow-sm">
       <div className="mx-auto w-full max-w-5xl px-4 md:px-6 py-14 md:py-20">
         <div className="flex flex-col md:flex-row md:items-start gap-10 md:gap-16">
 
