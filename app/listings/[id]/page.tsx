@@ -89,7 +89,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
       <Navbar />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mx-auto max-w-7xl px-4 py-4">
           {/* Breadcrumb */}
           <Breadcrumb
             items={[
@@ -100,13 +100,13 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
           {/* Unavailable Banner */}
           {isUnavailable && (
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <Warning className="size-5 shrink-0 text-amber-600" />
+            <div className="mt-3 flex items-center gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <Warning className="size-4 shrink-0 text-amber-600" />
               <div>
-                <p className="font-semibold text-amber-800">
+                <p className="text-sm font-semibold text-amber-800">
                   This listing is no longer available
                 </p>
-                <p className="text-sm text-amber-600">
+                <p className="text-xs text-amber-600">
                   {listing.status === "sold"
                     ? "This item has already been sold."
                     : "This listing has been removed."}
@@ -115,42 +115,42 @@ export default async function ListingDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5 lg:grid lg:grid-cols-[minmax(0,55fr)_minmax(360px,45fr)] lg:gap-8 lg:p-6">
+          <section className="mt-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 lg:grid lg:grid-cols-[minmax(0,55fr)_minmax(340px,45fr)] lg:gap-6">
             <div>
-              <div className="lg:sticky lg:top-24">
+              <div className="max-w-[560px] lg:sticky lg:top-20">
                 <PhotoGallery photos={photos} alt={displayTitle} />
               </div>
             </div>
 
-            <div className="mt-5 flex w-full max-w-[540px] flex-col gap-4 justify-self-start lg:mt-0">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-primary/80">
+            <div className="mt-4 flex w-full max-w-[500px] flex-col gap-3 justify-self-start lg:mt-0">
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-primary/80">
                     PSU campus listing
                   </p>
-                  <h1 className="text-balance text-2xl font-bold leading-[1.12] tracking-[-0.02em] text-foreground sm:text-[2.05rem]">
+                  <h1 className="text-balance text-xl font-semibold leading-[1.18] tracking-[-0.015em] text-foreground sm:text-2xl">
                     {displayTitle}
                   </h1>
                 </div>
 
-                <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-                  <p className="text-5xl font-black leading-none tracking-[-0.055em] text-primary sm:text-[3.65rem]">
+                <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
+                  <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
                     ₱{listing.price.toLocaleString()}
                   </p>
                   {listing.is_negotiable && (
-                    <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-sm font-semibold text-green-700 ring-1 ring-inset ring-green-200">
-                      <Handshake className="size-4" />
+                    <span className="mb-0.5 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
+                      <Handshake className="size-3.5" />
                       open to tawad
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3.5">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Badge
                     className={
-                      "rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset " +
+                      "rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset " +
                       (conditionColors[listing.condition] ??
                         "bg-gray-50 text-gray-800 ring-gray-200")
                     }
@@ -159,31 +159,31 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   </Badge>
                   <Badge
                     variant="secondary"
-                    className="rounded-full px-2.5 py-1 text-sm font-semibold"
+                    className="rounded-full px-2 py-0.5 text-xs font-semibold"
                   >
                     in {listing.category}
                   </Badge>
 
                   {listing.status === "sold" && (
-                    <Badge className="rounded-full bg-red-50 px-2.5 py-1 text-sm font-semibold text-red-700 ring-1 ring-inset ring-red-200">
+                    <Badge className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200">
                       Sold
                     </Badge>
                   )}
                   {listing.status === "reserved" && (
-                    <Badge className="rounded-full bg-yellow-50 px-2.5 py-1 text-sm font-semibold text-yellow-700 ring-1 ring-inset ring-yellow-200">
+                    <Badge className="rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-semibold text-yellow-700 ring-1 ring-inset ring-yellow-200">
                       Reserved
                     </Badge>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="size-4" />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3.5" />
                     Posted {formatTimeAgo(listing.created_at)}
                   </span>
 
-                  <span className="flex items-center gap-1.5">
-                    <Eye className="size-4" />
+                  <span className="flex items-center gap-1">
+                    <Eye className="size-3.5" />
                     {(listing.views_count ?? 0).toLocaleString()} views
                   </span>
 
@@ -194,32 +194,32 @@ export default async function ListingDetailPage({ params }: PageProps) {
                         new Date(listing.created_at).getTime()
                     ) > 60000 && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <PencilSimple className="size-3.5" />
+                        <PencilSimple className="size-3" />
                         Updated {formatTimeAgo(listing.updated_at)}
                       </span>
                     )}
                 </div>
 
-                <div className="inline-flex w-fit items-center gap-2 rounded-full bg-secondary px-2.5 py-1.5 text-sm font-semibold text-foreground">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-card text-primary">
-                    <MapPin className="size-4 text-primary" />
+                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-foreground">
+                  <span className="flex size-5 items-center justify-center rounded-full bg-card text-primary">
+                    <MapPin className="size-3.5 text-primary" />
                   </span>
                   Campus pickup at PSU
                 </div>
 
-                <div className="rounded-2xl bg-secondary/45 px-4 py-3.5">
-                  <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-primary/80">
+                <div className="rounded-xl bg-secondary/45 px-3 py-2.5">
+                  <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
                     Seller&apos;s note
                   </h2>
-                  <p className="mt-1.5 whitespace-pre-line text-[0.95rem] leading-6 text-foreground/80">
+                  <p className="mt-1 whitespace-pre-line text-sm leading-5 text-foreground/80">
                     {listing.description ?? "No description provided."}
                   </p>
                 </div>
 
                 {listing.tags && listing.tags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
-                      <Tag className="size-4" />
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="flex items-center gap-1 font-semibold text-muted-foreground">
+                      <Tag className="size-3.5" />
                       Tags
                     </span>
                     {listing.tags.map((tag) => (
@@ -229,7 +229,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       >
                         <Badge
                           variant="outline"
-                          className="cursor-pointer rounded-full bg-card px-3 py-1 font-medium hover:bg-accent"
+                          className="cursor-pointer rounded-full bg-card px-2 py-0.5 font-medium hover:bg-accent"
                         >
                           #{tag}
                         </Badge>
@@ -252,8 +252,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               <MeetupInfo />
 
-              <button className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-destructive">
-                <Flag className="size-4" />
+              <button className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive">
+                <Flag className="size-3.5" />
                 Report this listing
               </button>
             </div>
@@ -261,8 +261,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
           {/* More from this Seller */}
           {related.length > 0 && (
-            <section className="mt-12 border-t pt-10">
-              <h2 className="mb-6 text-xl font-bold text-foreground">
+            <section className="mt-8 border-t pt-6">
+              <h2 className="mb-4 text-lg font-semibold text-foreground">
                 More from this Seller
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">

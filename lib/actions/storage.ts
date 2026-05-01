@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
-import { v4 as uuidv4 } from "crypto";
+import { randomUUID } from "crypto";
 
 /**
  * Uploads a base64-encoded image to a Supabase Storage bucket.
@@ -34,7 +34,7 @@ export async function uploadImage(
   }
 
   // Build the file path
-  const fileId = crypto.randomUUID();
+  const fileId = randomUUID();
   const prefix = folder ?? user.id;
   const filePath = `${prefix}/${fileId}.${extension}`;
 

@@ -37,11 +37,11 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
     .toUpperCase();
 
   return (
-    <Card className="p-5">
-      <div className="flex flex-col gap-4">
+    <Card className="p-3.5">
+      <div className="flex flex-col gap-3">
         {/* Seller Header */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
             {seller.avatar_url ? (
               <Image
                 src={seller.avatar_url}
@@ -50,37 +50,37 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
                 className="object-cover"
               />
             ) : (
-              <span className="text-lg font-semibold text-muted-foreground">
-                {initials || <User className="size-6" />}
+              <span className="text-sm font-semibold text-muted-foreground">
+                {initials || <User className="size-5" />}
               </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-semibold text-foreground">
+            <h3 className="truncate text-sm font-semibold text-foreground">
               {displayName}
             </h3>
-            <Badge variant="secondary" className="mt-1">
+            <Badge variant="secondary" className="mt-1 px-2 py-0 text-xs">
               {seller.role === "student" ? "PSU Student" : "PSU Faculty"}
             </Badge>
           </div>
         </div>
 
         {/* Seller Details */}
-        <div className="space-y-2 border-y py-4">
+        <div className="space-y-1.5 border-y py-2.5">
           {seller.college && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <GraduationCap className="size-4 shrink-0 text-primary" />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <GraduationCap className="size-3.5 shrink-0 text-primary" />
               <span className="truncate">{seller.college}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="size-4 shrink-0 text-primary" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0 text-primary" />
             <span>Member since {formatTimeAgo(seller.created_at)}</span>
           </div>
         </div>
 
         {/* View Profile Button */}
-        <Button variant="outline" asChild className="w-full">
+        <Button variant="outline" asChild className="h-8 w-full text-xs">
           <Link href={`/profile/${seller.id}`}>View Profile</Link>
         </Button>
       </div>
