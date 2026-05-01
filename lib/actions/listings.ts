@@ -195,7 +195,7 @@ export async function getListings(filters: ListingFilters = {}) {
   if (error) throw new Error(`Failed to fetch listings: ${error.message}`);
 
   return {
-    listings: (data ?? []) as ListingWithImages[],
+    listings: (data ?? []) as unknown as ListingWithImages[],
     total: count ?? 0,
     page,
     pageSize,
@@ -235,7 +235,7 @@ export async function getListingById(id: string) {
     .eq("id", id)
     .then();
 
-  return data as ListingWithImages;
+  return data as unknown as ListingWithImages;
 }
 
 // ─── READ (by seller) ────────────────────────────────────────────────────────

@@ -14,13 +14,14 @@ interface PhotoGalleryProps {
 export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Empty state — no photos
   if (!photos || photos.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-xl bg-muted">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <ShoppingBag className="size-16" />
-          <span className="text-sm">No photos available</span>
+      <div className="w-full">
+        <div className="flex aspect-square items-center justify-center rounded-xl border border-border bg-muted">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <ShoppingBag className="size-16" />
+            <span className="text-sm">No photos available</span>
+          </div>
         </div>
       </div>
     );
@@ -35,24 +36,22 @@ export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Main Photo */}
-      <div className="group relative aspect-square overflow-hidden rounded-xl bg-muted">
+    <div className="flex w-full flex-col gap-3">
+      <div className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-secondary/40">
         <Image
           src={photos[activeIndex]}
           alt={`${alt} - Photo ${activeIndex + 1}`}
           fill
-          className="object-cover"
+          className="object-contain"
           priority
         />
 
-        {/* Navigation Arrows */}
         {photos.length > 1 && (
           <>
             <Button
               variant="secondary"
               size="icon"
-              className="absolute left-3 top-1/2 size-10 -translate-y-1/2 opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+              className="absolute left-3 top-1/2 size-10 -translate-y-1/2 shadow-md"
               onClick={goToPrevious}
               aria-label="Previous photo"
             >
@@ -61,7 +60,7 @@ export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
             <Button
               variant="secondary"
               size="icon"
-              className="absolute right-3 top-1/2 size-10 -translate-y-1/2 opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+              className="absolute right-3 top-1/2 size-10 -translate-y-1/2 shadow-md"
               onClick={goToNext}
               aria-label="Next photo"
             >
@@ -70,37 +69,33 @@ export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
           </>
         )}
 
-        {/* Photo Counter */}
-        <div className="absolute bottom-3 right-3 rounded-full bg-foreground/70 px-3 py-1 text-sm font-medium text-background">
+        <div className="absolute bottom-3 right-3 rounded-full bg-foreground/75 px-3 py-1 text-sm font-medium text-background">
           {activeIndex + 1} / {photos.length}
         </div>
       </div>
 
-      {/* Thumbnails */}
-      {photos.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {photos.map((photo, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveIndex(index)}
-              className={cn(
-                "relative aspect-square w-16 shrink-0 overflow-hidden rounded-lg transition-all sm:w-20",
-                activeIndex === index
-                  ? "ring-2 ring-primary ring-offset-2"
-                  : "opacity-60 hover:opacity-100"
-              )}
-              aria-label={`View photo ${index + 1}`}
-            >
-              <Image
-                src={photo}
-                alt={`${alt} thumbnail ${index + 1}`}
-                fill
-                className="object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {photos.map((photo, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveIndex(index)}
+            className={cn(
+              "relative aspect-square w-16 shrink-0 overflow-hidden rounded-md border bg-card sm:w-[72px]",
+              activeIndex === index
+                ? "border-primary ring-2 ring-primary/35"
+                : "border-border opacity-80 hover:opacity-100"
+            )}
+            aria-label={`View photo ${index + 1}`}
+          >
+            <Image
+              src={photo}
+              alt={`${alt} thumbnail ${index + 1}`}
+              fill
+              className="object-contain"
+            />
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

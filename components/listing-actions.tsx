@@ -74,29 +74,28 @@ export function ListingActions({
   return (
     <>
       {/* Desktop Actions */}
-      <div className="hidden flex-col gap-3 lg:flex">
+      <div className="hidden flex-col gap-2 lg:flex">
         {isOwnListing ? (
-          <Button size="lg" className="w-full" asChild>
+          <Button className="h-9 w-full" asChild>
             <a href={`/listings/${listingId}/edit`}>
-              <PencilSimple className="size-5" />
+              <PencilSimple className="size-4" />
               Edit Listing
             </a>
           </Button>
         ) : (
           <Button
-            size="lg"
-            className="w-full"
+            className="h-9 w-full"
             onClick={handleMessage}
             disabled={isPending}
           >
-            <ChatCircle className="size-5" />
+            <ChatCircle className="size-4" />
             {isLoggedIn ? "Message Seller" : "Login to Message"}
           </Button>
         )}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button
             variant="outline"
-            className="flex-1"
+            className="h-8 flex-1 text-xs"
             onClick={handleSave}
             disabled={isPending}
           >
@@ -106,7 +105,11 @@ export function ListingActions({
             />
             {isSaved ? "Saved" : "Save"}
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleShare}>
+          <Button
+            variant="outline"
+            className="h-8 flex-1 text-xs"
+            onClick={handleShare}
+          >
             <ShareNetwork className="size-4" />
             Share
           </Button>
@@ -114,8 +117,8 @@ export function ListingActions({
       </div>
 
       {/* Mobile Sticky Bottom Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card p-3 lg:hidden">
-        <div className="mx-auto flex max-w-7xl gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card p-2.5 lg:hidden">
+        <div className="mx-auto flex max-w-7xl gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -137,20 +140,19 @@ export function ListingActions({
             <ShareNetwork className="size-5" />
           </Button>
           {isOwnListing ? (
-            <Button size="lg" className="flex-1" asChild>
+            <Button className="h-9 flex-1" asChild>
               <a href={`/listings/${listingId}/edit`}>
-                <PencilSimple className="size-5" />
+                <PencilSimple className="size-4" />
                 Edit Listing
               </a>
             </Button>
           ) : (
             <Button
-              size="lg"
-              className="flex-1"
+              className="h-9 flex-1"
               onClick={handleMessage}
               disabled={isPending}
             >
-              <ChatCircle className="size-5" />
+              <ChatCircle className="size-4" />
               {isLoggedIn ? "Message Seller" : "Login to Message"}
             </Button>
           )}
