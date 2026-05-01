@@ -48,7 +48,7 @@ export default function RootLayout({
         <Toaster richColors position="top-right" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       {/* impeccable-live-start */}
-<Script src="http://localhost:8400/live.js"></Script>
+<Script src="http://localhost:8401/live.js"></Script>
 {/* impeccable-live-end */}
 </body>
     </html>
