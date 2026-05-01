@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -188,6 +188,7 @@ export function NavbarClient({
   initialNotifications,
 }: NavbarClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -316,7 +317,10 @@ export function NavbarClient({
     if (selectedCategory && selectedCategory !== "All Categories") {
       params.set("category", selectedCategory);
     }
-    router.push(`/listings?${params.toString()}`);
+    const targetPath = pathname.startsWith("/requests") ? "/requests" : "/listings";
+    const query = params.toString();
+    setMobileMenuOpen(false);
+    router.push(query ? `${targetPath}?${query}` : targetPath);
   };
 
   const handleSignOut = async () => {
@@ -337,7 +341,7 @@ export function NavbarClient({
         {/* ── Desktop Search ────────────────────────────────────────── */}
         <form
           onSubmit={handleSearchSubmit}
-          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-8 md:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 md:flex"
         >
           <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
             <div className="flex items-center border-r px-3">
@@ -358,7 +362,7 @@ export function NavbarClient({
               <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search listings..."
+                placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -369,6 +373,12 @@ export function NavbarClient({
 
         {/* ── Desktop Right ─────────────────────────────────────────── */}
         <div className="relative z-10 hidden shrink-0 items-center gap-2 md:flex">
+          <Link
+            href="/listings"
+            className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Listings
+          </Link>
           {/* Looking For — visible to everyone */}
           <Link
             href="/requests"
@@ -379,13 +389,28 @@ export function NavbarClient({
 
           {user ? (
             <>
-              {/* Post a Listing */}
-              <Button size="sm" asChild>
-                <Link href="/listings/new">
-                  <Plus className="size-4" />
-                  Post a Listing
-                </Link>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="size-4" />
+                    Post
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link href="/listings/new" className="flex cursor-pointer items-center gap-2">
+                      <Plus className="size-4" />
+                      Sell an Item
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/requests/new" className="flex cursor-pointer items-center gap-2">
+                      <MagnifyingGlass className="size-4" />
+                      Post a Request
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Messages with unread badge */}
               <MessagesIcon count={unreadCount} />
@@ -448,7 +473,7 @@ export function NavbarClient({
                   <MagnifyingGlass className="size-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search listings..."
+                    placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -459,6 +484,15 @@ export function NavbarClient({
               <div className="h-px bg-border" />
 
               {/* Looking For — visible to everyone */}
+              <Link
+                href="/listings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+              >
+                <ShoppingCart className="size-4" />
+                Listings
+              </Link>
+
               <Link
                 href="/requests"
                 onClick={() => setMobileMenuOpen(false)}
@@ -544,7 +578,16 @@ export function NavbarClient({
                     className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <Plus className="size-4" />
-                    Post a Listing
+                    Sell an Item
+                  </Link>
+
+                  <Link
+                    href="/requests/new"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+                  >
+                    <MagnifyingGlass className="size-4" />
+                    Post a Request
                   </Link>
 
                   <div className="h-px bg-border" />
