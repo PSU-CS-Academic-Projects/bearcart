@@ -344,7 +344,7 @@ export function PostRequestForm() {
               )}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              By posting you agree to PalMart&apos;s community guidelines
+              By posting you agree to Bearcart&apos;s community guidelines
             </p>
           </form>
         </div>
