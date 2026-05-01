@@ -222,7 +222,7 @@ export function PhotoUpload({
               {/* Cover Photo Badge */}
               {index === 0 && (
                 <div className="absolute left-1 top-1 flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-xs font-medium text-primary-foreground">
-                  <Star className="size-3" weight="fill" />
+                  <Star className="size-3" />
                   Cover
                 </div>
               )}

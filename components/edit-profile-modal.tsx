@@ -139,7 +139,7 @@ export function EditProfileModal({
               </div>
               <label
                 htmlFor="avatar-upload"
-                className="absolute bottom-0 right-0 flex size-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-colors hover:bg-primary/90"
+                className="absolute bottom-0 right-0 flex size-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Camera className="size-4" />
               </label>

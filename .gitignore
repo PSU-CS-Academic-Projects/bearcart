@@ -9,6 +9,7 @@ next.user-config.*
 
 # Generated/external files
 .agents/
+.claude/
 AGENT.md
 DESIGN.json
 DESIGN.md

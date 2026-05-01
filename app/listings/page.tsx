@@ -30,20 +30,14 @@ function ListingCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
       <div className="aspect-square animate-pulse bg-muted" />
-      <div className="flex flex-col gap-3 p-4">
-        <div className="space-y-2">
-          <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-          <div className="h-5 w-1/3 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="border-t pt-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="size-6 animate-pulse rounded-full bg-muted" />
-              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-            </div>
-            <div className="h-3 w-12 animate-pulse rounded bg-muted" />
-          </div>
+      <div className="flex flex-col gap-1.5 p-3">
+        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-6 w-2/5 animate-pulse rounded bg-muted" />
+        <div className="mt-1.5 flex items-center gap-2 border-t pt-2">
+          <div className="size-5 animate-pulse rounded-full bg-muted" />
+          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
         </div>
       </div>
     </div>
@@ -52,8 +46,8 @@ function ListingCardSkeleton() {
 
 function ListingsGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
         <ListingCardSkeleton key={i} />
       ))}
     </div>
@@ -108,17 +102,17 @@ async function ListingsGrid({
       {/* Result count */}
       <p className="mb-4 text-sm text-muted-foreground">
         {total === 0
-          ? "No listings found"
+          ? "No listings yet"
           : listings.length < total
-            ? `Showing ${listings.length} of ${total} listing${total !== 1 ? "s" : ""}`
-            : `${total} listing${total !== 1 ? "s" : ""}`}
+            ? `Showing ${listings.length} of ${total} from your classmates`
+            : `${total} ${total === 1 ? "item" : "items"} from your classmates`}
       </p>
 
       {listings.length === 0 ? (
         <EmptyState hasFilters={hasActiveFilters} />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {listings.map((listing) => (
               <ListingCard
                 key={listing.id}
@@ -159,32 +153,32 @@ export default async function ListingsPage({ searchParams }: PageProps) {
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         {/* Page Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold text-foreground md:text-3xl">
             All Listings
           </h1>
         </div>
 
-        {/* Top Controls */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        {/* Top Controls — quieter, data is the hero */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <ListingsMobileFiltersSheet />
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center text-sm">
             <SortSelect />
           </div>
         </div>
 
         {/* Active Filter Badges */}
-        <div className="mb-4">
+        <div className="mb-3">
           <Suspense fallback={null}>
             <ActiveFilterBadges />
           </Suspense>
         </div>
 
         {/* Main Content */}
-        <div className="flex gap-8">
+        <div className="flex gap-6">
           {/* Sidebar - Desktop only */}
           <Suspense fallback={null}>
             <ListingsFiltersSidebar className="hidden w-64 shrink-0 lg:block" />

@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/navbar";
 import { HeroSection } from "@/components/hero-section";
-import { ListingsSection } from "@/components/listings-section";
+import { ListingsSection, LandingListingsSection } from "@/components/listings-section";
 import { RequestsSection } from "@/components/requests-section";
 import { HomeTabs } from "@/components/home-tabs";
 import { Footer } from "@/components/footer";
@@ -13,7 +13,7 @@ export default function HomePage() {
         <HeroSection />
         <div className="pt-6">
           <HomeTabs
-            listingsTab={<ListingsSection />}
+            listingsTab={<LandingListingsSection />}
             requestsTab={<RequestsSection />}
           />
         </div>

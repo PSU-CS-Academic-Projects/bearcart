@@ -91,6 +91,9 @@ export default function SetupPage() {
       return;
     }
 
+    // Send welcome email (fire-and-forget — don't block navigation)
+    fetch("/api/send-welcome", { method: "POST" }).catch(() => {});
+
     router.replace("/listings");
   };
 

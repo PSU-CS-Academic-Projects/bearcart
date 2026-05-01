@@ -29,7 +29,7 @@ export function DeleteListingDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <Warning className="size-6 text-destructive" weight="fill" />
+            <Warning className="size-6 text-destructive" />
           </div>
           <DialogTitle className="text-center">Delete Listing</DialogTitle>
           <DialogDescription className="text-center">

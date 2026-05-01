@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { sendMessageNotificationEmail } from "@/lib/email";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,9 @@ export async function getMessages(conversationId: string) {
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
+const NOTIFICATION_DELAY_MS = 60 * 1000;        // 1 minute — give recipient a chance to read first
+const NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes — prevent email spam per conversation
+
 export async function sendMessage(
   conversationId: string,
   content: string,
@@ -173,6 +177,122 @@ export async function sendMessage(
     .from("conversations")
     .update({ last_message: preview, last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
+
+  // ─── Email Notification (bidirectional, delayed, throttled) ───────────────
+  //
+  // Flow:
+  //   1. Skip immediately if the message was somehow already read.
+  //   2. Skip if this conversation was emailed in the last 30 minutes.
+  //   3. Wait 1 minute — gives the recipient a chance to see it in-app.
+  //   4. Re-fetch the message; if now read → skip.
+  //   5. Determine the receiver (whoever ISN'T the sender) and email them.
+  //   6. Stamp last_notified_at to start the cooldown window.
+  //
+  // Fire-and-forget: never block the message-send response on email work.
+  const messageId = message.id;
+  const senderId = user.id;
+  const messagePreview =
+    trimmed
+      ? trimmed
+      : cleanImageUrl
+        ? "[Sent a photo]"
+        : "[New message]";
+
+  void (async () => {
+    try {
+      // ── Pre-flight cooldown check ────────────────────────────────────────
+      const { data: convCooldown } = await supabase
+        .from("conversations")
+        .select("last_notified_at")
+        .eq("id", conversationId)
+        .single();
+
+      if (convCooldown?.last_notified_at) {
+        const elapsed = Date.now() - new Date(convCooldown.last_notified_at).getTime();
+        if (elapsed < NOTIFICATION_COOLDOWN_MS) return;
+      }
+
+      // ── Wait 1 minute, then re-check is_read ─────────────────────────────
+      await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY_MS));
+
+      const { data: freshMessage } = await supabase
+        .from("messages")
+        .select("is_read")
+        .eq("id", messageId)
+        .single();
+
+      if (!freshMessage || freshMessage.is_read) return;
+
+      // ── Re-check cooldown post-delay (someone else may have notified) ────
+      // ── and fetch full sender/receiver/listing context ───────────────────
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select(`
+          buyer_id, seller_id, last_notified_at,
+          listing:listings ( title, price ),
+          buyer:users!conversations_buyer_id_fkey ( id, first_name, full_name, email ),
+          seller:users!conversations_seller_id_fkey ( id, first_name, full_name, email )
+        `)
+        .eq("id", conversationId)
+        .single();
+
+      if (!conv) return;
+
+      if (conv.last_notified_at) {
+        const elapsed = Date.now() - new Date(conv.last_notified_at).getTime();
+        if (elapsed < NOTIFICATION_COOLDOWN_MS) return;
+      }
+
+      const buyer = conv.buyer as unknown as {
+        id: string;
+        first_name: string | null;
+        full_name: string | null;
+        email: string | null;
+      } | null;
+      const seller = conv.seller as unknown as {
+        id: string;
+        first_name: string | null;
+        full_name: string | null;
+        email: string | null;
+      } | null;
+      const listing = conv.listing as unknown as { title: string; price: number } | null;
+
+      if (!buyer || !seller) return;
+
+      // Bidirectional: receiver is whoever is NOT the sender
+      const sender = senderId === buyer.id ? buyer : seller;
+      const receiver = senderId === buyer.id ? seller : buyer;
+
+      if (!receiver.email) return;
+
+      const senderFull = sender.full_name?.trim() || "PalMart user";
+      const senderFirst = sender.first_name?.trim() || senderFull.split(/\s+/)[0] || "PalMart user";
+      const receiverFirst =
+        receiver.first_name?.trim() ||
+        receiver.full_name?.trim()?.split(/\s+/)[0] ||
+        "there";
+
+      // ── Send the email ───────────────────────────────────────────────────
+      await sendMessageNotificationEmail({
+        toEmail: receiver.email,
+        receiverFirstName: receiverFirst,
+        senderFullName: senderFull,
+        senderFirstName: senderFirst,
+        listingTitle: listing?.title ?? null,
+        listingPrice: listing?.price ?? null,
+        messagePreview,
+        conversationId,
+      });
+
+      // ── Stamp cooldown ───────────────────────────────────────────────────
+      await supabase
+        .from("conversations")
+        .update({ last_notified_at: new Date().toISOString() })
+        .eq("id", conversationId);
+    } catch (err) {
+      console.error("[sendMessage] Email notification error:", err);
+    }
+  })();
 
   return message as MessageRow;
 }
