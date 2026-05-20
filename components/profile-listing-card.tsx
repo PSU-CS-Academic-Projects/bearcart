@@ -17,6 +17,7 @@ import {
   Trash,
   CheckCircle,
   Heart,
+  Image as ImageIcon,
 } from "@phosphor-icons/react";
 
 interface ProfileListingCardProps {
@@ -62,12 +63,18 @@ export function ProfileListingCard({
 
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-muted">
-        <Image
-          src={imageUrl}
-          alt={title}
-          fill
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="size-10" weight="duotone" />
+          </div>
+        )}
         {/* Badges overlay */}
         <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
           <Badge className="bg-primary text-primary-foreground">{category}</Badge>

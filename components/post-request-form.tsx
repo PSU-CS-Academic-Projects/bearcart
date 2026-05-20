@@ -140,7 +140,7 @@ export function PostRequestForm() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex-1">
-        <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-8">
           {/* Breadcrumb + Header */}
           <div className="mb-8">
             <Breadcrumb
