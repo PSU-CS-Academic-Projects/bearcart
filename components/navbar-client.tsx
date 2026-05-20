@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -152,9 +152,9 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href="/listings/new" className="flex cursor-pointer items-center gap-2">
+          <Link href="/post" className="flex cursor-pointer items-center gap-2">
             <Plus className="size-4" />
-            Post a Listing
+            Create a Post
           </Link>
         </DropdownMenuItem>
 
@@ -188,6 +188,7 @@ export function NavbarClient({
   initialNotifications,
 }: NavbarClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -316,7 +317,10 @@ export function NavbarClient({
     if (selectedCategory && selectedCategory !== "All Categories") {
       params.set("category", selectedCategory);
     }
-    router.push(`/listings?${params.toString()}`);
+    const targetPath = pathname.startsWith("/requests") ? "/requests" : "/listings";
+    const query = params.toString();
+    setMobileMenuOpen(false);
+    router.push(query ? `${targetPath}?${query}` : targetPath);
   };
 
   const handleSignOut = async () => {
@@ -337,7 +341,7 @@ export function NavbarClient({
         {/* ── Desktop Search ────────────────────────────────────────── */}
         <form
           onSubmit={handleSearchSubmit}
-          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-8 md:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 lg:flex"
         >
           <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
             <div className="flex items-center border-r px-3">
@@ -358,7 +362,7 @@ export function NavbarClient({
               <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search listings..."
+                placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -368,7 +372,13 @@ export function NavbarClient({
         </form>
 
         {/* ── Desktop Right ─────────────────────────────────────────── */}
-        <div className="relative z-10 hidden shrink-0 items-center gap-2 md:flex">
+        <div className="relative z-10 hidden shrink-0 items-center gap-2 lg:flex">
+          <Link
+            href="/listings"
+            className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Listings
+          </Link>
           {/* Looking For — visible to everyone */}
           <Link
             href="/requests"
@@ -379,11 +389,10 @@ export function NavbarClient({
 
           {user ? (
             <>
-              {/* Post a Listing */}
               <Button size="sm" asChild>
-                <Link href="/listings/new">
+                <Link href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}>
                   <Plus className="size-4" />
-                  Post a Listing
+                  Post
                 </Link>
               </Button>
 
@@ -410,7 +419,7 @@ export function NavbarClient({
 
         {/* ── Mobile Menu Trigger ───────────────────────────────────── */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild className="md:hidden">
+          <SheetTrigger asChild className="lg:hidden">
             <Button variant="ghost" size="icon" className="relative">
               <List className="size-5" />
               {/* Unread dot on hamburger when logged in */}
@@ -448,7 +457,7 @@ export function NavbarClient({
                   <MagnifyingGlass className="size-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search listings..."
+                    placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -459,6 +468,15 @@ export function NavbarClient({
               <div className="h-px bg-border" />
 
               {/* Looking For — visible to everyone */}
+              <Link
+                href="/listings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+              >
+                <ShoppingCart className="size-4" />
+                Listings
+              </Link>
+
               <Link
                 href="/requests"
                 onClick={() => setMobileMenuOpen(false)}
@@ -537,14 +555,13 @@ export function NavbarClient({
                     My Profile
                   </Link>
 
-                  {/* Post a Listing */}
                   <Link
-                    href="/listings/new"
+                    href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <Plus className="size-4" />
-                    Post a Listing
+                    Create a Post
                   </Link>
 
                   <div className="h-px bg-border" />

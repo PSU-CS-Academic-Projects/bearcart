@@ -499,7 +499,7 @@ export function PostListingForm() {
           )}
         </div>
       </div>
-      <p className="text-center text-xs text-muted-foreground">By posting you agree to PalMart&apos;s community guidelines</p>
+      <p className="text-center text-xs text-muted-foreground">By posting you agree to Bearcart&apos;s community guidelines</p>
     </div>
   );
 
@@ -642,7 +642,7 @@ export function PostListingForm() {
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 {submitButton}
               </div>
-              <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to PalMart&apos;s community guidelines</p>
+              <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to Bearcart&apos;s community guidelines</p>
             </section>
           </form>
         </div>

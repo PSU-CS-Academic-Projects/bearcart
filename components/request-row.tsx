@@ -88,17 +88,13 @@ export function RequestRow({
   const isOwn = currentUserId === request.requester_id;
   const cover = getRequestCoverImage(request);
 
-  const handleRowClick = () => {
-    router.push(`/requests/${request.id}`);
-  };
-
   const handleIHaveThis = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUserId) {
-      router.push(`/auth/login?returnTo=/requests/${request.id}`);
+      router.push("/auth/login?returnTo=/requests");
       return;
     }
-    router.push(`/requests/${request.id}`);
+    router.push(`/profile/${request.requester_id}`);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -107,28 +103,25 @@ export function RequestRow({
   };
 
   return (
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={handleRowClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleRowClick();
-        }
-      }}
-      className="group flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/50 sm:gap-4 sm:px-5 sm:py-4"
-    >
+    <div className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30 sm:gap-4 sm:px-5 sm:py-4">
       {/* Left section: image thumbnail */}
       <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
         {cover ? (
-          <Image
-            src={cover}
-            alt={request.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 64px, 80px"
-          />
+          <a
+            href={cover}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`View image for ${request.title}`}
+          >
+            <Image
+              src={cover}
+              alt={request.title}
+              fill
+              className="object-cover transition-transform hover:scale-105"
+              sizes="(max-width: 640px) 64px, 80px"
+            />
+          </a>
         ) : (
           <Icon className="size-8 text-muted-foreground opacity-50 sm:size-10" />
         )}
@@ -140,7 +133,7 @@ export function RequestRow({
         {/* Title + Urgency */}
         <div className="flex flex-wrap items-center gap-2">
           <UrgencyBadge urgency={request.urgency} />
-          <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground transition-colors group-hover:text-primary">
+          <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground">
             {request.title}
           </h3>
         </div>

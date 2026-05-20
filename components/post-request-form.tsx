@@ -119,7 +119,7 @@ export function PostRequestForm() {
     try {
       const minNum = budgetMin ? parseFloat(budgetMin) : null;
       const maxNum = budgetMax ? parseFloat(budgetMax) : null;
-      const result = await createRequest({
+      await createRequest({
         title: title.trim(),
         description: description.trim(),
         category,
@@ -129,7 +129,7 @@ export function PostRequestForm() {
         photos,
       });
       toast.success("Request posted successfully!");
-      router.push(`/requests/${result.id}`);
+      router.push("/requests");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post request";
       toast.error(message);
@@ -344,7 +344,7 @@ export function PostRequestForm() {
               )}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              By posting you agree to PalMart&apos;s community guidelines
+              By posting you agree to Bearcart&apos;s community guidelines
             </p>
           </form>
         </div>
