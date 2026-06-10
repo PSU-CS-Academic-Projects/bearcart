@@ -25,7 +25,10 @@ export function ListingCard({
   timePosted,
   imageUrl,
 }: ListingCardProps) {
-  const firstName = sellerName.split(" ")[0] || sellerName;
+  const parts = sellerName.trim().split(" ");
+  const displayName = parts.length >= 2
+    ? `${parts[0]} ${parts[parts.length - 1][0]}.`
+    : parts[0];
 
   return (
     <Link href={`/listings/${id}`} className="group block">
@@ -48,7 +51,16 @@ export function ListingCard({
         <div className="p-3">
           <p className="text-lg font-bold text-[oklch(0.585_0.144_55)] leading-tight">₱{price.toLocaleString()}</p>
           <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">{title}</h3>
-          <p className="mt-1.5 text-xs text-[oklch(0.5_0_0)]">{timePosted} · {condition}</p>
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[oklch(0.5_0_0)]">
+            <div className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[oklch(0.92_0_0)]">
+              {sellerAvatar ? (
+                <Image src={sellerAvatar} alt={displayName} fill unoptimized className="object-cover" />
+              ) : (
+                <User className="size-full p-0.5" />
+              )}
+            </div>
+            <span>{displayName} · {timePosted} · {condition}</span>
+          </div>
         </div>
       </article>
     </Link>
