@@ -299,6 +299,7 @@ export function ChatWindow({
                     alt={listing.title}
                     width={56}
                     height={56}
+                    unoptimized
                     className="size-14 shrink-0 rounded-lg object-cover transition-opacity hover:opacity-80"
                   />
                 </button>

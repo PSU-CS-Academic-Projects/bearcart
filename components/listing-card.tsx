@@ -32,7 +32,7 @@ export function ListingCard({
       <article className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={title} fill className="object-cover" />
+            <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
             <div className="flex size-full items-center justify-center">
               <ShoppingBag className="size-12 text-[oklch(0.75_0_0)]" />

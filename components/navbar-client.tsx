@@ -99,6 +99,7 @@ function AvatarImage({ user }: { user: NavbarUser }) {
         alt={user.full_name}
         width={32}
         height={32}
+        unoptimized
         className="size-8 rounded-full object-cover ring-2 ring-primary/30"
       />
     );
@@ -497,6 +498,7 @@ export function NavbarClient({
                           src={user.avatar_url}
                           alt={user.full_name}
                           fill
+                          unoptimized
                           className="object-cover ring-2 ring-primary/30"
                         />
                       ) : (

@@ -35,6 +35,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
                 src={requester.avatar_url}
                 alt={displayName}
                 fill
+                unoptimized
                 className="object-cover"
               />
             ) : (

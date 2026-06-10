@@ -262,6 +262,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                         src={img.url}
                         alt="Existing"
                         fill
+                        unoptimized
                         className="object-cover"
                         sizes="120px"
                       />

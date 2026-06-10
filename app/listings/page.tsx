@@ -104,8 +104,8 @@ async function ListingsGrid({
         {total === 0
           ? "No listings yet"
           : listings.length < total
-            ? `Showing ${listings.length} of ${total} from your classmates`
-            : `${total} ${total === 1 ? "item" : "items"} from your classmates`}
+            ? `Showing ${listings.length} of ${total} listings`
+            : `${total} ${total === 1 ? "item" : "items"} listings`}
       </p>
 
       {listings.length === 0 ? (

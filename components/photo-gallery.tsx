@@ -42,6 +42,7 @@ export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
           src={photos[activeIndex]}
           alt={`${alt} - Photo ${activeIndex + 1}`}
           fill
+          unoptimized
           className="object-contain"
           priority
         />
@@ -91,6 +92,7 @@ export function PhotoGallery({ photos, alt }: PhotoGalleryProps) {
               src={photo}
               alt={`${alt} thumbnail ${index + 1}`}
               fill
+              unoptimized
               className="object-contain"
             />
           </button>

@@ -131,6 +131,7 @@ export function EditProfileModal({
                     src={avatarPreview}
                     alt="Profile"
                     fill
+                    unoptimized
                     className="object-cover"
                   />
                 ) : (

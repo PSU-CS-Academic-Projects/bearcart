@@ -47,6 +47,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
                 src={seller.avatar_url}
                 alt={displayName}
                 fill
+                unoptimized
                 className="object-cover"
               />
             ) : (

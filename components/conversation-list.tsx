@@ -260,6 +260,7 @@ function ConversationItem({
                 src={conversation.otherUser.avatar}
                 alt={conversation.otherUser.name}
                 fill
+                unoptimized
                 className="object-cover"
               />
             ) : (

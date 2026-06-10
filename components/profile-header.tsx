@@ -78,6 +78,7 @@ export function ProfileHeader({
                   src={profile.avatar_url}
                   alt={profile.full_name}
                   fill
+                  unoptimized
                   className="object-cover"
                 />
               ) : (

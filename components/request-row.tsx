@@ -118,6 +118,7 @@ export function RequestRow({
               src={cover}
               alt={request.title}
               fill
+              unoptimized
               className="object-cover transition-transform hover:scale-105"
               sizes="(max-width: 640px) 64px, 80px"
             />
