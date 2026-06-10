@@ -6,11 +6,11 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { SellerInfoCard } from "@/components/seller-info-card";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ListingActions } from "@/components/listing-actions";
+import { ReportListingModal } from "@/components/report-listing-modal";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Clock,
-  Flag,
   Eye,
   Handshake,
   Tag,
@@ -241,10 +241,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               {seller && <SellerInfoCard seller={seller} />}
 
-              <button className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive">
-                <Flag className="size-3.5" />
-                Report this listing
-              </button>
+              <ReportListingModal />
             </div>
           </section>
 
