@@ -241,7 +241,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               {seller && <SellerInfoCard seller={seller} />}
 
-              <ReportListingModal />
+              <ReportListingModal posterId={listing.seller_id} />
             </div>
           </section>
 

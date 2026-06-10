@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Flag } from "@phosphor-icons/react";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 const REASONS = [
   "Fake or misleading",
@@ -21,10 +22,17 @@ const REASONS = [
   "Other",
 ] as const;
 
-export function ReportListingModal() {
+export function ReportListingModal({ posterId }: { posterId: string }) {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string>("");
   const [details, setDetails] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+  }, []);
 
   const handleSubmit = () => {
     setOpen(false);
@@ -32,6 +40,8 @@ export function ReportListingModal() {
     setDetails("");
     toast.success("Thank you, we'll review this listing.");
   };
+  console.log('currentUserId:', currentUserId, 'posterId:', posterId)
+  if (currentUserId === null || currentUserId === posterId) return null;
 
   return (
     <>
@@ -70,7 +80,12 @@ export function ReportListingModal() {
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
                 rows={3}
+                maxLength={300}
+                className="break-all"
               />
+                <p className={`text-xs text-right ${details.length >= 300 ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {details.length}/300{details.length >= 300 && '  Character limit reached'}
+                </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
@@ -83,3 +98,4 @@ export function ReportListingModal() {
     </>
   );
 }
+
