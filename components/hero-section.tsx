@@ -18,12 +18,12 @@ export function HeroSection() {
               BearCart
             </span>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4 leading-[1.15]">
-              The campus marketplace for PalSU students.
+              The campus marketplace for PalSU Bearcats.
             </h1>
             <p className="text-base text-gray-500 mb-8 leading-relaxed max-w-md">
-              Buy and sell textbooks, electronics, and more. Zero shipping, no strangers — meet on campus with verified classmates.
+              Buy and sell within the PalSU community — meet safely on campus, no shipping, no hassle. Need something? Post a request and let your fellow Bearcats find it.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 mb-7">
+            <div className="flex flex-wrap gap-3 mb-7">
               <a
                 href="/listings"
                 className="inline-flex items-center justify-center h-11 px-6 bg-[#C85F00] hover:bg-[#a64e00] text-white font-semibold rounded-lg text-sm shadow-sm transition-colors"
@@ -35,6 +35,12 @@ export function HeroSection() {
                 className="inline-flex items-center justify-center h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold rounded-lg text-sm transition-colors"
               >
                 Sell an item
+              </a>
+              <a
+                href="/requests/new"
+                className="inline-flex items-center justify-center h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold rounded-lg text-sm transition-colors"
+              >
+                Post a request
               </a>
             </div>
             <div className="flex flex-wrap items-center gap-5 text-sm text-gray-500">

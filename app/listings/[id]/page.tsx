@@ -160,7 +160,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     variant="secondary"
                     className="rounded-full px-2 py-0.5 text-xs font-semibold"
                   >
-                    in {listing.category}
+                    {listing.category}
                   </Badge>
 
                   {listing.status === "sold" && (

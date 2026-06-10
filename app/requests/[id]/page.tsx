@@ -115,7 +115,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
                     variant="secondary"
                     className="rounded-full px-2 py-0.5 text-xs font-semibold"
                   >
-                    in {request.category}
+                    {request.category}
                   </Badge>
                 </div>
 

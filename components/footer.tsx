@@ -111,14 +111,14 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <EnvelopeIcon className="size-4 shrink-0" />
-                <a href="mailto:support@bearcart.ph" className="hover:text-primary">
-                  support@bearcart.ph
+                <a href="mailto:bearcartpalsu@gmail.com" className="hover:text-primary">
+                  bearcartpalsu@gmail.com
                 </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <PhoneIcon className="size-4 shrink-0" />
-                <a href="tel:+639123456789" className="hover:text-primary">
-                  +63 912 345 6789
+                <a href="tel:+639126214018" className="hover:text-primary">
+                  +63 912 621 4018
                 </a>
               </li>
             </ul>

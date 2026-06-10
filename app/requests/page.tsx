@@ -136,7 +136,7 @@ async function RequestsList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Looking For — PalMart",
+  title: "Requests — PalMart",
 };
 
 export default async function RequestsPage({ searchParams }: PageProps) {
@@ -156,7 +156,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-              Looking For
+              Requests
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Help PSU students and faculty find what they need
