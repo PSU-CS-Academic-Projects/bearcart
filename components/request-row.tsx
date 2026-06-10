@@ -48,8 +48,8 @@ function categoryIconFor(category: string): React.ComponentType<{ className?: st
 
 const URGENCY_STYLES: Record<RequestUrgency, string> = {
   not_urgent: "bg-muted text-muted-foreground",
-  moderate: "bg-amber-tint text-foreground",
-  urgent: "bg-destructive/10 text-destructive",
+  moderate: "bg-primary/10 text-primary",
+  urgent: "bg-amber-900/10 text-amber-900",
 };
 
 function UrgencyBadge({ urgency }: { urgency: RequestUrgency }) {
@@ -151,6 +151,11 @@ export function RequestRow({
           </span>
           <span>&middot;</span>
           <span>{formatBudget(request.budget_min, request.budget_max)}</span>
+          {request.is_negotiable && (
+            <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Negotiable
+            </span>
+          )}
           <span>&middot;</span>
           <span>{formatTimeAgo(request.created_at)}</span>
         </p>
@@ -160,13 +165,15 @@ export function RequestRow({
           {rightAction ? (
             <div onClick={(e) => e.stopPropagation()}>{rightAction}</div>
           ) : variant === "owner" || isOwn ? (
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="outline"
               onClick={handleEdit}
-              className="font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="h-7 px-3 text-xs"
             >
               Edit
-            </button>
+            </Button>
           ) : (
             <Button
               type="button"

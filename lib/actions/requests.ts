@@ -33,6 +33,7 @@ export interface RequestRow {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   status: RequestStatus;
   created_at: string;
@@ -293,6 +294,7 @@ export interface CreateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   /** Up to 3 base64-encoded images */
   photos: string[];
@@ -327,6 +329,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: input.is_negotiable,
       urgency: input.urgency,
     })
     .select("id")
@@ -361,6 +364,7 @@ export interface UpdateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   /** Existing image URLs to keep (in new order) */
   existingPhotos: string[];
@@ -403,6 +407,7 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: input.is_negotiable,
       urgency: input.urgency,
     })
     .eq("id", input.requestId)

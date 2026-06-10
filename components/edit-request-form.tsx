@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -56,10 +57,10 @@ const CATEGORIES = [
   "Others",
 ];
 
-const URGENCIES: { value: RequestUrgency; label: string; description: string; dot: string }[] = [
-  { value: "not_urgent", label: "Flexible", description: "No rush, whenever", dot: "bg-emerald-500" },
-  { value: "moderate", label: "Need Soon", description: "Within the next week", dot: "bg-amber-500" },
-  { value: "urgent", label: "Urgent", description: "ASAP — exams or deadline", dot: "bg-red-500" },
+const URGENCIES: { value: RequestUrgency; label: string }[] = [
+  { value: "not_urgent", label: "Flexible" },
+  { value: "moderate", label: "Need Soon" },
+  { value: "urgent", label: "Urgent" },
 ];
 
 const TITLE_MAX = 100;
@@ -114,12 +115,10 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   const [title, setTitle] = useState(request.title);
   const [category, setCategory] = useState(request.category);
   const [description, setDescription] = useState(request.description ?? "");
-  const [budgetMin, setBudgetMin] = useState(
+  const [budget, setBudget] = useState(
     request.budget_min !== null ? String(request.budget_min) : ""
   );
-  const [budgetMax, setBudgetMax] = useState(
-    request.budget_max !== null ? String(request.budget_max) : ""
-  );
+  const [negotiable, setNegotiable] = useState(request.is_negotiable ?? false);
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -139,16 +138,11 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     if (description.length > DESC_MAX) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
-    const minNum = budgetMin ? parseFloat(budgetMin) : null;
-    const maxNum = budgetMax ? parseFloat(budgetMax) : null;
-    if (minNum !== null && minNum < 0) next.budget = "Minimum budget cannot be negative";
-    else if (maxNum !== null && maxNum < 0) next.budget = "Maximum budget cannot be negative";
-    else if (minNum !== null && maxNum !== null && minNum > maxNum) {
-      next.budget = "Minimum must be less than or equal to maximum";
-    }
+    const budgetNum = budget ? parseFloat(budget) : null;
+    if (budgetNum !== null && budgetNum < 0) next.budget = "Budget cannot be negative";
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [title, category, description, budgetMin, budgetMax]);
+  }, [title, category, description, budget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,15 +152,15 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     }
     setSubmitting(true);
     try {
-      const minNum = budgetMin ? parseFloat(budgetMin) : null;
-      const maxNum = budgetMax ? parseFloat(budgetMax) : null;
+      const budgetNum = budget ? parseFloat(budget) : null;
       await updateRequest({
         requestId: request.id,
         title: title.trim(),
         description: description.trim(),
         category,
-        budget_min: minNum,
-        budget_max: maxNum,
+        budget_min: budgetNum,
+        budget_max: null,
+        is_negotiable: negotiable,
         urgency,
         existingPhotos: existing.map((p) => p.url),
         removedImageIds: removedIds,
@@ -363,41 +357,27 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
 
             {/* Budget */}
             <div className="space-y-2">
-              <Label>Budget Range (optional)</Label>
+              <Label>Budget (optional)</Label>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0.00"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  disabled={submitting}
+                  className={cn("pl-7", errors.budget && "border-destructive")}
+                />
+              </div>
               <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="From"
-                      value={budgetMin}
-                      onChange={(e) => setBudgetMin(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
-                <span className="text-muted-foreground">to</span>
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="To"
-                      value={budgetMax}
-                      onChange={(e) => setBudgetMax(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
+                <Checkbox
+                  id="edit-negotiable"
+                  checked={negotiable}
+                  onCheckedChange={(c) => setNegotiable(c as boolean)}
+                  disabled={submitting}
+                />
+                <Label htmlFor="edit-negotiable" className="text-sm font-normal">Price is negotiable</Label>
               </div>
               {errors.budget && (
                 <p className="text-sm text-destructive">{errors.budget}</p>
@@ -419,20 +399,18 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                       onClick={() => setUrgency(u.value)}
                       disabled={submitting}
                       className={cn(
-                        "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors",
+                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
                         active
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:bg-accent/50",
+                          ? "border-primary bg-primary/5 text-primary ring-1 ring-primary"
+                          : "border-border text-foreground hover:bg-accent/50",
                         submitting && "opacity-50"
                       )}
                     >
-                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <span className={cn("size-2.5 rounded-full", u.dot)} />
-                        {u.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {u.description}
-                      </span>
+                      <span className={cn(
+                        "size-2.5 rounded-full border-2",
+                        active ? "border-primary bg-primary" : "border-gray-300 bg-transparent"
+                      )} />
+                      {u.label}
                     </button>
                   );
                 })}
