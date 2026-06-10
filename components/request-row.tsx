@@ -32,6 +32,7 @@ import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
   getRequesterShortName,
   formatBudget,
+  hasPositiveBudget,
   urgencyLabel,
   getRequestCoverImage,
 } from "@/lib/request-helpers";
@@ -187,7 +188,7 @@ export function RequestRow({
             <Icon className="size-3.5" />
             {request.category}
           </span>
-          {(request.budget_min !== null || request.budget_max !== null) && (
+          {hasPositiveBudget(request.budget_min, request.budget_max) && (
             <>
               <span>&middot;</span>
               <span>Budget: {formatBudget(request.budget_min, request.budget_max)}</span>

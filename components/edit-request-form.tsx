@@ -66,6 +66,7 @@ const URGENCIES: { value: RequestUrgency; label: string }[] = [
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
 const MAX_PHOTOS = 3;
+const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
 
 interface ExistingImage {
   id: string;
@@ -93,6 +94,15 @@ function CharCounter({ current, max }: { current: number; max: number }) {
   );
 }
 
+function sanitizeBudget(value: string) {
+  if (!value) return "";
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+
+  return String(Math.floor(numericValue));
+}
+
 interface EditRequestFormProps {
   request: RequestRow;
 }
@@ -116,7 +126,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   const [category, setCategory] = useState(request.category);
   const [description, setDescription] = useState(request.description ?? "");
   const [budget, setBudget] = useState(
-    request.budget_min !== null ? String(request.budget_min) : ""
+    request.budget_min !== null && request.budget_min > 0 ? String(request.budget_min) : ""
   );
   const [negotiable, setNegotiable] = useState(request.is_negotiable ?? false);
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
@@ -139,7 +149,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
     const budgetNum = budget ? parseFloat(budget) : null;
-    if (budgetNum !== null && budgetNum < 0) next.budget = "Budget cannot be negative";
+    if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
     setErrors(next);
     return Object.keys(next).length === 0;
   }, [title, category, description, budget]);
@@ -362,10 +372,14 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
                 <Input
                   type="number"
-                  min="0"
-                  placeholder="0.00"
+                  min={1}
+                  step={1}
+                  placeholder="e.g. 500"
                   value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                  }}
+                  onChange={(e) => setBudget(sanitizeBudget(e.target.value))}
                   disabled={submitting}
                   className={cn("pl-7", errors.budget && "border-destructive")}
                 />

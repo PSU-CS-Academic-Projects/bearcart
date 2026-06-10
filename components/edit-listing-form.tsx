@@ -62,6 +62,7 @@ const categories = [
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
+const BLOCKED_PRICE_KEYS = ["e", "E", "-", "."];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -122,6 +123,15 @@ function CharCounter({ current, max }: { current: number; max: number }) {
       {current} / {max} characters
     </span>
   );
+}
+
+function sanitizePrice(value: string) {
+  if (!value) return "";
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+
+  return String(Math.floor(numericValue));
 }
 
 // ─── Condition Map (DB ↔ UI) ──────────────────────────────────────────────────
@@ -357,9 +367,14 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           <Input
             id="edit-price"
             type="number"
-            placeholder="0.00"
+            min={1}
+            step={1}
+            placeholder="e.g. 500"
             value={formData.price}
-            onChange={(e) => updateField("price", e.target.value)}
+            onKeyDown={(e) => {
+              if (BLOCKED_PRICE_KEYS.includes(e.key)) e.preventDefault();
+            }}
+            onChange={(e) => updateField("price", sanitizePrice(e.target.value))}
             className={cn("pl-7", errors.price && "border-destructive")}
             disabled={submitting}
           />

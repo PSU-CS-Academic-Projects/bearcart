@@ -27,12 +27,19 @@ export function getRequesterFullName(requester: RequestRow["requester"]): string
 
 /** Format the budget range as "₱200 - ₱300", "₱200+", "Up to ₱300", or "Budget flexible". */
 export function formatBudget(min: number | null, max: number | null): string {
-  if (min !== null && max !== null) {
-    return `₱${min.toLocaleString()} – ₱${max.toLocaleString()}`;
+  const positiveMin = min !== null && min > 0 ? min : null;
+  const positiveMax = max !== null && max > 0 ? max : null;
+
+  if (positiveMin !== null && positiveMax !== null) {
+    return `₱${positiveMin.toLocaleString()} – ₱${positiveMax.toLocaleString()}`;
   }
-  if (min !== null) return `₱${min.toLocaleString()}`;
-  if (max !== null) return `Up to ₱${max.toLocaleString()}`;
+  if (positiveMin !== null) return `₱${positiveMin.toLocaleString()}`;
+  if (positiveMax !== null) return `Up to ₱${positiveMax.toLocaleString()}`;
   return "Budget flexible";
+}
+
+export function hasPositiveBudget(min: number | null, max: number | null): boolean {
+  return (min !== null && min > 0) || (max !== null && max > 0);
 }
 
 /** Convert urgency value to a human label. */

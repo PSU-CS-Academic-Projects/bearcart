@@ -43,6 +43,7 @@ const URGENCIES: { value: RequestUrgency; label: string }[] = [
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
 const MAX_PHOTOS = 3;
+const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,15 @@ function CharCounter({ current, max }: { current: number; max: number }) {
       {current} / {max} characters
     </span>
   );
+}
+
+function sanitizeBudget(value: string) {
+  if (!value) return "";
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+
+  return String(Math.floor(numericValue));
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -98,7 +108,7 @@ export function PostRequestForm() {
     }
 
     const budgetNum = budget ? parseFloat(budget) : null;
-    if (budgetNum !== null && budgetNum < 0) next.budget = "Budget cannot be negative";
+    if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -246,10 +256,14 @@ export function PostRequestForm() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
                 <Input
                   type="number"
-                  min="0"
-                  placeholder="0.00"
+                  min={1}
+                  step={1}
+                  placeholder="e.g. 500"
                   value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                  }}
+                  onChange={(e) => setBudget(sanitizeBudget(e.target.value))}
                   disabled={submitting}
                   className={cn("pl-7", errors.budget && "border-destructive")}
                 />

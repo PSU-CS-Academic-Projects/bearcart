@@ -12,7 +12,7 @@ import { Clock, Flag, Warning } from "@phosphor-icons/react/dist/ssr";
 import { getRequestById, getSimilarRequests } from "@/lib/actions/requests";
 import { createClient } from "@/lib/supabase-server";
 import { formatTimeAgo } from "@/lib/listing-helpers";
-import { formatBudget, urgencyLabel } from "@/lib/request-helpers";
+import { formatBudget, hasPositiveBudget, urgencyLabel } from "@/lib/request-helpers";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -97,7 +97,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
                   </h1>
                 </div>
 
-                {(request.budget_min !== null || request.budget_max !== null) && (
+                {hasPositiveBudget(request.budget_min, request.budget_max) && (
                   <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
                     <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
                       <span className="mr-1.5 text-lg font-semibold text-muted-foreground">Budget:</span>
