@@ -5,7 +5,6 @@ import { Footer } from "@/components/footer";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { SellerInfoCard } from "@/components/seller-info-card";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { MeetupInfo } from "@/components/meetup-info";
 import { ListingActions } from "@/components/listing-actions";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
@@ -199,14 +198,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       </span>
                     )}
                 </div>
-
-                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-foreground">
-                  <span className="flex size-5 items-center justify-center rounded-full bg-card text-primary">
-                    <MapPin className="size-3.5 text-primary" />
-                  </span>
-                  Campus pickup at PSU
-                </div>
-
                 <div className="rounded-xl bg-secondary/45 px-3 py-2.5">
                   <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
                     Seller&apos;s note
@@ -249,8 +240,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
               )}
 
               {seller && <SellerInfoCard seller={seller} />}
-
-              <MeetupInfo />
 
               <button className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive">
                 <Flag className="size-3.5" />

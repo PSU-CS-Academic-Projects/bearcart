@@ -36,10 +36,8 @@ import {
 import {
   Camera,
   ListBullets,
-  MapPin,
   FloppyDisk,
   SpinnerGap,
-  Buildings,
   Trash,
   CheckCircle,
   X as XIcon,
@@ -61,9 +59,6 @@ const categories = [
   { value: "others", label: "Others" },
 ];
 
-const meetupLocations = [
-  "Library", "Cafeteria", "Main Building Lobby", "Covered Court", "Department Office",
-];
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
@@ -98,7 +93,6 @@ interface FormData {
   negotiable: boolean;
   description: string;
   tags: string[];
-  meetupLocations: string[];
 }
 
 interface FormErrors {
@@ -166,12 +160,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   const [deleting, setDeleting] = useState(false);
   const [markingSold, setMarkingSold] = useState(false);
 
-  // ── Parse existing tags ────────────────────────────────────────────────
-  const existingMeetupLocations = listing.tags
-    .filter((t) => t.startsWith("meetup:"))
-    .map((t) => t.replace("meetup:", ""));
-  const existingRegularTags = listing.tags.filter((t) => !t.startsWith("meetup:"));
-
   // ── Photo State ────────────────────────────────────────────────────────
   // photos = mix of existing URLs and new base64 strings, in display order
   const [photos, setPhotos] = useState<string[]>(
@@ -194,8 +182,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     price: listing.price.toString(),
     negotiable: listing.is_negotiable,
     description: listing.description,
-    tags: existingRegularTags,
-    meetupLocations: existingMeetupLocations,
+    tags: listing.tags.filter((t) => !t.startsWith("meetup:")),
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -206,14 +193,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
-  };
-
-  const toggleArrayField = <K extends keyof FormData>(field: K, value: string) => {
-    const currentArray = formData[field] as string[];
-    const newArray = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    updateField(field, newArray as FormData[K]);
   };
 
   // ── Photo handlers ─────────────────────────────────────────────────────
@@ -260,9 +239,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
       const existingPhotos = photos.filter((p) => p.startsWith("http"));
       const newPhotos = photos.filter((p) => p.startsWith("data:"));
 
-      const meetupTags = formData.meetupLocations.map((loc) => `meetup:${loc}`);
-      const allTags = [...formData.tags, ...meetupTags];
-
       await updateListing({
         listingId: listing.id,
         title: formData.title.trim(),
@@ -271,7 +247,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
-        tags: allTags,
+        tags: formData.tags,
         existingPhotos,
         removedImageIds,
         newPhotos,
@@ -429,30 +405,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     </div>
   );
 
-  const meetupSection = (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <Label className="flex items-center gap-2">
-          <Buildings className="size-4 text-primary" />
-          Preferred Meetup Spots on PSU Campus
-        </Label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {meetupLocations.map((loc) => (
-            <div key={loc} className="flex items-center gap-2">
-              <Checkbox
-                id={`edit-location-${loc}`}
-                checked={formData.meetupLocations.includes(loc)}
-                onCheckedChange={() => toggleArrayField("meetupLocations", loc)}
-                disabled={submitting}
-              />
-              <Label htmlFor={`edit-location-${loc}`} className="text-sm font-normal">{loc}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
   const statusSection = (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -585,16 +537,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                 <h2 className="text-lg font-semibold text-foreground">Listing Details</h2>
               </div>
               {detailsSection}
-            </section>
-            <div className="h-px bg-border" />
-
-            {/* Meetup */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-2">
-                <MapPin className="size-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Meetup Preferences</h2>
-              </div>
-              {meetupSection}
             </section>
             <div className="h-px bg-border" />
 

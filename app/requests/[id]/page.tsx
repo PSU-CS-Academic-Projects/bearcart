@@ -3,7 +3,6 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { MeetupInfo } from "@/components/meetup-info";
 import { RequesterInfoCard } from "@/components/requester-info-card";
 import { RequestActions } from "@/components/request-actions";
 import { RequestRow } from "@/components/request-row";
@@ -145,8 +144,6 @@ export default async function RequestDetailPage({ params }: PageProps) {
               </div>
 
               <RequesterInfoCard requester={request.requester} />
-
-              <MeetupInfo />
 
               <button className="flex items-center gap-1 self-start text-xs text-muted-foreground transition-colors hover:text-destructive">
                 <Flag className="size-3.5" />
