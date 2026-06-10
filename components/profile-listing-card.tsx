@@ -140,7 +140,7 @@ export function ProfileListingCard({
       <div className="flex flex-col gap-2 p-4">
         {/* Title and Price */}
         <div>
-          <h3 className="line-clamp-2 font-semibold text-foreground">
+          <h3 className="line-clamp-2 min-h-[2lh] font-semibold text-foreground">
             {title}
           </h3>
           <p className="mt-1 text-lg font-bold text-primary">

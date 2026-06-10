@@ -18,7 +18,7 @@ export function HeroSection() {
               BearCart
             </span>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4 leading-[1.15]">
-              The campus marketplace for PSU students.
+              The campus marketplace for PalSU students.
             </h1>
             <p className="text-base text-gray-500 mb-8 leading-relaxed max-w-md">
               Buy and sell textbooks, electronics, and more. Zero shipping, no strangers — meet on campus with verified classmates.
@@ -39,14 +39,14 @@ export function HeroSection() {
             </div>
             <div className="flex flex-wrap items-center gap-5 text-sm text-gray-500">
               <span className="flex items-center gap-1.5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-green-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-primary">
                   <path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z" />
                   <path d="m9 12 2 2 4-4" />
                 </svg>
-                Verified PSU accounts
+                Verified PalSU accounts
               </span>
               <span className="flex items-center gap-1.5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-gray-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-4 text-primary">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                   <circle cx="12" cy="9" r="2.5" />
                 </svg>

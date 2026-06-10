@@ -47,7 +47,7 @@ export function ListingCard({
         </div>
         <div className="p-3">
           <p className="text-lg font-bold text-[oklch(0.585_0.144_55)] leading-tight">₱{price.toLocaleString()}</p>
-          <h3 className="mt-1 line-clamp-2 text-sm font-medium text-[oklch(0.2_0_0)]">{title}</h3>
+          <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">{title}</h3>
           <p className="mt-1.5 text-xs text-[oklch(0.5_0_0)]">{timePosted} · {condition}</p>
         </div>
       </article>
