@@ -15,6 +15,7 @@ import {
   PencilSimple,
   CheckCircle,
   Heart,
+  Trash,
 } from "@phosphor-icons/react";
 
 interface ProfileListingCardProps {
@@ -45,6 +46,7 @@ export function ProfileListingCard({
   dateSold,
   onEdit,
   onMarkSold,
+  onDelete,
   onRemoveSaved,
 }: ProfileListingCardProps) {
   return (
@@ -98,6 +100,12 @@ export function ProfileListingCard({
                     <DropdownMenuItem onClick={onMarkSold}>
                       <CheckCircle className="size-4" />
                       Mark as Sold
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                      <Trash className="size-4" />
+                      Remove Listing
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

@@ -18,7 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
 import { RequestRow } from "@/components/request-row";
-import { updateListingStatus } from "@/lib/actions/listings";
+import { updateListingStatus, deleteListing } from "@/lib/actions/listings";
 import { removeSavedListing } from "@/lib/actions/saved";
 import {
   markRequestFulfilled,
@@ -91,6 +91,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(props.variant === "own" ? "active" : "listings");
   const [markSoldId, setMarkSoldId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeItems, setActiveItems] = useState(props.activeListings);
   const [soldItems, setSoldItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).soldListings : []);
   const [savedItems, setSavedItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).savedListings : []);
@@ -119,6 +120,20 @@ export function ProfileTabs(props: ProfileTabsProps) {
       toast.error("Failed to mark as sold");
     }
     setMarkSoldId(null);
+  };
+
+  // ── Delete Listing ────────────────────────────────────────────────────
+
+  const handleDeleteListing = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteListing(deleteId);
+      setActiveItems((prev) => prev.filter((l) => l.id !== deleteId));
+      toast.success("Listing removed!");
+    } catch {
+      toast.error("Failed to remove listing");
+    }
+    setDeleteId(null);
   };
 
   // ── Remove Saved ──────────────────────────────────────────────────────
@@ -192,7 +207,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           variant={variant}
           onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
-          onDelete={undefined}
+          onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
           onRemoveSaved={variant === "saved" ? () => handleRemoveSaved(listing.id) : undefined}
         />
       ))}
@@ -388,6 +403,27 @@ export function ProfileTabs(props: ProfileTabsProps) {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleMarkSold}>
                 Yes, Mark as Sold
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Listing Confirmation */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Listing?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the listing and cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteListing}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                Yes, Remove
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
