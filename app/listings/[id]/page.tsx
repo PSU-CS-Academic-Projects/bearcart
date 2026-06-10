@@ -202,7 +202,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
                     Seller&apos;s note
                   </h2>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-5 text-foreground/80">
+                  <p className="mt-1 whitespace-pre-line break-all text-sm leading-5 text-foreground/80">
                     {listing.description ?? "No description provided."}
                   </p>
                 </div>
