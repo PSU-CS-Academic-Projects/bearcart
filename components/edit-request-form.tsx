@@ -167,7 +167,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
         newPhotos,
       });
       toast.success("Request updated!");
-      router.push(`/requests/${request.id}`);
+      router.push("/requests");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update request";
       toast.error(message);

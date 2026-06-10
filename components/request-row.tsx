@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -11,8 +12,21 @@ import {
   Wrench,
   DotsThree,
   Package,
+  PencilSimple,
+  Check,
+  XCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
@@ -21,7 +35,9 @@ import {
   urgencyLabel,
   getRequestCoverImage,
 } from "@/lib/request-helpers";
+import { markRequestFulfilled, closeRequest } from "@/lib/actions/requests";
 import type { RequestRow as RequestRowType, RequestUrgency } from "@/lib/actions/requests";
+import { toast } from "sonner";
 
 // ─── Category Icon Lookup ─────────────────────────────────────────────────────
 
@@ -87,6 +103,8 @@ export function RequestRow({
   const Icon = categoryIconFor(request.category);
   const isOwn = currentUserId === request.requester_id;
   const cover = getRequestCoverImage(request);
+  const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | null>(null);
+  const [acting, setActing] = useState(false);
 
   const handleIHaveThis = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -100,6 +118,26 @@ export function RequestRow({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(`/requests/${request.id}/edit`);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    setActing(true);
+    try {
+      if (confirmAction === "fulfilled") {
+        await markRequestFulfilled(request.id);
+        toast.success("Request marked as fulfilled!");
+      } else {
+        await closeRequest(request.id);
+        toast.success("Request closed.");
+      }
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setActing(false);
+      setConfirmAction(null);
+    }
   };
 
   return (
@@ -149,12 +187,16 @@ export function RequestRow({
             <Icon className="size-3.5" />
             {request.category}
           </span>
-          <span>&middot;</span>
-          <span>{formatBudget(request.budget_min, request.budget_max)}</span>
-          {request.is_negotiable && (
-            <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              Negotiable
-            </span>
+          {(request.budget_min !== null || request.budget_max !== null) && (
+            <>
+              <span>&middot;</span>
+              <span>Budget: {formatBudget(request.budget_min, request.budget_max)}</span>
+              {request.is_negotiable && (
+                <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Negotiable
+                </span>
+              )}
+            </>
           )}
           <span>&middot;</span>
           <span>{formatTimeAgo(request.created_at)}</span>
@@ -165,15 +207,20 @@ export function RequestRow({
           {rightAction ? (
             <div onClick={(e) => e.stopPropagation()}>{rightAction}</div>
           ) : variant === "owner" || isOwn ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleEdit}
-              className="h-7 px-3 text-xs"
-            >
-              Edit
-            </Button>
+            <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={handleEdit}>
+                <PencilSimple className="size-3" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("fulfilled"); }}>
+                <Check className="size-3 text-primary" />
+                Fulfilled
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("closed"); }}>
+                <XCircle className="size-3 text-muted-foreground" />
+                Close
+              </Button>
+            </div>
           ) : (
             <Button
               type="button"
@@ -187,6 +234,27 @@ export function RequestRow({
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(o) => { if (!o) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "fulfilled" ? "Mark as fulfilled?" : "Close this request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "fulfilled"
+                ? "This marks the request as completed and removes it from the public list."
+                : "This closes the request without marking it as fulfilled."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={acting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction} disabled={acting}>
+              {confirmAction === "fulfilled" ? "Mark as Fulfilled" : "Close Request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { RequesterInfoCard } from "@/components/requester-info-card";
 import { RequestActions } from "@/components/request-actions";
+import { RequestOwnerActions } from "@/components/request-owner-actions";
 import { RequestRow } from "@/components/request-row";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Flag, Warning } from "@phosphor-icons/react/dist/ssr";
@@ -20,8 +21,8 @@ interface PageProps {
 
 const URGENCY_BADGE_STYLES: Record<string, string> = {
   not_urgent: "bg-muted text-muted-foreground",
-  moderate: "bg-amber-100 text-amber-800",
-  urgent: "bg-destructive/10 text-destructive",
+  moderate: "bg-primary/10 text-primary",
+  urgent: "bg-amber-900/10 text-amber-900",
 };
 
 export default async function RequestDetailPage({ params }: PageProps) {
@@ -96,9 +97,19 @@ export default async function RequestDetailPage({ params }: PageProps) {
                   </h1>
                 </div>
 
-                <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
-                  {formatBudget(request.budget_min, request.budget_max)}
-                </p>
+                {(request.budget_min !== null || request.budget_max !== null) && (
+                  <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
+                    <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
+                      <span className="mr-1.5 text-lg font-semibold text-muted-foreground">Budget:</span>
+                      {formatBudget(request.budget_min, request.budget_max)}
+                    </p>
+                    {request.is_negotiable && (
+                      <span className="mb-0.5 inline-flex items-center rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                        Negotiable
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2.5">
@@ -142,6 +153,10 @@ export default async function RequestDetailPage({ params }: PageProps) {
                   isAvailable={!isUnavailable}
                 />
               </div>
+
+              {currentUserId === request.requester_id && !isUnavailable && (
+                <RequestOwnerActions requestId={request.id} />
+              )}
 
               <RequesterInfoCard requester={request.requester} />
 

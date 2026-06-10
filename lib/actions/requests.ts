@@ -129,7 +129,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     .select(
       `
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -188,7 +188,7 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -211,7 +211,7 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -241,7 +241,7 @@ export async function getSimilarRequests(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -269,7 +269,7 @@ export async function getRequestsByRequester(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
