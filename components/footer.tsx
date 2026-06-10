@@ -12,7 +12,7 @@ import {
 const quickLinks = [
   { name: "Browse Listings", href: "/listings" },
   { name: "Post a Listing", href: "/listings/new" },
-  { name: "Looking For", href: "/requests" },
+  { name: "Requests", href: "/requests" },
 ];
 
 const categories = [

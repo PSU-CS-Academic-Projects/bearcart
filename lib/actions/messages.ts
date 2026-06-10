@@ -265,8 +265,8 @@ export async function sendMessage(
 
       if (!receiver.email) return;
 
-      const senderFull = sender.full_name?.trim() || "PalMart user";
-      const senderFirst = sender.first_name?.trim() || senderFull.split(/\s+/)[0] || "PalMart user";
+      const senderFull = sender.full_name?.trim() || "BearCart user";
+      const senderFirst = sender.first_name?.trim() || senderFull.split(/\s+/)[0] || "BearCart user";
       const receiverFirst =
         receiver.first_name?.trim() ||
         receiver.full_name?.trim()?.split(/\s+/)[0] ||

@@ -38,7 +38,7 @@ export function HomeTabs({ listingsTab, requestsTab }: HomeTabsProps) {
               className="relative z-10 gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             >
               <MagnifyingGlassIcon className="size-4" />
-              Looking For
+              Requests
             </TabsTrigger>
           </TabsList>
         </div>

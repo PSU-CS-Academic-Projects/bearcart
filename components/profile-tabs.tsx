@@ -445,7 +445,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="requests" className="gap-2">
           <MagnifyingGlass className="size-4" />
-          Looking For ({requests.length})
+          Requests ({requests.length})
         </TabsTrigger>
       </TabsList>
 

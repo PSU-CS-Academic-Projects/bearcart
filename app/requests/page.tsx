@@ -136,7 +136,7 @@ async function RequestsList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Requests — PalMart",
+  title: "Requests — BearCart",
 };
 
 export default async function RequestsPage({ searchParams }: PageProps) {

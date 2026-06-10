@@ -115,7 +115,7 @@ export function MessagesClient({
           [initialConversationId]: msgs.map((m) => mapMessage(m, currentUserId)),
         }));
         // Tell navbar to refetch the unread message count
-        window.dispatchEvent(new CustomEvent("palmart:messages-read"));
+        window.dispatchEvent(new CustomEvent("bearcart:messages-read"));
       } catch (err) {
         console.error("Failed to load initial messages:", err);
       }
@@ -206,7 +206,7 @@ export function MessagesClient({
         [id]: msgs.map((m) => mapMessage(m, currentUserId)),
       }));
       // Tell navbar to refetch the unread message count
-      window.dispatchEvent(new CustomEvent("palmart:messages-read"));
+      window.dispatchEvent(new CustomEvent("bearcart:messages-read"));
     } catch (err) {
       console.error("Failed to load messages:", err);
     }

@@ -145,7 +145,7 @@ export function PostRequestForm() {
           <div className="mb-8">
             <Breadcrumb
               items={[
-                { label: "Looking For", href: "/requests" },
+                { label: "Requests", href: "/requests" },
                 { label: "New" },
               ]}
             />

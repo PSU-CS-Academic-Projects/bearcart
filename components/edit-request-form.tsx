@@ -232,7 +232,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
           <div className="mb-8">
             <Breadcrumb
               items={[
-                { label: "Looking For", href: "/requests" },
+                { label: "Requests", href: "/requests" },
                 { label: request.title, href: `/requests/${request.id}` },
                 { label: "Edit" },
               ]}

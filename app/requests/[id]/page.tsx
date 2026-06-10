@@ -52,7 +52,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
           {/* Breadcrumb */}
           <Breadcrumb
             items={[
-              { label: "Looking For", href: "/requests" },
+              { label: "Requests", href: "/requests" },
               { label: request.title },
             ]}
           />

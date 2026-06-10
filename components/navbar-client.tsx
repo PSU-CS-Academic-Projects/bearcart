@@ -306,8 +306,8 @@ export function NavbarClient({
   useEffect(() => {
     if (!user) return;
     const handler = () => refetchUnreadCount(user.id);
-    window.addEventListener("palmart:messages-read", handler);
-    return () => window.removeEventListener("palmart:messages-read", handler);
+    window.addEventListener("bearcart:messages-read", handler);
+    return () => window.removeEventListener("bearcart:messages-read", handler);
   }, [user, refetchUnreadCount]);
 
   // ── Search submit ──────────────────────────────────────────────────────
@@ -380,12 +380,12 @@ export function NavbarClient({
           >
             Listings
           </Link>
-          {/* Looking For — visible to everyone */}
+          {/* Requests — visible to everyone */}
           <Link
             href="/requests"
             className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Looking For
+            Requests
           </Link>
 
           {user ? (
@@ -468,7 +468,7 @@ export function NavbarClient({
 
               <div className="h-px bg-border" />
 
-              {/* Looking For — visible to everyone */}
+              {/* Requests — visible to everyone */}
               <Link
                 href="/listings"
                 onClick={() => setMobileMenuOpen(false)}
@@ -484,7 +484,7 @@ export function NavbarClient({
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
               >
                 <MagnifyingGlass className="size-4" />
-                Looking For
+                Requests
               </Link>
 
               {/* Mobile Auth Section */}

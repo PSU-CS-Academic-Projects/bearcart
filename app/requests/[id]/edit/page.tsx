@@ -9,7 +9,7 @@ interface PageProps {
 }
 
 export const metadata = {
-  title: "Edit Request — PalMart",
+  title: "Edit Request — BearCart",
 };
 
 export default async function EditRequestPage({ params }: PageProps) {

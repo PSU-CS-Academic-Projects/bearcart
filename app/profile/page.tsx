@@ -10,7 +10,7 @@ import { getSavedListings } from "@/lib/actions/saved";
 import { getRequestsByRequester } from "@/lib/actions/requests";
 
 export const metadata = {
-  title: "My Profile — PalMart",
+  title: "My Profile — BearCart",
 };
 
 export default async function ProfilePage() {
