@@ -77,8 +77,11 @@ export function ProfileListingCard({
 
           {/* Action menu for active listings */}
           {variant === "active" && (onEdit || onMarkSold) && (
-            <div className="absolute right-2 top-2" onClick={(e) => e.preventDefault()}>
-              <DropdownMenu>
+            <div
+              className="absolute right-2 top-2 z-20 opacity-0 transition-opacity group-hover:opacity-100"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            >
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button size="icon" variant="secondary" className="size-7 bg-white/90 backdrop-blur-sm">
                     <DotsThreeVertical className="size-4" />
@@ -104,7 +107,10 @@ export function ProfileListingCard({
 
           {/* Remove from saved button */}
           {variant === "saved" && onRemoveSaved && (
-            <div className="absolute right-2 top-2" onClick={(e) => e.preventDefault()}>
+            <div
+              className="absolute right-2 top-2 z-20 opacity-0 transition-opacity group-hover:opacity-100"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            >
               <Button
                 size="icon"
                 variant="secondary"
