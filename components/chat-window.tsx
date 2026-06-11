@@ -3,8 +3,31 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ArrowLeft,
   PaperPlaneTilt,
@@ -16,8 +39,9 @@ import {
   SpinnerGap,
   WarningCircle,
   ShoppingBag,
-  Trash,
+  DotsThree,
   ProhibitInset,
+  Flag,
 } from "@phosphor-icons/react";
 import type { Conversation } from "./conversation-list";
 import { formatListingPrice } from "@/lib/listing-helpers";
@@ -32,6 +56,7 @@ export interface Message {
   isFromMe: boolean;
   isRead: boolean;
   isDeleted: boolean;
+  deletedAt: Date | null;
   type: "text";
 }
 
@@ -84,6 +109,16 @@ function formatDateSeparator(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
+function formatFullTimestamp(date: Date): string {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function shouldShowDateSeparator(
   current: Message,
   previous: Message | null
@@ -131,6 +166,7 @@ export function ChatWindow({
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -334,127 +370,180 @@ export function ChatWindow({
       )}
 
       {/* ── Messages Area ────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <p className="text-sm text-muted-foreground">
-              No messages yet. Send a message to get started!
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {messages.map((message, index) => {
-              const hasImage = !!message.imageUrl;
-              const hasText = message.text.length > 0;
-              const isPlaceholder = message.id.startsWith("pending-");
+      <TooltipProvider delayDuration={300}>
+        <div className="flex-1 overflow-y-auto p-4">
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center">
+              <p className="text-sm text-muted-foreground">
+                No messages yet. Send a message to get started!
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {messages.map((message, index) => {
+                const hasImage = !!message.imageUrl;
+                const hasText = message.text.length > 0;
+                const isPlaceholder = message.id.startsWith("pending-");
 
-              return (
-                <div key={message.id} className="group">
-                  {/* Date Separator */}
-                  {shouldShowDateSeparator(message, messages[index - 1] || null) && (
-                    <div className="my-4 flex items-center justify-center">
-                      <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                        {formatDateSeparator(message.timestamp)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Message Bubble */}
-                  <div
-                    className={`mb-1 flex items-end gap-1 ${message.isFromMe ? "justify-end" : "justify-start"}`}
-                  >
-                    {/* Delete button — own non-deleted messages only, appears on group hover */}
-                    {message.isFromMe && !message.isDeleted && !isPlaceholder && onDeleteMessage && (
+                const menuButton = !message.isDeleted && !isPlaceholder && onDeleteMessage ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => onDeleteMessage(message.id)}
-                        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-destructive group-hover:opacity-100"
-                        aria-label="Delete message"
+                        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover/bubble:opacity-100"
+                        aria-label="Message options"
                       >
-                        <Trash className="size-3.5" />
+                        <DotsThree className="size-4" weight="bold" />
                       </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align={message.isFromMe ? "end" : "start"} className="w-32">
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setMessageToDelete(message.id)}
+                      >
+                        <ProhibitInset className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toast.info("Report submitted. Thank you for keeping BearCart safe.")}
+                      >
+                        <Flag className="size-4" />
+                        Report
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null;
+
+                return (
+                  <div key={message.id}>
+                    {/* Date Separator */}
+                    {shouldShowDateSeparator(message, messages[index - 1] || null) && (
+                      <div className="my-4 flex items-center justify-center">
+                        <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                          {formatDateSeparator(message.timestamp)}
+                        </span>
+                      </div>
                     )}
 
-                    {message.isDeleted ? (
-                      /* Deleted placeholder */
-                      <div
-                        className={`flex items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2 text-sm italic text-muted-foreground ${
-                          message.isFromMe ? "border-primary/20" : "border-border"
-                        }`}
-                      >
-                        <ProhibitInset className="size-3.5 shrink-0" />
-                        Message deleted
-                      </div>
-                    ) : (
-                      <div
-                        className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${hasText
-                            ? `rounded-2xl px-4 py-2 ${message.isFromMe
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground"
-                            }`
-                            : ""
-                          }`}
-                      >
-                        {/* Image */}
-                        {hasImage && (
-                          <button
-                            type="button"
-                            onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
-                            className={`relative w-full overflow-hidden rounded-lg ${hasText ? "" : ""
-                              }`}
-                            aria-label="Open image"
-                            disabled={isPlaceholder}
-                          >
-                            {isPlaceholder ? (
-                              <div className="flex aspect-square w-[200px] max-w-full items-center justify-center bg-muted">
-                                <SpinnerGap className="size-6 animate-spin text-muted-foreground" />
+                    {/* Message row */}
+                    <div className={`mb-1 flex ${message.isFromMe ? "justify-end" : "justify-start"}`}>
+                      {/* group/bubble: hover activates only within the bubble+menu wrapper */}
+                      <div className={`group/bubble flex items-end gap-1 ${message.isFromMe ? "flex-row-reverse" : "flex-row"}`}>
+
+                        {message.isDeleted ? (
+                          /* Deleted placeholder with tooltip */
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`flex cursor-default items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2 text-sm italic text-muted-foreground ${
+                                  message.isFromMe ? "border-primary/20" : "border-border"
+                                }`}
+                              >
+                                <ProhibitInset className="size-3.5 shrink-0" />
+                                {message.isFromMe ? "You deleted this message" : "Message deleted"}
                               </div>
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={message.imageUrl ?? ""}
-                                alt="Sent image"
-                                className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
-                                loading="lazy"
-                              />
-                            )}
-                          </button>
-                        )}
-
-                        {/* Text */}
-                        {hasText && (
-                          <p className="whitespace-pre-wrap break-words text-sm">
-                            {message.text}
-                          </p>
-                        )}
-
-                        {/* Time / read marker */}
-                        <div
-                          className={`flex items-center justify-end gap-1 text-[10px] ${hasText
-                              ? message.isFromMe
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                              : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="flex flex-col gap-0.5 text-xs">
+                              <span>Sent {formatFullTimestamp(message.timestamp)}</span>
+                              {message.deletedAt && (
+                                <span>Deleted {formatFullTimestamp(message.deletedAt)}</span>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          /* Normal bubble */
+                          <div
+                            className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${
+                              hasText
+                                ? `rounded-2xl px-4 py-2 ${
+                                    message.isFromMe
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-muted text-foreground"
+                                  }`
+                                : ""
                             }`}
-                        >
-                          <span>{formatMessageTime(message.timestamp)}</span>
-                          {message.isFromMe &&
-                            (message.isRead ? (
-                              <Checks className="size-3.5" />
-                            ) : (
-                              <Check className="size-3.5" />
-                            ))}
-                        </div>
+                          >
+                            {hasImage && (
+                              <button
+                                type="button"
+                                onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
+                                className="relative w-full overflow-hidden rounded-lg"
+                                aria-label="Open image"
+                                disabled={isPlaceholder}
+                              >
+                                {isPlaceholder ? (
+                                  <div className="flex aspect-square w-[200px] max-w-full items-center justify-center bg-muted">
+                                    <SpinnerGap className="size-6 animate-spin text-muted-foreground" />
+                                  </div>
+                                ) : (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={message.imageUrl ?? ""}
+                                    alt="Sent image"
+                                    className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
+                                    loading="lazy"
+                                  />
+                                )}
+                              </button>
+                            )}
+                            {hasText && (
+                              <p className="whitespace-pre-wrap break-words text-sm">{message.text}</p>
+                            )}
+                            <div
+                              className={`flex items-center justify-end gap-1 text-[10px] ${
+                                hasText
+                                  ? message.isFromMe
+                                    ? "text-primary-foreground/70"
+                                    : "text-muted-foreground"
+                                  : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
+                              }`}
+                            >
+                              <span>{formatMessageTime(message.timestamp)}</span>
+                              {message.isFromMe && (
+                                message.isRead
+                                  ? <Checks className="size-3.5" />
+                                  : <Check className="size-3.5" />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3-dot menu — only for own non-deleted messages */}
+                        {message.isFromMe && menuButton}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-      </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+      </TooltipProvider>
+
+      {/* ── Delete Confirmation Dialog ───────────────────────────── */}
+      <AlertDialog open={!!messageToDelete} onOpenChange={(open) => { if (!open) setMessageToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Both you and the other person will see a &ldquo;Message deleted&rdquo; placeholder. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (messageToDelete) onDeleteMessage?.(messageToDelete);
+                setMessageToDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Pending Image Preview ───────────────────────────────── */}
       {(pendingImage || imageError) && (

@@ -12,6 +12,7 @@ export interface ConversationWithDetails {
   seller_id: string;
   last_message: string | null;
   last_message_at: string | null;
+  last_message_sender_id: string | null;
   created_at: string;
   archived_by_buyer: boolean;
   archived_by_seller: boolean;
@@ -49,7 +50,7 @@ export async function getConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
       listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
       buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
@@ -176,7 +177,7 @@ export async function sendMessage(
 
   await supabase
     .from("conversations")
-    .update({ last_message: preview, last_message_at: new Date().toISOString() })
+    .update({ last_message: preview, last_message_at: new Date().toISOString(), last_message_sender_id: user.id })
     .eq("id", conversationId);
 
   // ─── Email Notification (bidirectional, delayed, throttled) ───────────────
@@ -393,7 +394,7 @@ export async function deleteMessage(messageId: string): Promise<void> {
   if (!newerMsg) {
     await supabase
       .from("conversations")
-      .update({ last_message: "Message deleted" })
+      .update({ last_message: "Message deleted", last_message_sender_id: user.id })
       .eq("id", msg.conversation_id);
   }
 }
@@ -439,7 +440,7 @@ export async function getArchivedConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
       listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
       buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),

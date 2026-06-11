@@ -37,6 +37,9 @@ function mapConversation(
   const coverImg = listing?.listing_images?.find((i) => i.is_cover)?.image_url
     ?? listing?.listing_images?.[0]?.image_url ?? "";
 
+  const isLastMsgFromMe = conv.last_message_sender_id === currentUserId;
+  const isDeletedPreview = conv.last_message === "Message deleted";
+
   return {
     id: conv.id,
     otherUser: {
@@ -50,7 +53,12 @@ function mapConversation(
       ? { id: listing.id, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
       : undefined,
     lastMessage: conv.last_message
-      ? { text: conv.last_message, timestamp: new Date(conv.last_message_at ?? conv.created_at), isFromMe: false }
+      ? {
+          // "Message deleted" already says "You deleted a message" when isFromMe — skip the "You:" prefix
+          text: isDeletedPreview && isLastMsgFromMe ? "You deleted a message" : conv.last_message,
+          timestamp: new Date(conv.last_message_at ?? conv.created_at),
+          isFromMe: isLastMsgFromMe && !isDeletedPreview,
+        }
       : { text: "Start a conversation", timestamp: new Date(conv.created_at), isFromMe: false },
     unreadCount: conv.unreadCount ?? 0,
   };
@@ -65,6 +73,7 @@ function mapMessage(msg: MessageRow, currentUserId: string): Message {
     isFromMe: msg.sender_id === currentUserId,
     isRead: msg.is_read,
     isDeleted: !!msg.deleted_at,
+    deletedAt: msg.deleted_at ? new Date(msg.deleted_at) : null,
     type: "text",
   };
 }
@@ -221,7 +230,12 @@ export function MessagesClient({
               ...prev,
               [selectedConversationId]: convMsgs.map((m) =>
                 m.id === updatedMsg.id
-                  ? { ...m, isRead: updatedMsg.is_read, isDeleted: isNowDeleted }
+                  ? {
+                      ...m,
+                      isRead: updatedMsg.is_read,
+                      isDeleted: isNowDeleted,
+                      deletedAt: updatedMsg.deleted_at ? new Date(updatedMsg.deleted_at) : m.deletedAt,
+                    }
                   : m
               ),
             };
@@ -358,7 +372,7 @@ export function MessagesClient({
     setMessages((prev) => ({
       ...prev,
       [convId]: (prev[convId] || []).map((m) =>
-        m.id === messageId ? { ...m, isDeleted: true } : m
+        m.id === messageId ? { ...m, isDeleted: true, deletedAt: new Date() } : m
       ),
     }));
 
@@ -381,7 +395,7 @@ export function MessagesClient({
       setMessages((prev) => ({
         ...prev,
         [convId]: (prev[convId] || []).map((m) =>
-          m.id === messageId ? { ...m, isDeleted: false } : m
+          m.id === messageId ? { ...m, isDeleted: false, deletedAt: null } : m
         ),
       }));
       toast.error("Failed to delete message. Please try again.");
