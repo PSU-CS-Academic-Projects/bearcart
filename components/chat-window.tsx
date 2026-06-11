@@ -68,6 +68,7 @@ export interface PendingImage {
 interface ChatWindowProps {
   conversation: Conversation | null;
   messages: Message[];
+  isOtherUserOnline?: boolean;
   onSendMessage: (text: string, image: PendingImage | null) => void;
   onDeleteMessage?: (id: string) => void;
   onBack?: () => void;
@@ -156,6 +157,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 export function ChatWindow({
   conversation,
   messages,
+  isOtherUserOnline = false,
   onSendMessage,
   onDeleteMessage,
   onBack,
@@ -300,8 +302,12 @@ export function ChatWindow({
               </div>
             )}
           </div>
-          {/* Offline indicator (gray dot) */}
-          <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-card bg-muted-foreground/40" />
+          {/* Presence indicator */}
+          <span
+            className={`absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-card ${
+              isOtherUserOnline ? "bg-emerald-500" : "bg-muted-foreground/40"
+            }`}
+          />
         </Link>
 
         <div className="min-w-0 flex-1">
@@ -316,7 +322,9 @@ export function ChatWindow({
               PSU {conversation.otherUser.role}
             </Badge>
           </div>
-          <span className="text-xs text-muted-foreground">Offline</span>
+          <span className={`text-xs ${isOtherUserOnline ? "text-emerald-600" : "text-muted-foreground"}`}>
+            {isOtherUserOnline ? "Online" : "Offline"}
+          </span>
         </div>
       </div>
 
