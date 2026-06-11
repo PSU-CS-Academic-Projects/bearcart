@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -170,6 +170,7 @@ export function NavbarClient({
 }: NavbarClientProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
@@ -292,10 +293,17 @@ export function NavbarClient({
   // ── Search submit ──────────────────────────────────────────────────────
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (searchQuery.trim()) params.set("search", searchQuery.trim());
     const targetPath = pathname.startsWith("/requests") ? "/requests" : "/listings";
-    const query = params.toString();
+    const isOnTargetPage = pathname === targetPath;
+    // Preserve existing filters only when already on the target page
+    const base = isOnTargetPage ? new URLSearchParams(searchParams.toString()) : new URLSearchParams();
+    base.delete("page");
+    if (searchQuery.trim()) {
+      base.set("search", searchQuery.trim());
+    } else {
+      base.delete("search");
+    }
+    const query = base.toString();
     setMobileMenuOpen(false);
     router.push(query ? `${targetPath}?${query}` : targetPath);
   };
