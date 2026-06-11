@@ -371,15 +371,15 @@ export function ChatWindow({
 
       {/* ── Messages Area ────────────────────────────────────────── */}
       <TooltipProvider delayDuration={300}>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-1 flex-col overflow-y-auto p-4">
           {messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center text-center">
+            <div className="flex flex-1 flex-col items-center justify-center text-center">
               <p className="text-sm text-muted-foreground">
                 No messages yet. Send a message to get started!
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-1 flex-col justify-end gap-1">
               {messages.map((message, index) => {
                 const hasImage = !!message.imageUrl;
                 const hasText = message.text.length > 0;
