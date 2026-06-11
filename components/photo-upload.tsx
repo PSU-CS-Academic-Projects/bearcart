@@ -10,6 +10,31 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
+// ─── Magic byte detection ─────────────────────────────────────────────────────
+// Reads the first 12 bytes of a file and returns the actual MIME type.
+// This catches files renamed with a different extension (e.g. a GIF saved as .jpg).
+
+function detectMimeFromBytes(file: File): Promise<string | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buf = new Uint8Array(e.target!.result as ArrayBuffer);
+      // JPEG: FF D8 FF
+      if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return resolve("image/jpeg");
+      // PNG: 89 50 4E 47 0D 0A 1A 0A
+      if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return resolve("image/png");
+      // WebP: RIFF????WEBP
+      if (
+        buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+        buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+      ) return resolve("image/webp");
+      resolve(null);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PhotoUploadProps {
@@ -38,26 +63,33 @@ export function PhotoUpload({
   // ── File validation ───────────────────────────────────────────────────────
 
   const validateAndProcessFiles = useCallback(
-    (files: File[]) => {
+    async (files: File[]) => {
       setFileError(null);
       const errors: string[] = [];
       const validFiles: File[] = [];
 
       for (const file of files) {
-        const ext = "." + file.name.split(".").pop()?.toLowerCase();
+        // Extension check
+        const ext = "." + (file.name.split(".").pop()?.toLowerCase() ?? "");
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
           errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
           continue;
         }
-        if (!ALLOWED_TYPES.includes(file.type)) {
+
+        // Magic byte check — catches files renamed with a wrong extension
+        const actualType = await detectMimeFromBytes(file);
+        if (!actualType || !ALLOWED_TYPES.includes(actualType)) {
           errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
           continue;
         }
+
+        // Size check
         if (file.size > MAX_FILE_SIZE) {
           const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
           errors.push(`"${file.name}" is ${sizeMB} MB — max 5 MB per photo`);
           continue;
         }
+
         validFiles.push(file);
       }
 
@@ -78,7 +110,6 @@ export function PhotoUpload({
         reader.onload = (e) => {
           const result = e.target?.result as string;
           newPhotos.push(result);
-          // Only call onPhotosChange when all files processed
           if (newPhotos.length === photos.length + filesToProcess.length) {
             onPhotosChange([...newPhotos]);
           }
@@ -86,7 +117,6 @@ export function PhotoUpload({
         reader.readAsDataURL(file);
       });
 
-      // Reset input so re-selecting the same file works
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [photos, maxPhotos, onPhotosChange]
@@ -109,8 +139,7 @@ export function PhotoUpload({
       e.preventDefault();
       setIsDragging(false);
       if (disabled) return;
-      const files = Array.from(e.dataTransfer.files);
-      validateAndProcessFiles(files);
+      validateAndProcessFiles(Array.from(e.dataTransfer.files));
     },
     [disabled, validateAndProcessFiles]
   );
@@ -122,16 +151,13 @@ export function PhotoUpload({
   };
 
   const removePhoto = (index: number) => {
-    const newPhotos = photos.filter((_, i) => i !== index);
-    onPhotosChange(newPhotos);
+    onPhotosChange(photos.filter((_, i) => i !== index));
     setFileError(null);
   };
 
   // ── Drag to reorder ───────────────────────────────────────────────────────
 
-  const handleThumbDragStart = (index: number) => {
-    setDragIndex(index);
-  };
+  const handleThumbDragStart = (index: number) => setDragIndex(index);
 
   const handleThumbDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
@@ -141,10 +167,10 @@ export function PhotoUpload({
 
   const handleThumbDragEnd = () => {
     if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
-      const newPhotos = [...photos];
-      const [moved] = newPhotos.splice(dragIndex, 1);
-      newPhotos.splice(dragOverIndex, 0, moved);
-      onPhotosChange(newPhotos);
+      const next = [...photos];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(dragOverIndex, 0, moved);
+      onPhotosChange(next);
     }
     setDragIndex(null);
     setDragOverIndex(null);
@@ -197,7 +223,7 @@ export function PhotoUpload({
         </p>
       </label>
 
-      {/* Error Message */}
+      {/* Inline error */}
       {displayError && (
         <p className="text-sm text-destructive">{displayError}</p>
       )}
@@ -225,20 +251,17 @@ export function PhotoUpload({
                 className="size-full object-cover"
                 draggable={false}
               />
-              {/* Cover Photo Badge */}
               {index === 0 && (
                 <div className="absolute left-1 top-1 flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-xs font-medium text-primary-foreground">
                   <Star className="size-3" />
                   Cover
                 </div>
               )}
-              {/* Drag Handle */}
               {!disabled && (
                 <div className="absolute bottom-1 left-1 flex size-6 items-center justify-center rounded bg-foreground/60 text-background opacity-0 transition-opacity group-hover:opacity-100">
                   <DotsSixVertical className="size-4" />
                 </div>
               )}
-              {/* Remove Button */}
               {!disabled && (
                 <button
                   type="button"

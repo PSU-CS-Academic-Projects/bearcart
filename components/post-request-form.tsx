@@ -116,10 +116,7 @@ export function PostRequestForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) {
-      toast.error("Please fix the errors in the form");
-      return;
-    }
+    if (!validate()) return;
 
     setSubmitting(true);
     try {
