@@ -56,6 +56,17 @@ const CONDITION_LABELS: Record<string, string> = {
   poor: "Poor",
 };
 
+const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
+
+function sanitizeBudget(value: string) {
+  if (!value) return "";
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+
+  return String(Math.floor(numericValue));
+}
+
 // ─── Hook: URL Param Filters ──────────────────────────────────────────────────
 
 function useFilterParams() {
@@ -323,8 +334,16 @@ function FiltersContent() {
                 id="min-price"
                 name="min"
                 type="number"
-                placeholder="₱ Min"
+                min={1}
+                step={1}
+                placeholder="e.g. 500"
                 defaultValue={minPrice}
+                onKeyDown={(e) => {
+                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -335,8 +354,16 @@ function FiltersContent() {
                 id="max-price"
                 name="max"
                 type="number"
-                placeholder="₱ Max"
+                min={1}
+                step={1}
+                placeholder="e.g. 500"
                 defaultValue={maxPrice}
+                onKeyDown={(e) => {
+                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>

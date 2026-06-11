@@ -51,6 +51,17 @@ const URGENCY_LABELS: Record<string, string> = {
   urgent: "Urgent",
 };
 
+const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
+
+function sanitizeBudget(value: string) {
+  if (!value) return "";
+
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return "";
+
+  return String(Math.floor(numericValue));
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 function useRequestFilterParams() {
@@ -305,7 +316,7 @@ function FiltersContent() {
             const min = fd.get("min") as string;
             const max = fd.get("max") as string;
             set({
-              min: min && parseInt(min) >= 0 ? min : null,
+              min: min && parseInt(min) > 0 ? min : null,
               max: max && parseInt(max) > 0 ? max : null,
             });
           }}
@@ -318,8 +329,16 @@ function FiltersContent() {
                 id="req-min"
                 name="min"
                 type="number"
-                placeholder="₱ Min"
+                min={1}
+                step={1}
+                placeholder="e.g. 500"
                 defaultValue={minBudget}
+                onKeyDown={(e) => {
+                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -330,8 +349,16 @@ function FiltersContent() {
                 id="req-max"
                 name="max"
                 type="number"
-                placeholder="₱ Max"
+                min={1}
+                step={1}
+                placeholder="e.g. 500"
                 defaultValue={maxBudget}
+                onKeyDown={(e) => {
+                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
