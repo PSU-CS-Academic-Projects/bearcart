@@ -367,7 +367,7 @@ export async function deleteMessage(messageId: string): Promise<void> {
 
   const { data: msg } = await supabase
     .from("messages")
-    .select("sender_id")
+    .select("sender_id, conversation_id, created_at")
     .eq("id", messageId)
     .single();
 
@@ -380,6 +380,22 @@ export async function deleteMessage(messageId: string): Promise<void> {
     .eq("id", messageId);
 
   if (error) throw new Error(`Failed to delete message: ${error.message}`);
+
+  // If this was the latest message in the conversation, update the preview
+  const { data: newerMsg } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", msg.conversation_id)
+    .gt("created_at", msg.created_at)
+    .limit(1)
+    .maybeSingle();
+
+  if (!newerMsg) {
+    await supabase
+      .from("conversations")
+      .update({ last_message: "Message deleted" })
+      .eq("id", msg.conversation_id);
+  }
 }
 
 // ─── ARCHIVE / UNARCHIVE CONVERSATION ────────────────────────────────────────

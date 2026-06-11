@@ -193,14 +193,39 @@ export function MessagesClient({
         },
         (payload) => {
           const updatedMsg = payload.new as MessageRow;
-          setMessages((prev) => ({
-            ...prev,
-            [selectedConversationId]: (prev[selectedConversationId] || []).map((m) =>
-              m.id === updatedMsg.id
-                ? { ...m, isRead: updatedMsg.is_read, isDeleted: !!updatedMsg.deleted_at }
-                : m
-            ),
-          }));
+          const isNowDeleted = !!updatedMsg.deleted_at;
+
+          setMessages((prev) => {
+            const convMsgs = prev[selectedConversationId] || [];
+            const isLastMsg =
+              convMsgs.length > 0 &&
+              convMsgs[convMsgs.length - 1].id === updatedMsg.id;
+
+            // Update conversation preview when the last message is deleted
+            if (isNowDeleted && isLastMsg) {
+              const previewText =
+                updatedMsg.sender_id === currentUserId
+                  ? "You deleted a message"
+                  : "Message deleted";
+              const updatePreview = (list: Conversation[]) =>
+                list.map((c) =>
+                  c.id === selectedConversationId
+                    ? { ...c, lastMessage: { ...c.lastMessage, text: previewText } }
+                    : c
+                );
+              setConversations(updatePreview);
+              setArchivedConversations(updatePreview);
+            }
+
+            return {
+              ...prev,
+              [selectedConversationId]: convMsgs.map((m) =>
+                m.id === updatedMsg.id
+                  ? { ...m, isRead: updatedMsg.is_read, isDeleted: isNowDeleted }
+                  : m
+              ),
+            };
+          });
         }
       )
       .subscribe();
@@ -324,17 +349,35 @@ export function MessagesClient({
   const handleDeleteMessage = async (messageId: string) => {
     if (!selectedConversationId) return;
     const convId = selectedConversationId;
-    // Optimistic update
+    const convMessages = messages[convId] || [];
+    const isLastMessage =
+      convMessages.length > 0 &&
+      convMessages[convMessages.length - 1].id === messageId;
+
+    // Optimistic update — mark message deleted
     setMessages((prev) => ({
       ...prev,
       [convId]: (prev[convId] || []).map((m) =>
         m.id === messageId ? { ...m, isDeleted: true } : m
       ),
     }));
+
+    // Update conversation preview if this was the last message
+    if (isLastMessage) {
+      const updatePreview = (list: Conversation[]) =>
+        list.map((c) =>
+          c.id === convId
+            ? { ...c, lastMessage: { ...c.lastMessage, text: "You deleted a message" } }
+            : c
+        );
+      setConversations(updatePreview);
+      setArchivedConversations(updatePreview);
+    }
+
     try {
       await deleteMessageAction(messageId);
     } catch {
-      // Roll back on failure
+      // Roll back message state
       setMessages((prev) => ({
         ...prev,
         [convId]: (prev[convId] || []).map((m) =>
