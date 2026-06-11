@@ -14,13 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -43,19 +36,6 @@ import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import type { NotificationRow } from "@/lib/actions/notifications";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORIES = [
-  "All Categories",
-  "Books",
-  "Electronics",
-  "Clothing",
-  "Food",
-  "Supplies",
-  "Services",
-  "Others",
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -191,7 +171,6 @@ export function NavbarClient({
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [notifCount, setNotifCount] = useState(initialNotificationCount);
@@ -315,9 +294,6 @@ export function NavbarClient({
     e.preventDefault();
     const params = new URLSearchParams();
     if (searchQuery.trim()) params.set("search", searchQuery.trim());
-    if (selectedCategory && selectedCategory !== "All Categories") {
-      params.set("category", selectedCategory);
-    }
     const targetPath = pathname.startsWith("/requests") ? "/requests" : "/listings";
     const query = params.toString();
     setMobileMenuOpen(false);
@@ -345,20 +321,6 @@ export function NavbarClient({
           className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 lg:flex"
         >
           <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
-            <div className="flex items-center border-r px-3">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="h-9 w-36 shrink-0 border-0 bg-transparent shadow-none focus:ring-0">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
               <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
               <input
@@ -442,18 +404,6 @@ export function NavbarClient({
             <div className="mt-6 flex flex-col gap-4">
               {/* Mobile Search */}
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
                   <MagnifyingGlass className="size-4 text-muted-foreground" />
                   <input
