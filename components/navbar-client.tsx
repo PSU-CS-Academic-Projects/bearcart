@@ -337,24 +337,25 @@ export function NavbarClient({
   }, []);
 
   // ── Realtime: notifications ────────────────────────────────────────────
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const channel = supabase
-      .channel(`navbar-notifications:${user.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+      .channel(`navbar-notifications:${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         () => setNotifCount((c) => c + 1))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         async () => {
           const { count } = await supabase
             .from("notifications")
             .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .eq("is_read", false);
           setNotifCount(count ?? 0);
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [userId]);
 
   // ── Recompute unread message count ─────────────────────────────────────
   const refetchUnreadCount = useCallback(async (userId: string) => {
@@ -376,26 +377,26 @@ export function NavbarClient({
 
   // ── Realtime: messages ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const channel = supabase
-      .channel(`navbar-messages:${user.id}`)
+      .channel(`navbar-messages:${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const msg = payload.new as { sender_id: string; is_read: boolean };
-          if (msg.sender_id !== user.id && msg.is_read === false) setUnreadCount((c) => c + 1);
+          if (msg.sender_id !== userId && msg.is_read === false) setUnreadCount((c) => c + 1);
         })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" },
-        () => refetchUnreadCount(user.id))
+        () => refetchUnreadCount(userId))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user, refetchUnreadCount]);
+  }, [userId, refetchUnreadCount]);
 
   useEffect(() => {
-    if (!user) return;
-    const handler = () => refetchUnreadCount(user.id);
+    if (!userId) return;
+    const handler = () => refetchUnreadCount(userId);
     window.addEventListener("bearcart:messages-read", handler);
     return () => window.removeEventListener("bearcart:messages-read", handler);
-  }, [user, refetchUnreadCount]);
+  }, [userId, refetchUnreadCount]);
 
   // ── Mode toggle ────────────────────────────────────────────────────────
   function handleModeToggle(mode: SearchMode) {

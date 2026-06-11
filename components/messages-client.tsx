@@ -7,18 +7,48 @@ import { ConversationList, type Conversation } from "@/components/conversation-l
 import { ChatWindow, type Message, type PendingImage } from "@/components/chat-window";
 import {
   getMessages,
+  getConversationById,
   getArchivedConversations,
   sendMessage as sendMessageAction,
   uploadMessageImage,
   archiveConversation,
   unarchiveConversation,
   deleteMessage as deleteMessageAction,
+  markConversationRead,
   type ConversationWithDetails,
   type MessageRow,
 } from "@/lib/actions/messages";
 import { supabase } from "@/lib/supabase";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
+
+/** Build the conversation-list preview from raw conversation fields. */
+function buildPreview(
+  lastMessage: string | null,
+  lastMessageAt: string | null,
+  createdAt: string,
+  lastMessageSenderId: string | null,
+  currentUserId: string
+): Conversation["lastMessage"] {
+  if (!lastMessage) {
+    return { text: "Start a conversation", timestamp: new Date(createdAt), isFromMe: false };
+  }
+  const isLastMsgFromMe = lastMessageSenderId === currentUserId;
+  const isDeletedPreview = lastMessage === "Message deleted";
+  return {
+    // "Message deleted" reads as "You deleted a message" for the actor — skip the "You:" prefix
+    text: isDeletedPreview && isLastMsgFromMe ? "You deleted a message" : lastMessage,
+    timestamp: new Date(lastMessageAt ?? createdAt),
+    isFromMe: isLastMsgFromMe && !isDeletedPreview,
+  };
+}
+
+/** Sort conversations by most-recent activity (descending). */
+function sortByRecent(list: Conversation[]): Conversation[] {
+  return [...list].sort(
+    (a, b) => b.lastMessage.timestamp.getTime() - a.lastMessage.timestamp.getTime()
+  );
+}
 
 function mapConversation(
   conv: ConversationWithDetails,
@@ -37,9 +67,6 @@ function mapConversation(
   const coverImg = listing?.listing_images?.find((i) => i.is_cover)?.image_url
     ?? listing?.listing_images?.[0]?.image_url ?? "";
 
-  const isLastMsgFromMe = conv.last_message_sender_id === currentUserId;
-  const isDeletedPreview = conv.last_message === "Message deleted";
-
   return {
     id: conv.id,
     otherUser: {
@@ -52,14 +79,13 @@ function mapConversation(
     listing: listing
       ? { id: listing.id, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
       : undefined,
-    lastMessage: conv.last_message
-      ? {
-          // "Message deleted" already says "You deleted a message" when isFromMe — skip the "You:" prefix
-          text: isDeletedPreview && isLastMsgFromMe ? "You deleted a message" : conv.last_message,
-          timestamp: new Date(conv.last_message_at ?? conv.created_at),
-          isFromMe: isLastMsgFromMe && !isDeletedPreview,
-        }
-      : { text: "Start a conversation", timestamp: new Date(conv.created_at), isFromMe: false },
+    lastMessage: buildPreview(
+      conv.last_message,
+      conv.last_message_at,
+      conv.created_at,
+      conv.last_message_sender_id,
+      currentUserId
+    ),
     unreadCount: conv.unreadCount ?? 0,
   };
 }
@@ -105,8 +131,17 @@ export function MessagesClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const [sending, setSending] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Refs mirror state so the single persistent realtime channel reads fresh
+  // values inside its handlers without re-subscribing on every change.
+  const selectedConversationIdRef = useRef<string | null>(null);
+  const conversationsRef = useRef<Conversation[]>(conversations);
+  const archivedConversationsRef = useRef<Conversation[]>(archivedConversations);
+
+  useEffect(() => { selectedConversationIdRef.current = selectedConversationId; }, [selectedConversationId]);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+  useEffect(() => { archivedConversationsRef.current = archivedConversations; }, [archivedConversations]);
 
   // ── Load initial conversation from URL ───────────────────────────────
 
@@ -135,100 +170,88 @@ export function MessagesClient({
     load();
   }, [initialConversationId, currentUserId]);
 
-  // ── Realtime subscription ──────────────────────────────────────────
+  // ── Realtime: single persistent user-level data channel ─────────────
+  // One channel for the whole session (keyed on the user, not the open
+  // conversation) so it is never torn down when switching conversations.
+  // RLS scopes every event to conversations the user participates in.
 
   useEffect(() => {
-    if (!selectedConversationId) return;
-
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
+    const bumpUnread = (list: Conversation[], convId: string) =>
+      list.map((c) => (c.id === convId ? { ...c, unreadCount: c.unreadCount + 1 } : c));
 
     const channel = supabase
-      .channel(`messages:${selectedConversationId}`)
+      .channel(`messages-realtime:${currentUserId}`)
+      // ── New message in any of my conversations ───────────────────────
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${selectedConversationId}`,
-        },
+        { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
           const newMsg = payload.new as MessageRow;
-          if (newMsg.sender_id === currentUserId) return; // Skip own messages
+          if (newMsg.sender_id === currentUserId) return; // own messages handled optimistically
 
+          const convId = newMsg.conversation_id;
           const mapped = mapMessage(newMsg, currentUserId);
-          setMessages((prev) => ({
-            ...prev,
-            [selectedConversationId]: [...(prev[selectedConversationId] || []), mapped],
-          }));
-          const preview =
-            newMsg.image_url && newMsg.content
-              ? `📷 ${newMsg.content}`
-              : newMsg.image_url
-                ? "📷 Photo"
-                : newMsg.content;
-          const updatedLastMessage = { text: preview, timestamp: new Date(newMsg.created_at), isFromMe: false };
+          const isOpen = selectedConversationIdRef.current === convId;
 
-          // Auto-unarchive if message arrives in an archived conversation
-          const isArchived = archivedConversations.some((c) => c.id === selectedConversationId);
-          if (isArchived) {
-            const target = archivedConversations.find((c) => c.id === selectedConversationId);
-            setArchivedConversations((prev) => prev.filter((c) => c.id !== selectedConversationId));
-            if (target) {
-              setConversations((prev) => [{ ...target, lastMessage: updatedLastMessage }, ...prev]);
-            }
-            setActiveTab("active");
-            unarchiveConversation(selectedConversationId).catch(() => {});
+          // (point 2) keep the cache of already-opened conversations live
+          setMessages((prev) => {
+            if (!prev[convId]) return prev; // never opened — first open will fetch
+            if (prev[convId].some((m) => m.id === mapped.id)) return prev; // dedupe
+            return { ...prev, [convId]: [...prev[convId], mapped] };
+          });
+
+          if (isOpen) {
+            // Viewing it now → mark read instead of bumping the badge
+            markConversationRead(convId).catch(() => {});
+            window.dispatchEvent(new CustomEvent("bearcart:messages-read"));
           } else {
+            setConversations((prev) => bumpUnread(prev, convId));
+            setArchivedConversations((prev) => bumpUnread(prev, convId));
+          }
+
+          // Auto-unarchive when a message lands in an archived conversation
+          const archivedTarget = archivedConversationsRef.current.find((c) => c.id === convId);
+          if (archivedTarget) {
+            setArchivedConversations((prev) => prev.filter((c) => c.id !== convId));
             setConversations((prev) =>
-              prev.map((c) =>
-                c.id === selectedConversationId
-                  ? { ...c, lastMessage: updatedLastMessage }
-                  : c
-              )
+              sortByRecent([archivedTarget, ...prev.filter((c) => c.id !== convId)])
             );
+            unarchiveConversation(convId).catch(() => {});
+          }
+
+          // Brand-new conversation we don't know about yet → hydrate it
+          const known =
+            conversationsRef.current.some((c) => c.id === convId) ||
+            archivedConversationsRef.current.some((c) => c.id === convId);
+          if (!known) {
+            getConversationById(convId)
+              .then((conv) => {
+                if (!conv) return;
+                setConversations((prev) =>
+                  prev.some((c) => c.id === convId)
+                    ? prev
+                    : sortByRecent([mapConversation(conv, currentUserId), ...prev])
+                );
+              })
+              .catch(() => {});
           }
         }
       )
+      // ── Message updated (read receipt / soft delete) ─────────────────
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${selectedConversationId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "messages" },
         (payload) => {
           const updatedMsg = payload.new as MessageRow;
+          const convId = updatedMsg.conversation_id;
           const isNowDeleted = !!updatedMsg.deleted_at;
 
           setMessages((prev) => {
-            const convMsgs = prev[selectedConversationId] || [];
-            const isLastMsg =
-              convMsgs.length > 0 &&
-              convMsgs[convMsgs.length - 1].id === updatedMsg.id;
-
-            // Update conversation preview when the last message is deleted
-            if (isNowDeleted && isLastMsg) {
-              const previewText =
-                updatedMsg.sender_id === currentUserId
-                  ? "You deleted a message"
-                  : "Message deleted";
-              const updatePreview = (list: Conversation[]) =>
-                list.map((c) =>
-                  c.id === selectedConversationId
-                    ? { ...c, lastMessage: { ...c.lastMessage, text: previewText } }
-                    : c
-                );
-              setConversations(updatePreview);
-              setArchivedConversations(updatePreview);
-            }
-
+            const convMsgs = prev[convId];
+            if (!convMsgs) return prev;
             return {
               ...prev,
-              [selectedConversationId]: convMsgs.map((m) =>
+              [convId]: convMsgs.map((m) =>
                 m.id === updatedMsg.id
                   ? {
                       ...m,
@@ -242,11 +265,90 @@ export function MessagesClient({
           });
         }
       )
+      // ── Conversation row changed (last message, order, archive) ──────
+      // (point 1) keeps the left panel preview + ordering live.
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "conversations" },
+        (payload) => {
+          const row = payload.new as {
+            id: string; buyer_id: string; seller_id: string;
+            last_message: string | null; last_message_at: string | null;
+            last_message_sender_id: string | null; created_at: string;
+            archived_by_buyer: boolean; archived_by_seller: boolean;
+          };
+          const convId = row.id;
+          const existing =
+            conversationsRef.current.find((c) => c.id === convId) ||
+            archivedConversationsRef.current.find((c) => c.id === convId);
+          if (!existing) return; // not loaded (e.g. archived tab unopened)
+
+          const preview = buildPreview(
+            row.last_message, row.last_message_at, row.created_at,
+            row.last_message_sender_id, currentUserId
+          );
+          const updated = { ...existing, lastMessage: preview };
+          const myArchived = row.buyer_id === currentUserId ? row.archived_by_buyer : row.archived_by_seller;
+
+          if (myArchived) {
+            setConversations((prev) => prev.filter((c) => c.id !== convId));
+            setArchivedConversations((prev) =>
+              sortByRecent([updated, ...prev.filter((c) => c.id !== convId)])
+            );
+          } else {
+            setArchivedConversations((prev) => prev.filter((c) => c.id !== convId));
+            setConversations((prev) =>
+              sortByRecent([updated, ...prev.filter((c) => c.id !== convId)])
+            );
+          }
+        }
+      )
+      // ── Brand-new conversation created with me as a participant ──────
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversations" },
+        (payload) => {
+          const convId = (payload.new as { id: string }).id;
+          if (
+            conversationsRef.current.some((c) => c.id === convId) ||
+            archivedConversationsRef.current.some((c) => c.id === convId)
+          ) return;
+          getConversationById(convId)
+            .then((conv) => {
+              if (!conv) return;
+              setConversations((prev) =>
+                prev.some((c) => c.id === convId)
+                  ? prev
+                  : sortByRecent([mapConversation(conv, currentUserId), ...prev])
+              );
+            })
+            .catch(() => {});
+        }
+      )
       .subscribe();
 
-    channelRef.current = channel;
     return () => { supabase.removeChannel(channel); };
-  }, [selectedConversationId, currentUserId]);
+  }, [currentUserId]);
+
+  // ── Realtime Presence: who is currently on the messages page ────────
+
+  useEffect(() => {
+    const presence = supabase.channel("online-users", {
+      config: { presence: { key: currentUserId } },
+    });
+
+    presence
+      .on("presence", { event: "sync" }, () => {
+        setOnlineUserIds(new Set(Object.keys(presence.presenceState())));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await presence.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => { supabase.removeChannel(presence); };
+  }, [currentUserId]);
 
   // ── Select conversation ────────────────────────────────────────────
 
@@ -256,6 +358,16 @@ export function MessagesClient({
     // Clear unread badge in whichever list holds this conversation
     setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
     setArchivedConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
+    window.history.replaceState(null, "", `/messages?conversation=${id}`);
+
+    // (point 2) If the realtime channel already keeps a live cache for this
+    // conversation, show it instantly with no re-fetch — just mark it read.
+    if (messages[id]) {
+      markConversationRead(id).catch(() => {});
+      window.dispatchEvent(new CustomEvent("bearcart:messages-read"));
+      return;
+    }
+
     try {
       const { messages: msgs } = await getMessages(id);
       setMessages((prev) => ({
@@ -267,7 +379,6 @@ export function MessagesClient({
     } catch (err) {
       console.error("Failed to load messages:", err);
     }
-    window.history.replaceState(null, "", `/messages?conversation=${id}`);
   };
 
   // ── Send message ───────────────────────────────────────────────────
@@ -289,6 +400,8 @@ export function MessagesClient({
         timestamp: new Date(),
         isFromMe: true,
         isRead: false,
+        isDeleted: false,
+        deletedAt: null,
         type: "text",
       };
       setMessages((prev) => ({
@@ -483,6 +596,9 @@ export function MessagesClient({
         <ChatWindow
           conversation={selectedConversation}
           messages={selectedConversationId ? messages[selectedConversationId] || [] : []}
+          isOtherUserOnline={
+            selectedConversation ? onlineUserIds.has(selectedConversation.otherUser.id) : false
+          }
           onSendMessage={handleSendMessage}
           onDeleteMessage={handleDeleteMessage}
           onBack={handleBack}

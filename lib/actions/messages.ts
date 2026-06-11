@@ -79,6 +79,41 @@ export async function getConversations() {
   return { conversations: enriched as unknown as ConversationWithDetails[], currentUserId: user.id };
 }
 
+// ─── GET SINGLE CONVERSATION (for realtime new-conversation hydration) ─────────
+
+export async function getConversationById(
+  conversationId: string
+): Promise<ConversationWithDetails | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select(`
+      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
+      archived_by_buyer, archived_by_seller,
+      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+    `)
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  // RLS guarantees the row is only returned to a participant, but double-check
+  if (data.buyer_id !== user.id && data.seller_id !== user.id) return null;
+
+  const { count } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .neq("sender_id", user.id)
+    .eq("is_read", false);
+
+  return { ...data, unreadCount: count ?? 0 } as unknown as ConversationWithDetails;
+}
+
 // ─── GET OR CREATE CONVERSATION ───────────────────────────────────────────────
 
 export async function getOrCreateConversation(listingId: string, sellerId: string) {
@@ -133,6 +168,21 @@ export async function getMessages(conversationId: string) {
     .eq("is_read", false);
 
   return { messages: (data ?? []) as MessageRow[], currentUserId: user.id };
+}
+
+// ─── MARK CONVERSATION READ (lightweight, for live messages in open chat) ──────
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("messages")
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .neq("sender_id", user.id)
+    .eq("is_read", false);
 }
 
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
