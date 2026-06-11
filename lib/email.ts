@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { formatPeso } from "@/lib/currency";
 
 // ─── Transport ─────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export async function sendMessageNotificationEmail({
   <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};line-height:1.4;">${safeListingTitle}</p>
   ${
     listingPrice !== null
-      ? `<p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BRAND.primary};">₱${listingPrice.toLocaleString()}</p>`
+      ? `<p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BRAND.primary};">${formatPeso(listingPrice)}</p>`
       : ""
   }
 </div>

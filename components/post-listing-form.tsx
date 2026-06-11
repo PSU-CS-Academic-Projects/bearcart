@@ -24,6 +24,12 @@ import {
 } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { createListing } from "@/lib/actions/listings";
+import {
+  formatCurrencyInput,
+  formatPeso,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +48,6 @@ const categories = [
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
-const BLOCKED_PRICE_KEYS = ["e", "E", "-", "."];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,15 +113,6 @@ function CharCounter({
   );
 }
 
-function sanitizePrice(value: string) {
-  if (!value) return "";
-
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return "";
-
-  return String(Math.floor(numericValue));
-}
-
 // ─── Main Form Component ─────────────────────────────────────────────────────
 
 export function PostListingForm() {
@@ -152,7 +148,11 @@ export function PostListingForm() {
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.condition) newErrors.condition = "Please select a condition";
     if (!formData.listingType) newErrors.listingType = "Please select a listing type";
-    if (formData.listingType === "for-sale" && !formData.price) newErrors.price = "Price is required";
+    if (formData.listingType === "for-sale") {
+      const priceNum = parseCurrencyInput(formData.price);
+      if (priceNum === null) newErrors.price = "Price is required";
+      else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
+    }
     if (!formData.description.trim()) newErrors.description = "Description is required";
     else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     setErrors(newErrors);
@@ -172,7 +172,11 @@ export function PostListingForm() {
       if (!formData.category) newErrors.category = "Please select a category";
       if (!formData.condition) newErrors.condition = "Please select a condition";
       if (!formData.listingType) newErrors.listingType = "Please select a listing type";
-      if (formData.listingType === "for-sale" && !formData.price) newErrors.price = "Price is required";
+      if (formData.listingType === "for-sale") {
+        const priceNum = parseCurrencyInput(formData.price);
+        if (priceNum === null) newErrors.price = "Price is required";
+        else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
+      }
       if (!formData.description.trim()) newErrors.description = "Description is required";
       else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     }
@@ -217,7 +221,7 @@ export function PostListingForm() {
             if (!formData.category) e.push("category");
             if (!formData.condition) e.push("condition");
             if (!formData.listingType) e.push("listingType");
-            if (formData.listingType === "for-sale" && !formData.price) e.push("price");
+            if (formData.listingType === "for-sale" && !parseCurrencyInput(formData.price)) e.push("price");
             if (!formData.description.trim()) e.push("description");
             return e;
           })();
@@ -234,7 +238,7 @@ export function PostListingForm() {
       const result = await createListing({
         title: formData.title.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: parseCurrencyInput(formData.price) ?? 0,
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionMap[formData.condition] ?? "good",
@@ -326,15 +330,24 @@ export function PostListingForm() {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
             <Input
               id="desktop-price"
-              type="number"
-              min={1}
-              step={1}
+              type="text"
+              inputMode="numeric"
               placeholder="e.g. 500"
               value={formData.price}
               onKeyDown={(e) => {
-                if (BLOCKED_PRICE_KEYS.includes(e.key)) e.preventDefault();
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
               }}
-              onChange={(e) => updateField("price", sanitizePrice(e.target.value))}
+              onChange={(e) => updateField("price", formatCurrencyInput(e.target.value))}
               className={cn("pl-7", errors.price && "border-destructive")}
               disabled={submitting}
             />
@@ -396,7 +409,7 @@ export function PostListingForm() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-foreground">{formData.title || "Untitled Listing"}</h3>
           <p className="text-xl font-bold text-primary">
-            ₱{formData.price || "0"}
+            {formatPeso(parseCurrencyInput(formData.price) ?? 0)}
             {formData.negotiable && <span className="ml-2 text-sm font-normal text-muted-foreground">(Negotiable)</span>}
           </p>
           <div className="flex flex-wrap gap-2">

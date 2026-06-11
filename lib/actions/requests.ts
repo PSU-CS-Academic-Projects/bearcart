@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -305,11 +306,17 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  if (input.budget_min !== null && input.budget_min < 0) {
-    throw new Error("Minimum budget must be 0 or greater");
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
   }
-  if (input.budget_max !== null && input.budget_max < 0) {
-    throw new Error("Maximum budget must be 0 or greater");
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
   }
   if (
     input.budget_min !== null &&
@@ -396,6 +403,18 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
     input.budget_min > input.budget_max
   ) {
     throw new Error("Minimum budget must be less than or equal to maximum budget");
+  }
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
+  }
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
   }
 
   // 1. Update fields

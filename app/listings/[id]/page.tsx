@@ -24,6 +24,7 @@ import { createClient } from "@/lib/supabase-server";
 import {
   formatTimeAgo,
   formatCondition,
+  formatListingPrice,
 } from "@/lib/listing-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
                 <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
                   <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
-                    ₱{listing.price.toLocaleString()}
+                    {formatListingPrice(listing.price)}
                   </p>
                   {listing.is_negotiable && (
                     <span className="mb-0.5 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">

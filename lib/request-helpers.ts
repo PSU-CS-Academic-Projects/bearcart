@@ -1,4 +1,5 @@
 import type { RequestRow, RequestUrgency } from "@/lib/actions/requests";
+import { formatPeso } from "@/lib/currency";
 
 /** Build a "Juan C." style short name from a request's requester. */
 export function getRequesterShortName(requester: RequestRow["requester"]): string {
@@ -31,10 +32,10 @@ export function formatBudget(min: number | null, max: number | null): string {
   const positiveMax = max !== null && max > 0 ? max : null;
 
   if (positiveMin !== null && positiveMax !== null) {
-    return `₱${positiveMin.toLocaleString()} – ₱${positiveMax.toLocaleString()}`;
+    return `${formatPeso(positiveMin)} – ${formatPeso(positiveMax)}`;
   }
-  if (positiveMin !== null) return `₱${positiveMin.toLocaleString()}`;
-  if (positiveMax !== null) return `Up to ₱${positiveMax.toLocaleString()}`;
+  if (positiveMin !== null) return formatPeso(positiveMin);
+  if (positiveMax !== null) return `Up to ${formatPeso(positiveMax)}`;
   return "Budget flexible";
 }
 

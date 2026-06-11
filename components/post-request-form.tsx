@@ -21,6 +21,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { createRequest, type RequestUrgency } from "@/lib/actions/requests";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,7 +48,6 @@ const URGENCIES: { value: RequestUrgency; label: string }[] = [
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
 const MAX_PHOTOS = 3;
-const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,15 +83,6 @@ function CharCounter({ current, max }: { current: number; max: number }) {
       {current} / {max} characters
     </span>
   );
-}
-
-function sanitizeBudget(value: string) {
-  if (!value) return "";
-
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return "";
-
-  return String(Math.floor(numericValue));
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -132,7 +127,7 @@ export function PostRequestForm() {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
 
-    const budgetNum = budget ? parseFloat(budget) : null;
+    const budgetNum = parseCurrencyInput(budget);
     if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
 
     setErrors(next);
@@ -149,7 +144,7 @@ export function PostRequestForm() {
 
     setSubmitting(true);
     try {
-      const budgetNum = budget ? parseFloat(budget) : null;
+      const budgetNum = parseCurrencyInput(budget);
       await createRequest({
         title: title.trim(),
         description: description.trim(),
@@ -281,15 +276,24 @@ export function PostRequestForm() {
               <div className="relative max-w-xs">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
                 <Input
-                  type="number"
-                  min={1}
-                  step={1}
+                  type="text"
+                  inputMode="numeric"
                   placeholder="e.g. 500"
                   value={budget}
                   onKeyDown={(e) => {
-                    if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    if (
+                      shouldBlockCurrencyKey(
+                        e.key,
+                        e.currentTarget.value,
+                        e.currentTarget.selectionStart,
+                        e.currentTarget.selectionEnd
+                      )
+                    ) {
+                      e.preventDefault();
+                    }
                   }}
-                  onChange={(e) => setBudget(sanitizeBudget(e.target.value))}
+                  onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
                   disabled={submitting}
                   className={cn("pl-7", errors.budget && "border-destructive")}
                 />

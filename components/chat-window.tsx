@@ -18,6 +18,7 @@ import {
   ShoppingBag,
 } from "@phosphor-icons/react";
 import type { Conversation } from "./conversation-list";
+import { formatListingPrice } from "@/lib/listing-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -313,7 +314,7 @@ export function ChatWindow({
                   {listing.title}
                 </p>
                 <p className="text-sm font-semibold text-primary">
-                  ₱{listing.price.toLocaleString()}
+                  {formatListingPrice(listing.price)}
                 </p>
                 <div className="mt-1">
                   {getListingStatusBadge(listing.status)}

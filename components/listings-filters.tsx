@@ -27,6 +27,12 @@ import {
   GraduationCap,
   X,
 } from "@phosphor-icons/react";
+import {
+  formatCurrencyInput,
+  formatPeso,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -55,17 +61,6 @@ const CONDITION_LABELS: Record<string, string> = {
   fair: "Fair",
   poor: "Poor",
 };
-
-const BLOCKED_BUDGET_KEYS = ["e", "E", "-", "."];
-
-function sanitizeBudget(value: string) {
-  if (!value) return "";
-
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return "";
-
-  return String(Math.floor(numericValue));
-}
 
 // ─── Hook: URL Param Filters ──────────────────────────────────────────────────
 
@@ -229,7 +224,7 @@ export function ActiveFilterBadges() {
       ))}
       {(minPrice || maxPrice) && (
         <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
-          ₱{minPrice || "0"} – ₱{maxPrice || "∞"}
+          {minPrice ? formatPeso(parseCurrencyInput(minPrice) ?? 0) : "₱0"} – {maxPrice ? formatPeso(parseCurrencyInput(maxPrice) ?? 0) : "₱∞"}
           <button
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -320,9 +315,11 @@ function FiltersContent() {
             const fd = new FormData(e.currentTarget);
             const min = fd.get("min") as string;
             const max = fd.get("max") as string;
+            const minValue = parseCurrencyInput(min);
+            const maxValue = parseCurrencyInput(max);
             set({
-              min: min && parseInt(min) > 0 ? min : null,
-              max: max && parseInt(max) > 0 ? max : null,
+              min: minValue !== null && minValue > 0 ? String(minValue) : null,
+              max: maxValue !== null && maxValue > 0 ? String(maxValue) : null,
             });
           }}
           className="flex flex-col gap-3"
@@ -333,16 +330,25 @@ function FiltersContent() {
               <Input
                 id="min-price"
                 name="min"
-                type="number"
-                min={1}
-                step={1}
+                type="text"
+                inputMode="numeric"
                 placeholder="e.g. 500"
-                defaultValue={minPrice}
+                defaultValue={formatCurrencyInput(minPrice)}
                 onKeyDown={(e) => {
-                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
                 }}
                 onChange={(e) => {
-                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
                 }}
                 className="h-9 text-sm"
               />
@@ -353,16 +359,25 @@ function FiltersContent() {
               <Input
                 id="max-price"
                 name="max"
-                type="number"
-                min={1}
-                step={1}
+                type="text"
+                inputMode="numeric"
                 placeholder="e.g. 500"
-                defaultValue={maxPrice}
+                defaultValue={formatCurrencyInput(maxPrice)}
                 onKeyDown={(e) => {
-                  if (BLOCKED_BUDGET_KEYS.includes(e.key)) e.preventDefault();
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
                 }}
                 onChange={(e) => {
-                  e.currentTarget.value = sanitizeBudget(e.currentTarget.value);
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
                 }}
                 className="h-9 text-sm"
               />

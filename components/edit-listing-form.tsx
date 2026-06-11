@@ -44,6 +44,11 @@ import {
 } from "@phosphor-icons/react";
 
 import { updateListing, updateListingStatus, deleteListing } from "@/lib/actions/listings";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +67,6 @@ const categories = [
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
-const BLOCKED_PRICE_KEYS = ["e", "E", "-", "."];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -125,15 +129,6 @@ function CharCounter({ current, max }: { current: number; max: number }) {
   );
 }
 
-function sanitizePrice(value: string) {
-  if (!value) return "";
-
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return "";
-
-  return String(Math.floor(numericValue));
-}
-
 // ─── Condition Map (DB ↔ UI) ──────────────────────────────────────────────────
 
 const conditionDbToUi: Record<string, string> = {
@@ -189,7 +184,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     title: listing.title,
     category: listing.category.toLowerCase(),
     condition: conditionDbToUi[listing.condition] ?? listing.condition,
-    price: listing.price.toString(),
+    price: formatCurrencyInput(listing.price.toString()),
     negotiable: listing.is_negotiable,
     description: listing.description,
     tags: listing.tags.filter((t) => !t.startsWith("meetup:")),
@@ -231,7 +226,9 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     else if (formData.title.length > TITLE_MAX) newErrors.title = `Title must be ${TITLE_MAX} characters or less`;
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.condition) newErrors.condition = "Please select a condition";
-    if (!formData.price) newErrors.price = "Price is required";
+    const priceNum = parseCurrencyInput(formData.price);
+    if (priceNum === null) newErrors.price = "Price is required";
+    else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
     if (!formData.description.trim()) newErrors.description = "Description is required";
     else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     setErrors(newErrors);
@@ -253,7 +250,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         listingId: listing.id,
         title: formData.title.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: parseCurrencyInput(formData.price) ?? 0,
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
@@ -366,15 +363,24 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
           <Input
             id="edit-price"
-            type="number"
-            min={1}
-            step={1}
+            type="text"
+            inputMode="numeric"
             placeholder="e.g. 500"
             value={formData.price}
             onKeyDown={(e) => {
-              if (BLOCKED_PRICE_KEYS.includes(e.key)) e.preventDefault();
+              if (e.ctrlKey || e.metaKey || e.altKey) return;
+              if (
+                shouldBlockCurrencyKey(
+                  e.key,
+                  e.currentTarget.value,
+                  e.currentTarget.selectionStart,
+                  e.currentTarget.selectionEnd
+                )
+              ) {
+                e.preventDefault();
+              }
             }}
-            onChange={(e) => updateField("price", sanitizePrice(e.target.value))}
+            onChange={(e) => updateField("price", formatCurrencyInput(e.target.value))}
             className={cn("pl-7", errors.price && "border-destructive")}
             disabled={submitting}
           />

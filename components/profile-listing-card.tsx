@@ -17,6 +17,7 @@ import {
   Heart,
   Trash,
 } from "@phosphor-icons/react";
+import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ProfileListingCardProps {
   id: string;
@@ -133,7 +134,7 @@ export function ProfileListingCard({
 
         <div className="p-3">
           <p className="text-lg font-bold leading-tight text-[oklch(0.585_0.144_55)]">
-            ₱{price.toLocaleString()}
+            {formatListingPrice(price)}
           </p>
           <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">
             {title}

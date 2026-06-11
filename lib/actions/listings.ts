@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { uploadImage, deleteImage } from "./storage";
+import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,8 @@ export async function createListing(input: CreateListingInput) {
   if (!user) throw new Error("Not authenticated");
 
   if (input.photos.length === 0) throw new Error("At least one photo is required");
+  if (input.price < 1) throw new Error("Price must be at least ₱1");
+  if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
 
   // 1. Insert the listing row
   const { data: listing, error: listingError } = await supabase
@@ -330,6 +333,8 @@ export async function updateListing(input: UpdateListingInput) {
   if (listing.status === "sold" || listing.status === "deleted") {
     throw new Error("This listing cannot be edited");
   }
+  if (input.price < 1) throw new Error("Price must be at least ₱1");
+  if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
 
   // 1. Update listing fields
   const { error: updateError } = await supabase

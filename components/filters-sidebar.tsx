@@ -23,6 +23,11 @@ import {
   DotsThreeIcon,
   FadersIcon,
 } from "@phosphor-icons/react";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 const CATEGORIES = [
   { name: "Books", icon: BookIcon },
@@ -54,8 +59,10 @@ function buildListingsUrl(
   const params = new URLSearchParams();
   if (cats.length > 0) params.set("category", cats.join(","));
   if (conds.length > 0) params.set("condition", conds.join(","));
-  if (min && parseInt(min) > 0) params.set("min", min);
-  if (max && parseInt(max) > 0) params.set("max", max);
+  const minValue = parseCurrencyInput(min);
+  const maxValue = parseCurrencyInput(max);
+  if (minValue !== null && minValue > 0) params.set("min", String(minValue));
+  if (maxValue !== null && maxValue > 0) params.set("max", String(maxValue));
   const qs = params.toString();
   return qs ? `/listings?${qs}` : "/listings";
 }
@@ -150,10 +157,24 @@ function FiltersContent() {
             <Label htmlFor="home-min-price" className="sr-only">Min price</Label>
             <Input
               id="home-min-price"
-              type="number"
-              placeholder="₱ Min"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 500"
               value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => setMinPrice(formatCurrencyInput(e.target.value))}
               onBlur={() => applyPrice(minPrice, maxPrice)}
               className="h-9 text-sm"
             />
@@ -163,10 +184,24 @@ function FiltersContent() {
             <Label htmlFor="home-max-price" className="sr-only">Max price</Label>
             <Input
               id="home-max-price"
-              type="number"
-              placeholder="₱ Max"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 500"
               value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => setMaxPrice(formatCurrencyInput(e.target.value))}
               onBlur={() => applyPrice(minPrice, maxPrice)}
               className="h-9 text-sm"
             />

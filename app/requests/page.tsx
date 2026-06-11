@@ -13,6 +13,7 @@ import { RequestRow, RequestRowSkeleton } from "@/components/request-row";
 import { Pagination } from "@/components/pagination";
 import { getRequests, type RequestFilters } from "@/lib/actions/requests";
 import { createClient } from "@/lib/supabase-server";
+import { parseCurrencyInput } from "@/lib/currency";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -55,16 +56,16 @@ async function RequestsList({
     : undefined;
 
   const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
-  const minBudget = typeof searchParams.min === "string" ? parseInt(searchParams.min) : undefined;
-  const maxBudget = typeof searchParams.max === "string" ? parseInt(searchParams.max) : undefined;
+  const minBudget = typeof searchParams.min === "string" ? parseCurrencyInput(searchParams.min) : null;
+  const maxBudget = typeof searchParams.max === "string" ? parseCurrencyInput(searchParams.max) : null;
   const page = typeof searchParams.page === "string" ? parseInt(searchParams.page) : 1;
 
   const filters: RequestFilters = {
     search,
     categories,
     urgencies,
-    minBudget: minBudget && !isNaN(minBudget) ? minBudget : undefined,
-    maxBudget: maxBudget && !isNaN(maxBudget) ? maxBudget : undefined,
+    minBudget: minBudget !== null && minBudget > 0 ? minBudget : undefined,
+    maxBudget: maxBudget !== null && maxBudget > 0 ? maxBudget : undefined,
     page: isNaN(page) ? 1 : page,
     pageSize: 12,
   };
