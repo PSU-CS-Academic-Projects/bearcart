@@ -16,6 +16,8 @@ import {
   SpinnerGap,
   WarningCircle,
   ShoppingBag,
+  Trash,
+  ProhibitInset,
 } from "@phosphor-icons/react";
 import type { Conversation } from "./conversation-list";
 import { formatListingPrice } from "@/lib/listing-helpers";
@@ -29,6 +31,7 @@ export interface Message {
   timestamp: Date;
   isFromMe: boolean;
   isRead: boolean;
+  isDeleted: boolean;
   type: "text";
 }
 
@@ -41,6 +44,7 @@ interface ChatWindowProps {
   conversation: Conversation | null;
   messages: Message[];
   onSendMessage: (text: string, image: PendingImage | null) => void;
+  onDeleteMessage?: (id: string) => void;
   onBack?: () => void;
   showBackButton?: boolean;
   sending?: boolean;
@@ -118,6 +122,7 @@ export function ChatWindow({
   conversation,
   messages,
   onSendMessage,
+  onDeleteMessage,
   onBack,
   showBackButton = false,
   sending = false,
@@ -344,7 +349,7 @@ export function ChatWindow({
               const isPlaceholder = message.id.startsWith("pending-");
 
               return (
-                <div key={message.id}>
+                <div key={message.id} className="group">
                   {/* Date Separator */}
                   {shouldShowDateSeparator(message, messages[index - 1] || null) && (
                     <div className="my-4 flex items-center justify-center">
@@ -356,68 +361,92 @@ export function ChatWindow({
 
                   {/* Message Bubble */}
                   <div
-                    className={`mb-1 flex ${message.isFromMe ? "justify-end" : "justify-start"}`}
+                    className={`mb-1 flex items-end gap-1 ${message.isFromMe ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${hasText
-                          ? `rounded-2xl px-4 py-2 ${message.isFromMe
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                          }`
-                          : ""
-                        }`}
-                    >
-                      {/* Image */}
-                      {hasImage && (
-                        <button
-                          type="button"
-                          onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
-                          className={`relative w-full overflow-hidden rounded-lg ${hasText ? "" : ""
-                            }`}
-                          aria-label="Open image"
-                          disabled={isPlaceholder}
-                        >
-                          {isPlaceholder ? (
-                            <div className="flex aspect-square w-[200px] max-w-full items-center justify-center bg-muted">
-                              <SpinnerGap className="size-6 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={message.imageUrl ?? ""}
-                              alt="Sent image"
-                              className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
-                              loading="lazy"
-                            />
-                          )}
-                        </button>
-                      )}
+                    {/* Delete button — own non-deleted messages only, appears on group hover */}
+                    {message.isFromMe && !message.isDeleted && !isPlaceholder && onDeleteMessage && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteMessage(message.id)}
+                        className="mb-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-destructive group-hover:opacity-100"
+                        aria-label="Delete message"
+                      >
+                        <Trash className="size-3.5" />
+                      </button>
+                    )}
 
-                      {/* Text */}
-                      {hasText && (
-                        <p className="whitespace-pre-wrap break-words text-sm">
-                          {message.text}
-                        </p>
-                      )}
-
-                      {/* Time / read marker */}
+                    {message.isDeleted ? (
+                      /* Deleted placeholder */
                       <div
-                        className={`flex items-center justify-end gap-1 text-[10px] ${hasText
-                            ? message.isFromMe
-                              ? "text-primary-foreground/70"
-                              : "text-muted-foreground"
-                            : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
+                        className={`flex items-center gap-1.5 rounded-2xl border border-dashed px-4 py-2 text-sm italic text-muted-foreground ${
+                          message.isFromMe ? "border-primary/20" : "border-border"
+                        }`}
+                      >
+                        <ProhibitInset className="size-3.5 shrink-0" />
+                        Message deleted
+                      </div>
+                    ) : (
+                      <div
+                        className={`flex max-w-[75%] flex-col gap-1 sm:max-w-xs ${hasText
+                            ? `rounded-2xl px-4 py-2 ${message.isFromMe
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-foreground"
+                            }`
+                            : ""
                           }`}
                       >
-                        <span>{formatMessageTime(message.timestamp)}</span>
-                        {message.isFromMe &&
-                          (message.isRead ? (
-                            <Checks className="size-3.5" />
-                          ) : (
-                            <Check className="size-3.5" />
-                          ))}
+                        {/* Image */}
+                        {hasImage && (
+                          <button
+                            type="button"
+                            onClick={() => !isPlaceholder && setLightboxUrl(message.imageUrl)}
+                            className={`relative w-full overflow-hidden rounded-lg ${hasText ? "" : ""
+                              }`}
+                            aria-label="Open image"
+                            disabled={isPlaceholder}
+                          >
+                            {isPlaceholder ? (
+                              <div className="flex aspect-square w-[200px] max-w-full items-center justify-center bg-muted">
+                                <SpinnerGap className="size-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={message.imageUrl ?? ""}
+                                alt="Sent image"
+                                className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
+                                loading="lazy"
+                              />
+                            )}
+                          </button>
+                        )}
+
+                        {/* Text */}
+                        {hasText && (
+                          <p className="whitespace-pre-wrap break-words text-sm">
+                            {message.text}
+                          </p>
+                        )}
+
+                        {/* Time / read marker */}
+                        <div
+                          className={`flex items-center justify-end gap-1 text-[10px] ${hasText
+                              ? message.isFromMe
+                                ? "text-primary-foreground/70"
+                                : "text-muted-foreground"
+                              : "rounded-full bg-background/80 px-2 py-0.5 text-muted-foreground backdrop-blur"
+                            }`}
+                        >
+                          <span>{formatMessageTime(message.timestamp)}</span>
+                          {message.isFromMe &&
+                            (message.isRead ? (
+                              <Checks className="size-3.5" />
+                            ) : (
+                              <Check className="size-3.5" />
+                            ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );

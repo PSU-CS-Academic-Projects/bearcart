@@ -12,6 +12,7 @@ import {
   uploadMessageImage,
   archiveConversation,
   unarchiveConversation,
+  deleteMessage as deleteMessageAction,
   type ConversationWithDetails,
   type MessageRow,
 } from "@/lib/actions/messages";
@@ -63,6 +64,7 @@ function mapMessage(msg: MessageRow, currentUserId: string): Message {
     timestamp: new Date(msg.created_at),
     isFromMe: msg.sender_id === currentUserId,
     isRead: msg.is_read,
+    isDeleted: !!msg.deleted_at,
     type: "text",
   };
 }
@@ -194,7 +196,9 @@ export function MessagesClient({
           setMessages((prev) => ({
             ...prev,
             [selectedConversationId]: (prev[selectedConversationId] || []).map((m) =>
-              m.id === updatedMsg.id ? { ...m, isRead: updatedMsg.is_read } : m
+              m.id === updatedMsg.id
+                ? { ...m, isRead: updatedMsg.is_read, isDeleted: !!updatedMsg.deleted_at }
+                : m
             ),
           }));
         }
@@ -315,6 +319,32 @@ export function MessagesClient({
     }
   };
 
+  // ── Delete message ─────────────────────────────────────────────────
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedConversationId) return;
+    const convId = selectedConversationId;
+    // Optimistic update
+    setMessages((prev) => ({
+      ...prev,
+      [convId]: (prev[convId] || []).map((m) =>
+        m.id === messageId ? { ...m, isDeleted: true } : m
+      ),
+    }));
+    try {
+      await deleteMessageAction(messageId);
+    } catch {
+      // Roll back on failure
+      setMessages((prev) => ({
+        ...prev,
+        [convId]: (prev[convId] || []).map((m) =>
+          m.id === messageId ? { ...m, isDeleted: false } : m
+        ),
+      }));
+      toast.error("Failed to delete message. Please try again.");
+    }
+  };
+
   // ── Back handler (mobile) ──────────────────────────────────────────
 
   const handleBack = () => {
@@ -397,6 +427,7 @@ export function MessagesClient({
           conversation={selectedConversation}
           messages={selectedConversationId ? messages[selectedConversationId] || [] : []}
           onSendMessage={handleSendMessage}
+          onDeleteMessage={handleDeleteMessage}
           onBack={handleBack}
           showBackButton={showChatOnMobile}
           sending={sending}

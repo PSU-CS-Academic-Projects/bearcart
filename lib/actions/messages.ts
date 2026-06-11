@@ -36,6 +36,7 @@ export interface MessageRow {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 // ─── GET CONVERSATIONS ────────────────────────────────────────────────────────
@@ -355,6 +356,30 @@ export async function uploadMessageImage(
     .getPublicUrl(filePath);
 
   return urlData.publicUrl;
+}
+
+// ─── DELETE MESSAGE ───────────────────────────────────────────────────────────
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: msg } = await supabase
+    .from("messages")
+    .select("sender_id")
+    .eq("id", messageId)
+    .single();
+
+  if (!msg) throw new Error("Message not found");
+  if (msg.sender_id !== user.id) throw new Error("Cannot delete another user's message");
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId);
+
+  if (error) throw new Error(`Failed to delete message: ${error.message}`);
 }
 
 // ─── ARCHIVE / UNARCHIVE CONVERSATION ────────────────────────────────────────
