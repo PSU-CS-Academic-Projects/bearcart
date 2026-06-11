@@ -285,11 +285,17 @@ export function MessagesClient({
         setActiveTab("active");
         unarchiveConversation(convId).catch(() => {});
       } else {
-        setConversations((prev) =>
-          prev.map((c) =>
+        setConversations((prev) => {
+          const updated = prev.map((c) =>
             c.id === convId ? { ...c, lastMessage: updatedLastMessage } : c
-          )
-        );
+          );
+          const idx = updated.findIndex((c) => c.id === convId);
+          if (idx > 0) {
+            const [conv] = updated.splice(idx, 1);
+            updated.unshift(conv);
+          }
+          return updated;
+        });
       }
     } catch (err) {
       console.error("Failed to send message:", err);
