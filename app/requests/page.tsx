@@ -66,7 +66,7 @@ async function RequestsList({
     minBudget: minBudget && !isNaN(minBudget) ? minBudget : undefined,
     maxBudget: maxBudget && !isNaN(maxBudget) ? maxBudget : undefined,
     page: isNaN(page) ? 1 : page,
-    pageSize: 20,
+    pageSize: 12,
   };
 
   const hasActiveFilters = !!(categoryParam || urgencyParam || search || minBudget || maxBudget);
