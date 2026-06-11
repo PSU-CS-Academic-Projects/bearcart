@@ -55,6 +55,16 @@ interface FormErrors {
   urgency?: string;
 }
 
+// ─── Field IDs for focus-on-error ─────────────────────────────────────────────
+
+const FIELD_IDS: Record<keyof FormErrors, string> = {
+  title: "req-title-section",
+  category: "req-category-section",
+  description: "req-desc-section",
+  budget: "req-budget-section",
+  urgency: "req-urgency-section",
+};
+
 // ─── Char Counter ─────────────────────────────────────────────────────────────
 
 function CharCounter({ current, max }: { current: number; max: number }) {
@@ -95,7 +105,22 @@ export function PostRequestForm() {
   const [urgency, setUrgency] = useState<RequestUrgency>("not_urgent");
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const validate = useCallback((): boolean => {
+  const focusFirstError = useCallback((errorKeys: string[]) => {
+    const order: (keyof FormErrors)[] = ["title", "category", "description", "budget", "urgency"];
+    for (const key of order) {
+      if (errorKeys.includes(key)) {
+        const el = document.getElementById(FIELD_IDS[key]);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          const input = el.querySelector("input, textarea, button, [tabindex]");
+          if (input instanceof HTMLElement) input.focus();
+          return;
+        }
+      }
+    }
+  }, []);
+
+  const validate = useCallback((): FormErrors => {
     const next: FormErrors = {};
 
     if (!title.trim()) next.title = "Tell us what you're looking for";
@@ -111,12 +136,16 @@ export function PostRequestForm() {
     if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
 
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
   }, [title, category, description, budget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setTimeout(() => focusFirstError(Object.keys(validationErrors)), 50);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -176,7 +205,7 @@ export function PostRequestForm() {
             <div className="h-px bg-border" />
 
             {/* Title */}
-            <div className="space-y-2">
+            <div id="req-title-section" className="space-y-2">
               <Label htmlFor="req-title">
                 What are you looking for? <span className="text-destructive">*</span>
               </Label>
@@ -200,7 +229,7 @@ export function PostRequestForm() {
             </div>
 
             {/* Category */}
-            <div className="space-y-2">
+            <div id="req-category-section" className="space-y-2">
               <Label>
                 Category <span className="text-destructive">*</span>
               </Label>
@@ -224,7 +253,7 @@ export function PostRequestForm() {
             </div>
 
             {/* Description */}
-            <div className="space-y-2">
+            <div id="req-desc-section" className="space-y-2">
               <Label htmlFor="req-desc">Add more details (optional)</Label>
               <Textarea
                 id="req-desc"
@@ -247,7 +276,7 @@ export function PostRequestForm() {
             </div>
 
             {/* Budget */}
-            <div className="space-y-2">
+            <div id="req-budget-section" className="space-y-2">
               <Label>Budget (optional)</Label>
               <div className="relative max-w-xs">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
@@ -280,7 +309,7 @@ export function PostRequestForm() {
             </div>
 
             {/* Urgency */}
-            <div className="space-y-2">
+            <div id="req-urgency-section" className="space-y-2">
               <Label>
                 Urgency <span className="text-destructive">*</span>
               </Label>
