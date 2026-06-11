@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ import {
   Wrench,
   DotsThree,
   Faders,
-  MagnifyingGlass,
   Trash,
   GraduationCap,
   X,
@@ -246,7 +245,6 @@ function FiltersContent() {
     toggleCategory,
     conditions,
     toggleCondition,
-    search,
     minPrice,
     maxPrice,
     set,
@@ -254,36 +252,8 @@ function FiltersContent() {
     hasActiveFilters,
   } = useFilterParams();
 
-  // Controlled search input — stays in sync when URL changes externally
-  const [searchInput, setSearchInput] = useState(search);
-  useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Search */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Search</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            set({ search: searchInput.trim() || null });
-          }}
-        >
-          <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
-            <MagnifyingGlass className="size-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search listings..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </form>
-      </div>
-
       {/* Categories — multi-select */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
