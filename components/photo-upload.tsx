@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +44,11 @@ export function PhotoUpload({
       const validFiles: File[] = [];
 
       for (const file of files) {
+        const ext = "." + file.name.split(".").pop()?.toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+          errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
+          continue;
+        }
         if (!ALLOWED_TYPES.includes(file.type)) {
           errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
           continue;
