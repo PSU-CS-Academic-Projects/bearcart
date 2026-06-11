@@ -158,13 +158,27 @@ export function MessagesClient({
               : newMsg.image_url
                 ? "📷 Photo"
                 : newMsg.content;
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === selectedConversationId
-                ? { ...c, lastMessage: { text: preview, timestamp: new Date(newMsg.created_at), isFromMe: false } }
-                : c
-            )
-          );
+          const updatedLastMessage = { text: preview, timestamp: new Date(newMsg.created_at), isFromMe: false };
+
+          // Auto-unarchive if message arrives in an archived conversation
+          const isArchived = archivedConversations.some((c) => c.id === selectedConversationId);
+          if (isArchived) {
+            const target = archivedConversations.find((c) => c.id === selectedConversationId);
+            setArchivedConversations((prev) => prev.filter((c) => c.id !== selectedConversationId));
+            if (target) {
+              setConversations((prev) => [{ ...target, lastMessage: updatedLastMessage }, ...prev]);
+            }
+            setActiveTab("active");
+            unarchiveConversation(selectedConversationId).catch(() => {});
+          } else {
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === selectedConversationId
+                  ? { ...c, lastMessage: updatedLastMessage }
+                  : c
+              )
+            );
+          }
         }
       )
       .on(
@@ -196,9 +210,9 @@ export function MessagesClient({
   const handleSelectConversation = async (id: string) => {
     setSelectedConversationId(id);
     setShowChatOnMobile(true);
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
-    );
+    // Clear unread badge in whichever list holds this conversation
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
+    setArchivedConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
     try {
       const { messages: msgs } = await getMessages(id);
       setMessages((prev) => ({
@@ -258,13 +272,25 @@ export function MessagesClient({
       }));
 
       const preview = imageUrl && text ? `📷 ${text}` : imageUrl ? "📷 Photo" : text;
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? { ...c, lastMessage: { text: preview, timestamp: new Date(), isFromMe: true } }
-            : c
-        )
-      );
+      const updatedLastMessage = { text: preview, timestamp: new Date(), isFromMe: true };
+
+      // Auto-unarchive if this conversation is currently archived
+      const isArchived = archivedConversations.some((c) => c.id === convId);
+      if (isArchived) {
+        const target = archivedConversations.find((c) => c.id === convId);
+        setArchivedConversations((prev) => prev.filter((c) => c.id !== convId));
+        if (target) {
+          setConversations((prev) => [{ ...target, lastMessage: updatedLastMessage }, ...prev]);
+        }
+        setActiveTab("active");
+        unarchiveConversation(convId).catch(() => {});
+      } else {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === convId ? { ...c, lastMessage: updatedLastMessage } : c
+          )
+        );
+      }
     } catch (err) {
       console.error("Failed to send message:", err);
       if (placeholderId) {
@@ -331,7 +357,9 @@ export function MessagesClient({
   };
 
   const selectedConversation =
-    conversations.find((c) => c.id === selectedConversationId) || null;
+    conversations.find((c) => c.id === selectedConversationId) ||
+    archivedConversations.find((c) => c.id === selectedConversationId) ||
+    null;
 
   return (
     <main className="flex flex-1 overflow-hidden">
