@@ -5,20 +5,11 @@ import {
   sendReportAdminEmail,
   sendPostDelistedEmail,
 } from "@/lib/email";
+import { REPORT_DETAILS_MAX, type ReportTargetType } from "@/lib/report-constants";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export type ReportTargetType = "listing" | "request" | "message";
-
-export const REPORT_REASONS = [
-  "Fake or misleading",
-  "Inappropriate content",
-  "Spam",
-  "Harassment or abuse",
-  "Other",
-] as const;
-
-export const REPORT_DETAILS_MAX = 300;
+// Report reasons / constants / target-type live in lib/report-constants.ts so
+// they can be imported by client components ("use server" allows only async exports).
 
 // ─── Core ─────────────────────────────────────────────────────────────────────
 

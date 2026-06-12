@@ -18,7 +18,7 @@ import {
   REPORT_REASONS,
   REPORT_DETAILS_MAX,
   type ReportTargetType,
-} from "@/lib/actions/reports";
+} from "@/lib/report-constants";
 
 interface ReportDialogProps {
   open: boolean;
