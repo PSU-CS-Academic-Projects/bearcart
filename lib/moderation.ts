@@ -2,10 +2,12 @@
  * Content moderation helpers. Server-only — imported exclusively by "use server"
  * action modules, so the API keys below never reach the client bundle.
  *
- * - Text  → OpenAI Moderation API (free endpoint, `omni-moderation-latest`)
+ * - Text  → leo-profanity (sync, no API key) → OpenAI omni-moderation-latest
  * - Image → Google Cloud Vision SafeSearch (free tier, ~1000 units/month)
  *
  * Behaviour:
+ * - leo-profanity runs first and throws immediately on a match — OpenAI is
+ *   never called when local profanity detection fires.
  * - A genuinely flagged item throws an Error with a user-facing message. The
  *   server actions let this bubble up to the form, which shows it as a toast.
  * - Missing API keys or transient API failures FAIL OPEN (log + allow) so the
@@ -16,7 +18,16 @@
 // (no "server-only" import — keep this module dependency-free; it is only ever
 //  imported by server action files.)
 
-// ─── Text moderation (OpenAI Moderation API) ──────────────────────────────────
+import leoProfanity from "leo-profanity";
+import { FILIPINO_PROFANITY, WHITELISTED_WORDS } from "@/lib/moderation-constants";
+
+// ─── Initialise leo-profanity once (module-level, runs on first import) ───────
+
+leoProfanity.loadDictionary("en");
+leoProfanity.add(FILIPINO_PROFANITY);
+leoProfanity.addWhitelist(WHITELISTED_WORDS);
+
+// ─── Text moderation (leo-profanity → OpenAI Moderation API) ─────────────────
 
 export interface TextField {
   /** Human-readable field name shown in the error, e.g. "title". */
@@ -30,14 +41,33 @@ interface OpenAIModerationResponse {
 
 /** Throws if any provided text field is flagged as inappropriate. */
 export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
+  console.log("[moderation] moderateTextOrThrow called — fields:", fields.map((f) => `${f.label}="${f.value}"`));
+
   const inputs = fields.filter((f) => f.value && f.value.trim().length > 0);
-  if (inputs.length === 0) return;
+  if (inputs.length === 0) {
+    console.log("[moderation] all fields empty — skipping");
+    return;
+  }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     console.warn("[moderation] OPENAI_API_KEY not set — skipping text moderation");
     return; // fail open
   }
+
+  // ── Fast local check (leo-profanity) ─────────────────────────────────
+  // Runs synchronously with no network call. If it fires we throw immediately
+  // and never hit the OpenAI API.
+  for (const field of inputs) {
+    if (leoProfanity.check(field.value)) {
+      console.log(`[moderation] leo-profanity flagged field "${field.label}"`);
+      throw new Error(
+        `Your ${field.label} appears to contain inappropriate content. Please revise it and try again.`
+      );
+    }
+  }
+
+  console.log("[moderation] leo-profanity passed — calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
 
   let res: Response;
   try {
@@ -49,7 +79,8 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
       },
       body: JSON.stringify({
         model: "omni-moderation-latest",
-        input: inputs.map((f) => f.value),
+        // omni-moderation requires typed input objects, not plain strings
+        input: inputs.map((f) => ({ type: "text", text: f.value })),
       }),
     });
   } catch (err) {
@@ -58,15 +89,18 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   }
 
   if (!res.ok) {
-    console.error(`[moderation] OpenAI returned ${res.status} — allowing content`);
+    const body = await res.text().catch(() => "(unreadable)");
+    console.error(`[moderation] OpenAI returned ${res.status} — allowing content. Body: ${body}`);
     return; // fail open on API error
   }
 
   const data = (await res.json()) as OpenAIModerationResponse;
+  console.log("[moderation] OpenAI response:", JSON.stringify(data));
 
   // results align by index with inputs
   for (let i = 0; i < data.results.length; i++) {
     const result = data.results[i];
+    console.log(`[moderation] result[${i}] (${inputs[i]?.label}): flagged=${result?.flagged}`);
     if (result?.flagged) {
       const categories = Object.entries(result.categories)
         .filter(([, on]) => on)
@@ -79,6 +113,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
       );
     }
   }
+  console.log("[moderation] all fields passed — content allowed");
 }
 
 // ─── Image moderation (Google Cloud Vision SafeSearch) ────────────────────────

@@ -303,6 +303,7 @@ export interface CreateRequestInput {
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<{ id: string }> {
+  console.log("[createRequest] called — title:", input.title);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
