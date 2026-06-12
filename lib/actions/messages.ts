@@ -531,12 +531,13 @@ export async function getUnreadMessageCount() {
 
   if (!convos || convos.length === 0) return 0;
 
-  const { count } = await supabase
+  // Count distinct conversations that have at least one unread message from the other person.
+  const { data } = await supabase
     .from("messages")
-    .select("id", { count: "exact", head: true })
-    .in("conversation_id", convos.map(c => c.id))
+    .select("conversation_id")
+    .in("conversation_id", convos.map((c) => c.id))
     .neq("sender_id", user.id)
     .eq("is_read", false);
 
-  return count ?? 0;
+  return new Set((data ?? []).map((m) => m.conversation_id)).size;
 }

@@ -357,7 +357,9 @@ export function NavbarClient({
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
-  // ── Recompute unread message count ─────────────────────────────────────
+  // ── Recompute unread conversation count ─────────────────────────────────
+  // Counts distinct conversations with at least one unread message from the other person,
+  // not raw message count — so 5 unread msgs in 1 conversation shows badge "1".
   const refetchUnreadCount = useCallback(async (userId: string) => {
     try {
       const { data: convos } = await supabase
@@ -365,13 +367,13 @@ export function NavbarClient({
         .select("id")
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
       if (!convos || convos.length === 0) { setUnreadCount(0); return; }
-      const { count } = await supabase
+      const { data } = await supabase
         .from("messages")
-        .select("id", { count: "exact", head: true })
+        .select("conversation_id")
         .in("conversation_id", convos.map((c) => c.id))
         .neq("sender_id", userId)
         .eq("is_read", false);
-      setUnreadCount(count ?? 0);
+      setUnreadCount(new Set((data ?? []).map((m) => m.conversation_id)).size);
     } catch { /* non-critical */ }
   }, []);
 
@@ -381,9 +383,21 @@ export function NavbarClient({
     const channel = supabase
       .channel(`navbar-messages:${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          const msg = payload.new as { sender_id: string; is_read: boolean };
-          if (msg.sender_id !== userId && msg.is_read === false) setUnreadCount((c) => c + 1);
+        async (payload) => {
+          const msg = payload.new as { sender_id: string; is_read: boolean; conversation_id: string };
+          if (msg.sender_id === userId || msg.is_read) return;
+          // Only bump the badge if this is the first unread in this conversation.
+          // If there are already other unreads in the same convo, the conversation
+          // was already counted — incrementing again would over-count.
+          const { count } = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", msg.conversation_id)
+            .neq("sender_id", userId)
+            .eq("is_read", false);
+          // count includes the new message itself; if it's exactly 1 this convo
+          // just went from 0 → 1 unread, so it's a new unread conversation.
+          if ((count ?? 0) === 1) setUnreadCount((c) => c + 1);
         })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" },
         () => refetchUnreadCount(userId))

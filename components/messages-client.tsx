@@ -266,7 +266,8 @@ export function MessagesClient({
         }
       )
       // ── Conversation row changed (last message, order, archive) ──────
-      // (point 1) keeps the left panel preview + ordering live.
+      // Uses the live state inside the setters (not the ref) so the
+      // unreadCount incremented by bumpUnread is never overwritten.
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "conversations" },
@@ -278,28 +279,36 @@ export function MessagesClient({
             archived_by_buyer: boolean; archived_by_seller: boolean;
           };
           const convId = row.id;
-          const existing =
-            conversationsRef.current.find((c) => c.id === convId) ||
-            archivedConversationsRef.current.find((c) => c.id === convId);
-          if (!existing) return; // not loaded (e.g. archived tab unopened)
-
           const preview = buildPreview(
             row.last_message, row.last_message_at, row.created_at,
             row.last_message_sender_id, currentUserId
           );
-          const updated = { ...existing, lastMessage: preview };
           const myArchived = row.buyer_id === currentUserId ? row.archived_by_buyer : row.archived_by_seller;
 
           if (myArchived) {
-            setConversations((prev) => prev.filter((c) => c.id !== convId));
-            setArchivedConversations((prev) =>
-              sortByRecent([updated, ...prev.filter((c) => c.id !== convId)])
-            );
+            // Move to archived list — read unreadCount from live active state
+            setConversations((prev) => {
+              const match = prev.find((c) => c.id === convId);
+              if (!match) return prev; // already not in active list
+              setArchivedConversations((arch) =>
+                sortByRecent([{ ...match, lastMessage: preview }, ...arch.filter((c) => c.id !== convId)])
+              );
+              return prev.filter((c) => c.id !== convId);
+            });
           } else {
+            // Update preview in-place, preserving live unreadCount
             setArchivedConversations((prev) => prev.filter((c) => c.id !== convId));
-            setConversations((prev) =>
-              sortByRecent([updated, ...prev.filter((c) => c.id !== convId)])
-            );
+            setConversations((prev) => {
+              const match = prev.find((c) => c.id === convId);
+              if (!match) {
+                // Could be coming from archived — fall back to ref
+                const fromArchived = archivedConversationsRef.current.find((c) => c.id === convId);
+                if (!fromArchived) return prev;
+                return sortByRecent([{ ...fromArchived, lastMessage: preview }, ...prev]);
+              }
+              // Preserve the live unreadCount (not the stale ref value)
+              return sortByRecent([{ ...match, lastMessage: preview }, ...prev.filter((c) => c.id !== convId)]);
+            });
           }
         }
       )
