@@ -256,3 +256,148 @@ ${listingBlock}
     }),
   });
 }
+
+// ─── Moderation: shared notice block ──────────────────────────────────────────
+
+function noticeBox(label: string, value: string): string {
+  return `
+<div style="border:1px solid ${BRAND.border};border-radius:8px;padding:14px 16px;margin:0 0 20px;background-color:${BRAND.wash};">
+  <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:${BRAND.muted};">${escapeHtml(label)}</p>
+  <p style="margin:0;font-size:14px;line-height:1.6;color:${BRAND.ink};">${escapeHtml(value)}</p>
+</div>`.trim();
+}
+
+// ─── Admin: new report submitted ──────────────────────────────────────────────
+
+export async function sendReportAdminEmail({
+  toEmail,
+  targetType,
+  targetLabel,
+  reason,
+  details,
+  reportCount,
+}: {
+  toEmail: string;
+  targetType: "listing" | "request" | "message";
+  targetLabel: string;
+  reason: string;
+  details: string | null;
+  reportCount: number;
+}) {
+  const body = `
+<h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:${BRAND.ink};">New ${escapeHtml(targetType)} report</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  A ${escapeHtml(targetType)} has been reported on BearCart and needs review.
+</p>
+${noticeBox("Reported " + targetType, targetLabel)}
+${noticeBox("Reason", reason)}
+${details ? noticeBox("Additional details", details) : ""}
+${noticeBox("Total reports on this item", String(reportCount))}
+<div style="margin:8px 0 0;text-align:center;">
+  ${ctaButton(`${APP_URL}/admin`, "Open Admin Dashboard")}
+</div>`;
+
+  await transporter.sendMail({
+    from: FROM,
+    to: toEmail,
+    subject: `[BearCart Admin] ${targetType} reported — ${truncate(reason, 40)}`,
+    html: emailShell({ body, preheader: `A ${targetType} was reported and needs review.` }),
+  });
+}
+
+// ─── User: post delisted / restored / taken down ──────────────────────────────
+
+export async function sendPostDelistedEmail({
+  toEmail, firstName, postType, postTitle, reason,
+}: { toEmail: string; firstName: string; postType: "listing" | "request"; postTitle: string; reason: string | null }) {
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your ${escapeHtml(postType)} has been temporarily removed</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  Your ${escapeHtml(postType)} <strong>&ldquo;${escapeHtml(postTitle)}&rdquo;</strong> has been delisted by a BearCart admin and is no longer visible to other users. It still appears in your profile, marked as delisted.
+</p>
+${reason ? noticeBox("Reason", reason) : ""}
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">If you believe this was a mistake, please review our community guidelines.</p>`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `Your BearCart ${postType} was removed`,
+    html: emailShell({ body, preheader: `Your ${postType} "${truncate(postTitle, 50)}" was temporarily removed.` }),
+  });
+}
+
+export async function sendPostRestoredEmail({
+  toEmail, firstName, postType, postTitle,
+}: { toEmail: string; firstName: string; postType: "listing" | "request"; postTitle: string }) {
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your ${escapeHtml(postType)} is live again</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  Good news — your ${escapeHtml(postType)} <strong>&ldquo;${escapeHtml(postTitle)}&rdquo;</strong> has been reviewed and restored. It is once again visible to everyone on BearCart.
+</p>`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `Your BearCart ${postType} has been restored`,
+    html: emailShell({ body, preheader: `Your ${postType} is visible again.` }),
+  });
+}
+
+export async function sendPostTakedownEmail({
+  toEmail, firstName, postType, postTitle, reason,
+}: { toEmail: string; firstName: string; postType: "listing" | "request"; postTitle: string; reason: string }) {
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your ${escapeHtml(postType)} has been permanently removed</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  Your ${escapeHtml(postType)} <strong>&ldquo;${escapeHtml(postTitle)}&rdquo;</strong> has been permanently taken down by a BearCart admin for violating our community guidelines. This action cannot be undone.
+</p>
+${noticeBox("Reason", reason)}`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `Your BearCart ${postType} was permanently removed`,
+    html: emailShell({ body, preheader: `Your ${postType} was permanently taken down.` }),
+  });
+}
+
+// ─── User: account warned / banned ────────────────────────────────────────────
+
+const BAN_TYPE_LABEL: Record<string, string> = {
+  post: "posting listings and requests",
+  chat: "sending messages",
+  full: "posting and messaging",
+};
+
+export async function sendAccountWarnedEmail({
+  toEmail, firstName, reason,
+}: { toEmail: string; firstName: string; reason: string }) {
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">You&rsquo;ve received a warning</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  A BearCart admin has issued a warning on your account. Please review our community guidelines to avoid further action.
+</p>
+${noticeBox("Reason", reason)}`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `A warning has been issued on your BearCart account`,
+    html: emailShell({ body, preheader: `You've received a warning on BearCart.` }),
+  });
+}
+
+export async function sendAccountBannedEmail({
+  toEmail, firstName, banType, reason,
+}: { toEmail: string; firstName: string; banType: "post" | "chat" | "full"; reason: string }) {
+  const scope = BAN_TYPE_LABEL[banType] ?? "some features";
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your account has been restricted</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  A BearCart admin has restricted your account. You are now banned from <strong>${escapeHtml(scope)}</strong>. You can still browse and log in.
+</p>
+${noticeBox("Restriction", banType === "full" ? "Full ban" : banType === "post" ? "Post ban" : "Chat ban")}
+${noticeBox("Reason", reason)}`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `Your BearCart account has been restricted`,
+    html: emailShell({ body, preheader: `Your account has been restricted from ${scope}.` }),
+  });
+}

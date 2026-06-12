@@ -14,6 +14,10 @@ import {
   BookmarkSimple,
   Star,
   X,
+  Flag,
+  Prohibit,
+  ArrowCounterClockwise,
+  Warning,
 } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import { formatTimeAgo } from "@/lib/listing-helpers";
@@ -42,6 +46,16 @@ function getNotificationIcon(type: NotificationType) {
       return BookmarkSimple;
     case "review_received":
       return Star;
+    case "new_report":
+      return Flag;
+    case "post_delisted":
+    case "post_takedown":
+    case "account_banned":
+      return Prohibit;
+    case "post_restored":
+      return ArrowCounterClockwise;
+    case "account_warned":
+      return Warning;
     default:
       return Bell;
   }
@@ -57,6 +71,15 @@ function getNotificationHref(n: NotificationRow): string {
       return n.reference_id ? `/listings/${n.reference_id}` : "/listings";
     case "review_received":
       return "/profile";
+    case "new_report":
+      return "/admin";
+    case "post_delisted":
+    case "post_restored":
+    case "post_takedown":
+      return n.reference_table === "requests" ? "/requests" : "/profile";
+    case "account_warned":
+    case "account_banned":
+      return "/notifications";
     default:
       return "/notifications";
   }

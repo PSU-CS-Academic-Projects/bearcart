@@ -38,6 +38,7 @@ export interface RequestRow {
   is_negotiable: boolean;
   urgency: RequestUrgency;
   status: RequestStatus;
+  is_delisted: boolean;
   created_at: string;
   request_images: RequestImageRow[];
   requester: {
@@ -131,7 +132,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     .select(
       `
       id, requester_id, title, description, category,
-      budget_min, budget_max, is_negotiable, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -140,6 +141,7 @@ export async function getRequests(filters: RequestFilters = {}) {
       { count: "exact" }
     )
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null);
 
   if (search) {
@@ -190,13 +192,14 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, is_negotiable, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -213,7 +216,7 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, is_negotiable, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -243,7 +246,7 @@ export async function getSimilarRequests(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, is_negotiable, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -251,6 +254,7 @@ export async function getSimilarRequests(
     `)
     .ilike("category", category)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .neq("id", requestId)
     .order("created_at", { ascending: false })
@@ -271,7 +275,7 @@ export async function getRequestsByRequester(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, is_negotiable, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -303,10 +307,14 @@ export interface CreateRequestInput {
 }
 
 export async function createRequest(input: CreateRequestInput): Promise<{ id: string }> {
-  console.log("[createRequest] called — title:", input.title);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
+  if (banRow?.ban_type === "post" || banRow?.ban_type === "full") {
+    throw new Error("Your account is banned from posting. Contact an admin if you believe this is a mistake.");
+  }
 
   if (input.budget_min !== null && input.budget_min < 1) {
     throw new Error("Minimum budget must be at least ₱1");

@@ -30,6 +30,7 @@ import {
   ListBullets,
   Plus,
   Bell,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -229,6 +230,18 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
             Create a Post
           </Link>
         </DropdownMenuItem>
+
+        {user.is_admin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="flex cursor-pointer items-center gap-2 font-medium text-primary">
+                <ShieldCheck className="size-4" />
+                Admin Dashboard
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
 

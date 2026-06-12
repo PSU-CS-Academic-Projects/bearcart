@@ -16,6 +16,7 @@ export interface NavbarUser {
   last_name: string | null;
   email: string;
   avatar_url: string | null;
+  is_admin: boolean;
 }
 
 // ─── Server Component ─────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ export async function Navbar() {
     // Fetch full user record from users table
     const { data: profile } = await supabase
       .from("users")
-      .select("id, full_name, first_name, last_name, email, avatar_url")
+      .select("id, full_name, first_name, last_name, email, avatar_url, is_admin")
       .eq("id", authUser.id)
       .single();
 

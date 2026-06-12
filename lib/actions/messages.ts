@@ -199,6 +199,11 @@ export async function sendMessage(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
+  if (banRow?.ban_type === "chat" || banRow?.ban_type === "full") {
+    throw new Error("Your account is banned from sending messages.");
+  }
+
   const trimmed = content.trim();
   const cleanImageUrl = imageUrl?.trim() || null;
 
@@ -531,7 +536,7 @@ export async function getUnreadMessageCount() {
 
   if (!convos || convos.length === 0) return 0;
 
-  // Count distinct conversations that have at least one unread message from the other person.
+// Count distinct conversations that have at least one unread message from the other person.
   const { data } = await supabase
     .from("messages")
     .select("conversation_id")

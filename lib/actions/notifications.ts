@@ -12,7 +12,13 @@ export type NotificationType =
   | "listing_saved"
   | "review_received"
   | "request_match"
-  | "report_update";
+  | "report_update"
+  | "post_delisted"
+  | "post_restored"
+  | "post_takedown"
+  | "account_warned"
+  | "account_banned"
+  | "new_report";
 
 export interface NotificationRow {
   id: string;

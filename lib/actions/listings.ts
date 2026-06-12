@@ -46,12 +46,37 @@ export interface ListingWithImages {
   category: string;
   condition: string;
   status: string;
+  is_delisted: boolean;
   tags: string[] | null;
   views_count: number;
   created_at: string;
   updated_at: string;
   listing_images: { id: string; image_url: string; is_cover: boolean; order: number }[];
   seller: { id: string; full_name: string; avatar_url: string | null; role: string; college: string | null; created_at: string };
+}
+
+export interface PostModerationState {
+  exists: boolean;
+  is_delisted: boolean;
+  is_removed: boolean;
+}
+
+/** Minimal moderation flags for a post — lets a detail page show a "removed"
+ *  message for delisted content (hidden by RLS) without leaking the content. */
+export async function getPostModerationState(
+  type: "listing" | "request",
+  id: string
+): Promise<PostModerationState> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_post_moderation_state", { p_type: type, p_id: id });
+  return (data ?? { exists: false, is_delisted: false, is_removed: false }) as PostModerationState;
+}
+
+async function assertNotPostBanned(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data } = await supabase.from("users").select("ban_type").eq("id", userId).single();
+  if (data?.ban_type === "post" || data?.ban_type === "full") {
+    throw new Error("Your account is banned from posting. Contact an admin if you believe this is a mistake.");
+  }
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
@@ -66,6 +91,8 @@ export async function createListing(input: CreateListingInput) {
   if (input.photos.length === 0) throw new Error("At least one photo is required");
   if (input.price < 1) throw new Error("Price must be at least ₱1");
   if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
+
+  await assertNotPostBanned(supabase, user.id);
 
   // 0. Content moderation — runs before any DB write so flagged content
   //    never produces an orphaned listing row.
@@ -152,13 +179,14 @@ export async function getListings(filters: ListingFilters = {}) {
     .select(
       `
       id, seller_id, title, description, price, is_negotiable,
-      category, condition, status, tags, views_count, created_at, updated_at,
+      category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
       seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
     `,
       { count: "exact" }
     )
     .eq("status", "available")
+    .eq("is_delisted", false)
     .is("deleted_at", null);
 
   // Filters
@@ -226,7 +254,7 @@ export async function getListingById(id: string) {
     .select(
       `
       id, seller_id, title, description, price, is_negotiable,
-      category, condition, status, tags, views_count, created_at, updated_at,
+      category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
       seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
     `
@@ -261,7 +289,7 @@ export async function getListingsBySeller(sellerId: string, status?: string) {
     .select(
       `
       id, seller_id, title, description, price, is_negotiable,
-      category, condition, status, tags, views_count, created_at, updated_at,
+      category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order )
     `
     )
