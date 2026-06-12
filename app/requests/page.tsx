@@ -12,6 +12,7 @@ import {
 import { RequestRow, RequestRowSkeleton } from "@/components/request-row";
 import { Pagination } from "@/components/pagination";
 import { getRequests, type RequestFilters } from "@/lib/actions/requests";
+import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { createClient } from "@/lib/supabase-server";
 import { parseCurrencyInput } from "@/lib/currency";
 
@@ -43,6 +44,7 @@ async function RequestsList({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? null;
+  const isAdmin = await isCurrentUserAdmin();
 
   // Parse URL params
   const categoryParam = typeof searchParams.category === "string" ? searchParams.category : undefined;
@@ -115,7 +117,7 @@ async function RequestsList({
           <div className="overflow-hidden rounded-xl border bg-card">
             {requests.map((request, idx) => (
               <div key={request.id} className={idx > 0 ? "border-t" : ""}>
-                <RequestRow request={request} currentUserId={currentUserId} />
+                <RequestRow request={request} currentUserId={currentUserId} isAdmin={isAdmin} />
               </div>
             ))}
           </div>

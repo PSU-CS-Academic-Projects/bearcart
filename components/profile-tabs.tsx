@@ -37,6 +37,7 @@ interface ListingRow {
   category: string;
   condition: string;
   status: string;
+  is_delisted?: boolean;
   created_at: string;
   listing_images: { image_url: string; is_cover: boolean; order: number }[];
 }
@@ -205,6 +206,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           timePosted={formatTimeAgo(listing.created_at)}
           imageUrl={getCoverImage(listing)}
           variant={variant}
+          isDelisted={listing.is_delisted}
           onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
           onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
@@ -463,6 +465,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                 timePosted={formatTimeAgo(listing.created_at)}
                 imageUrl={getCoverImage(listing)}
                 variant="active"
+                isDelisted={listing.is_delisted}
               />
             ))}
           </div>
