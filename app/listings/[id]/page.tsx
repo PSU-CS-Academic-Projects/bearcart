@@ -7,6 +7,7 @@ import { SellerInfoCard } from "@/components/seller-info-card";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ListingActions } from "@/components/listing-actions";
 import { ReportListingModal } from "@/components/report-listing-modal";
+import { ListingAdminControls } from "@/components/listing-admin-controls";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +19,8 @@ import {
   PencilSimple,
   MapPin,
 } from "@phosphor-icons/react/dist/ssr";
-import { getListingById, getRelatedListings } from "@/lib/actions/listings";
+import { getListingById, getRelatedListings, getPostModerationState } from "@/lib/actions/listings";
+import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { isListingSaved } from "@/lib/actions/saved";
 import { createClient } from "@/lib/supabase-server";
 import {
@@ -57,7 +59,34 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
   // Fetch listing data
   const listing = await getListingById(id);
-  if (!listing) notFound();
+  const isAdmin = await isCurrentUserAdmin();
+
+  // RLS hides delisted listings from non-owners/non-admins → null. Distinguish
+  // a genuinely-missing listing from a delisted one so we can show the right message.
+  if (!listing) {
+    const mod = await getPostModerationState("listing", id);
+    if (mod.exists && mod.is_delisted && !mod.is_removed) {
+      return (
+        <div className="flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex flex-1 items-center justify-center px-4">
+            <div className="max-w-md rounded-xl border border-border bg-card p-8 text-center">
+              <Warning className="mx-auto mb-3 size-10 text-muted-foreground" />
+              <h1 className="mb-2 text-lg font-semibold text-foreground">This listing has been removed</h1>
+              <p className="text-sm text-muted-foreground">
+                This listing is no longer available because it was removed by a BearCart admin.
+              </p>
+              <Link href="/listings" className="mt-5 inline-block text-sm font-medium text-primary hover:underline">
+                Browse other listings
+              </Link>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+    notFound();
+  }
 
   // Check if listing is unavailable (sold or deleted)
   const isUnavailable = listing.status === "sold" || listing.status === "deleted";
@@ -242,7 +271,28 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               {seller && <SellerInfoCard seller={seller} />}
 
-              <ReportListingModal posterId={listing.seller_id} />
+              {/* Admin delisted indicator + controls */}
+              {isAdmin && (
+                <>
+                  {listing.is_delisted && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs font-medium text-destructive">
+                      <Warning className="size-4 shrink-0" />
+                      This listing is currently delisted (hidden from regular users).
+                    </div>
+                  )}
+                  <ListingAdminControls listingId={listing.id} isDelisted={listing.is_delisted} />
+                </>
+              )}
+
+              {/* Owner sees their own delisted listing flagged here too */}
+              {!isAdmin && listing.is_delisted && user?.id === listing.seller_id && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs font-medium text-amber-700">
+                  <Warning className="size-4 shrink-0" />
+                  This listing has been delisted by an admin and is hidden from other users.
+                </div>
+              )}
+
+              <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
             </div>
           </section>
 

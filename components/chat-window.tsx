@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ReportDialog } from "@/components/report-dialog";
+import { reportMessage } from "@/lib/actions/reports";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -169,6 +170,7 @@ export function ChatWindow({
   const [imageError, setImageError] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [messageToReport, setMessageToReport] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -393,7 +395,7 @@ export function ChatWindow({
                 const hasText = message.text.length > 0;
                 const isPlaceholder = message.id.startsWith("pending-");
 
-                const menuButton = !message.isDeleted && !isPlaceholder && onDeleteMessage ? (
+                const menuButton = !message.isDeleted && !isPlaceholder ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -405,19 +407,21 @@ export function ChatWindow({
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align={message.isFromMe ? "end" : "start"} className="w-32">
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setMessageToDelete(message.id)}
-                      >
-                        <ProhibitInset className="size-4" />
-                        Delete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => toast.info("Report submitted. Thank you for keeping BearCart safe.")}
-                      >
-                        <Flag className="size-4" />
-                        Report
-                      </DropdownMenuItem>
+                      {message.isFromMe && onDeleteMessage && (
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => setMessageToDelete(message.id)}
+                        >
+                          <ProhibitInset className="size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                      {!message.isFromMe && (
+                        <DropdownMenuItem onClick={() => setMessageToReport(message.id)}>
+                          <Flag className="size-4" />
+                          Report
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : null;
@@ -516,8 +520,8 @@ export function ChatWindow({
                           </div>
                         )}
 
-                        {/* 3-dot menu — only for own non-deleted messages */}
-                        {message.isFromMe && menuButton}
+                        {/* 3-dot menu — Delete on own messages, Report on others' */}
+                        {menuButton}
                       </div>
                     </div>
                   </div>
@@ -552,6 +556,16 @@ export function ChatWindow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Report Message Dialog ────────────────────────────────── */}
+      <ReportDialog
+        open={!!messageToReport}
+        onOpenChange={(o) => { if (!o) setMessageToReport(null); }}
+        targetType="message"
+        onConfirm={async (reason, details) => {
+          if (messageToReport) await reportMessage(messageToReport, reason, details);
+        }}
+      />
 
       {/* ── Pending Image Preview ───────────────────────────────── */}
       {(pendingImage || imageError) && (
