@@ -60,6 +60,9 @@ export const FILIPINO_PROFANITY: string[] = [
   // Common substitution spellings
   "p0ta", "g4go", "t4nga", "b0bo",
   "putang!na", "tang!na",
+
+  // Common profane number jokes
+  "42069", "69", "69420", "666", "80085", "8008"
 ];
 
 /**
@@ -132,5 +135,4 @@ export const WHITELISTED_WORDS: string[] = [
   "crack",
   "pot",             // cookware
   "cocoa",
-  "cock",            // rooster, common in agriculture listings — keep if needed
 ];
