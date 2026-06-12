@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
+import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -326,6 +327,13 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
     throw new Error("Minimum budget must be less than or equal to maximum budget");
   }
 
+  // 0. Content moderation — runs before any DB write.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(input.photos);
+
   // 1. Insert request row
   const { data: request, error: insertErr } = await supabase
     .from("requests")
@@ -416,6 +424,13 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
   if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
     throw new Error("Maximum budget cannot exceed ₱999,999");
   }
+
+  // 0. Content moderation — text plus any newly added images.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(input.newPhotos);
 
   // 1. Update fields
   const { error: updateError } = await supabase
