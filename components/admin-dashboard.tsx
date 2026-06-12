@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Flag, Package, ChatCircle, Prohibit, ArrowCounterClockwise, Trash,
-  Warning, ShieldCheck, MagnifyingGlass, User as UserIcon, ArrowUpRight,
+  Warning, ShieldCheck, User as UserIcon, ArrowUpRight,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,19 +129,22 @@ export function AdminDashboard({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      <h1 className="mb-1 flex items-center gap-2 text-2xl font-bold text-foreground">
-        <ShieldCheck className="size-6 text-primary" /> Admin Dashboard
+      <p className="mb-1 text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-primary">Moderation</p>
+      <h1 className="mb-1 flex items-center gap-2 text-2xl font-bold tracking-[-0.02em] text-foreground">
+        <ShieldCheck className="size-6 text-primary" /> Admin control desk
       </h1>
       <p className="mb-5 text-sm text-muted-foreground">Moderate content and manage users.</p>
 
-      {/* Top tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
+      {/* Tabs — underlined console strip */}
+      <div className="mb-6 flex gap-6 border-b border-border">
         {(["overview", "reported", "users"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            className={`relative -mb-px py-2 text-sm font-semibold capitalize transition-colors ${
+              tab === t
+                ? "text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {t === "reported" ? "Reported content" : t}
@@ -192,25 +195,34 @@ export function AdminDashboard({
       {/* ── Users ── */}
       {tab === "users" && (
         <div>
-          <div className="mb-4 flex items-center gap-2 rounded-lg border bg-background px-3">
-            <MagnifyingGlass className="size-4 text-muted-foreground" />
+          <div className="mb-3 flex items-center gap-2 rounded-lg border bg-card px-3">
+            <span className="font-mono text-sm font-semibold text-primary">/</span>
             <input
               value={userQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search users by name or email…"
+              placeholder="Filter users by name or account ID…"
               className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
+            {searching && <span className="text-xs text-muted-foreground">…</span>}
           </div>
-          {searching && <p className="mb-2 text-xs text-muted-foreground">Searching…</p>}
-          <div className="flex flex-col gap-2">
-            {users.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
-            ) : (
-              users.map((u) => (
-                <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
-              ))
-            )}
-          </div>
+          {users.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
+          ) : (
+            <>
+              {/* Column header */}
+              <div className="grid grid-cols-[1.5fr_1.3fr_auto] gap-4 px-3.5 pb-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:grid-cols-[1.6fr_1.4fr_0.7fr_auto]">
+                <span>User</span>
+                <span>Account</span>
+                <span className="hidden sm:block">Standing</span>
+                <span className="text-right">Actions</span>
+              </div>
+              <div className="overflow-hidden rounded-xl border bg-card">
+                {users.map((u) => (
+                  <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -433,57 +445,82 @@ function UserCard({
   onAction: (p: Pending) => void;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="group relative grid grid-cols-[1.5fr_1.3fr_auto] items-center gap-4 border-t border-border px-3.5 py-3 first:border-t-0 sm:grid-cols-[1.6fr_1.4fr_0.7fr_auto]">
+      {/* amber active sweep on hover — full-bleed gradient, not a side stripe */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,var(--primary),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-[0.06]"
+      />
+
+      {/* User: severity dot + name + status badges */}
+      <div className="relative flex min-w-0 items-center gap-2.5">
+        <span
+          aria-hidden
+          className={
+            "size-2 shrink-0 rounded-full " +
+            (user.is_admin
+              ? "bg-primary ring-[3px] ring-primary/20"
+              : user.ban_type !== "none"
+                ? "bg-destructive"
+                : "bg-primary/60")
+          }
+        />
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/profile/${user.id}`} className="flex items-center gap-1 font-semibold text-foreground hover:underline">
-              {user.full_name} <ArrowUpRight className="size-3.5 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
+              {user.full_name}
             </Link>
-            {user.is_admin && (
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Admin</span>
-            )}
             {BAN_BADGE[user.ban_type] && (
-              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">{BAN_BADGE[user.ban_type]}</span>
+              <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.6rem] font-semibold text-destructive">{BAN_BADGE[user.ban_type]}</span>
             )}
             {user.warning_count > 0 && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{user.warning_count} warning{user.warning_count !== 1 ? "s" : ""}</span>
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] font-medium text-amber-700">{user.warning_count}⚠</span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{user.email}</p>
+          {/* account shown inline under name on mobile only */}
+          <p className="truncate font-mono text-[0.7rem] text-muted-foreground sm:hidden">{user.email}</p>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* Account (mono) — sm+ column */}
+      <p className="relative hidden truncate font-mono text-xs text-muted-foreground sm:block">{user.email}</p>
+
+      {/* Standing — sm+ column */}
+      <span className={"relative hidden text-[0.68rem] font-semibold uppercase tracking-[0.08em] sm:block " + (user.is_admin ? "text-primary" : "text-muted-foreground")}>
+        {user.is_admin ? "Admin" : "Member"}
+      </span>
+
+      {/* Actions */}
+      <div className="relative flex flex-wrap justify-end gap-1.5">
         {isSelf ? (
           user.is_admin && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-destructive hover:bg-destructive/10"
               onClick={() => onAction({ kind: "demote-self" })}>
-              <ShieldCheck className="size-4" /> Step down as admin
+              <ShieldCheck className="size-3.5" /> Step down
             </Button>
           )
         ) : user.is_admin ? (
-          <p className="text-xs text-muted-foreground">Other admins cannot be modified.</p>
+          <span className="text-xs text-muted-foreground">Protected</span>
         ) : (
           <>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5"
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
               onClick={() => onAction({ kind: "warn", userId: user.id, userName: user.full_name })}>
-              <Warning className="size-4" /> Warn
+              <Warning className="size-3.5" /> Warn
             </Button>
             {user.ban_type === "none" ? (
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-xs text-destructive hover:bg-destructive/10"
                 onClick={() => onAction({ kind: "ban", userId: user.id, userName: user.full_name })}>
-                <Prohibit className="size-4" /> Ban
+                <Prohibit className="size-3.5" /> Ban
               </Button>
             ) : (
-              <Button size="sm" variant="outline" className="h-8 gap-1.5"
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
                 onClick={() => onAction({ kind: "unban", userId: user.id, userName: user.full_name })}>
-                <ArrowCounterClockwise className="size-4" /> Lift ban
+                <ArrowCounterClockwise className="size-3.5" /> Lift ban
               </Button>
             )}
-            <Button size="sm" variant="outline" className="h-8 gap-1.5"
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
               onClick={() => onAction({ kind: "promote", userId: user.id, userName: user.full_name })}>
-              <ShieldCheck className="size-4" /> Make admin
+              <ShieldCheck className="size-3.5" /> Make admin
             </Button>
           </>
         )}
