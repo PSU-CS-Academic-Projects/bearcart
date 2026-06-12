@@ -3,7 +3,7 @@
  * action modules, so the API keys below never reach the client bundle.
  *
  * - Text  → leo-profanity (sync, no API key) → OpenAI omni-moderation-latest
- * - Image → Google Cloud Vision SafeSearch (free tier, ~1000 units/month)
+ * - Image → OpenAI omni-moderation-latest (image_url input with data URL)
  *
  * Behaviour:
  * - leo-profanity runs first and throws immediately on a match — OpenAI is
@@ -116,78 +116,58 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   console.log("[moderation] all fields passed — content allowed");
 }
 
-// ─── Image moderation (Google Cloud Vision SafeSearch) ────────────────────────
+// ─── Image moderation (OpenAI omni-moderation-latest) ────────────────────────
+// omni-moderation supports image_url inputs directly — pass the full data URL.
 
-// Vision likelihood enum, ascending severity.
-type Likelihood =
-  | "UNKNOWN" | "VERY_UNLIKELY" | "UNLIKELY" | "POSSIBLE" | "LIKELY" | "VERY_LIKELY";
-
-interface VisionResponse {
-  responses: {
-    safeSearchAnnotation?: {
-      adult: Likelihood;
-      spoof: Likelihood;
-      medical: Likelihood;
-      violence: Likelihood;
-      racy: Likelihood;
-    };
-    error?: { message: string };
-  }[];
-}
-
-function stripDataUrl(b64: string): string {
-  const comma = b64.indexOf(",");
-  return comma === -1 ? b64 : b64.slice(comma + 1);
-}
-
-/** Throws if a single base64 image is flagged by SafeSearch. */
+/** Throws if a single base64 image is flagged by OpenAI omni-moderation. */
 export async function moderateImageOrThrow(base64Data: string): Promise<void> {
-  const apiKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("[moderation] GOOGLE_CLOUD_VISION_API_KEY not set — skipping image moderation");
+    console.warn("[moderation] OPENAI_API_KEY not set — skipping image moderation");
     return; // fail open
   }
 
+  // Ensure the value is a proper data URL (omni-moderation requires it)
+  const dataUrl = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+
+  console.log("[moderation] calling OpenAI omni-moderation-latest for image");
+
   let res: Response;
   try {
-    res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+    res = await fetch("https://api.openai.com/v1/moderations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        requests: [
-          {
-            image: { content: stripDataUrl(base64Data) },
-            features: [{ type: "SAFE_SEARCH_DETECTION" }],
-          },
-        ],
+        model: "omni-moderation-latest",
+        input: [{ type: "image_url", image_url: { url: dataUrl } }],
       }),
     });
   } catch (err) {
-    console.error("[moderation] Vision request failed — allowing image:", err);
+    console.error("[moderation] OpenAI image moderation request failed — allowing image:", err);
     return; // fail open
   }
 
   if (!res.ok) {
-    console.error(`[moderation] Vision returned ${res.status} — allowing image`);
+    const body = await res.text().catch(() => "(unreadable)");
+    console.error(`[moderation] OpenAI image moderation returned ${res.status} — allowing image. Body: ${body}`);
     return; // fail open
   }
 
-  const data = (await res.json()) as VisionResponse;
-  const annotation = data.responses?.[0]?.safeSearchAnnotation;
-  if (!annotation) return;
+  const data = (await res.json()) as OpenAIModerationResponse;
+  const result = data.results?.[0];
+  console.log("[moderation] image moderation result: flagged=", result?.flagged);
 
-  // adult & violence block at LIKELY+; racy only at VERY_LIKELY to avoid
-  // false positives on legitimate clothing/swimwear listings.
-  const strong = new Set<Likelihood>(["LIKELY", "VERY_LIKELY"]);
-  const reasons: string[] = [];
-  if (strong.has(annotation.adult)) reasons.push("explicit/adult content");
-  if (annotation.racy === "VERY_LIKELY") reasons.push("sexually suggestive content");
-  if (strong.has(annotation.violence)) reasons.push("graphic violence");
-
-  if (reasons.length > 0) {
+  if (result?.flagged) {
+    const categories = Object.entries(result.categories)
+      .filter(([, on]) => on)
+      .map(([name]) => name.replace(/[/_]/g, " "));
     throw new Error(
-      `One of your images was rejected because it may contain ${reasons.join(", ")}. ` +
-        `Please choose a different image.`
+      `One of your images was rejected because it may contain inappropriate content` +
+        (categories.length ? ` (${categories.join(", ")})` : "") +
+        `. Please choose a different image.`
     );
   }
 }
