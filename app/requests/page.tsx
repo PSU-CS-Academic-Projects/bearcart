@@ -12,7 +12,9 @@ import {
 import { RequestRow, RequestRowSkeleton } from "@/components/request-row";
 import { Pagination } from "@/components/pagination";
 import { getRequests, type RequestFilters } from "@/lib/actions/requests";
+import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { createClient } from "@/lib/supabase-server";
+import { parseCurrencyInput } from "@/lib/currency";
 
 interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -42,6 +44,7 @@ async function RequestsList({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? null;
+  const isAdmin = await isCurrentUserAdmin();
 
   // Parse URL params
   const categoryParam = typeof searchParams.category === "string" ? searchParams.category : undefined;
@@ -55,18 +58,18 @@ async function RequestsList({
     : undefined;
 
   const search = typeof searchParams.search === "string" ? searchParams.search : undefined;
-  const minBudget = typeof searchParams.min === "string" ? parseInt(searchParams.min) : undefined;
-  const maxBudget = typeof searchParams.max === "string" ? parseInt(searchParams.max) : undefined;
+  const minBudget = typeof searchParams.min === "string" ? parseCurrencyInput(searchParams.min) : null;
+  const maxBudget = typeof searchParams.max === "string" ? parseCurrencyInput(searchParams.max) : null;
   const page = typeof searchParams.page === "string" ? parseInt(searchParams.page) : 1;
 
   const filters: RequestFilters = {
     search,
     categories,
     urgencies,
-    minBudget: minBudget && !isNaN(minBudget) ? minBudget : undefined,
-    maxBudget: maxBudget && !isNaN(maxBudget) ? maxBudget : undefined,
+    minBudget: minBudget !== null && minBudget > 0 ? minBudget : undefined,
+    maxBudget: maxBudget !== null && maxBudget > 0 ? maxBudget : undefined,
     page: isNaN(page) ? 1 : page,
-    pageSize: 20,
+    pageSize: 12,
   };
 
   const hasActiveFilters = !!(categoryParam || urgencyParam || search || minBudget || maxBudget);
@@ -114,7 +117,7 @@ async function RequestsList({
           <div className="overflow-hidden rounded-xl border bg-card">
             {requests.map((request, idx) => (
               <div key={request.id} className={idx > 0 ? "border-t" : ""}>
-                <RequestRow request={request} currentUserId={currentUserId} />
+                <RequestRow request={request} currentUserId={currentUserId} isAdmin={isAdmin} />
               </div>
             ))}
           </div>
@@ -136,7 +139,7 @@ async function RequestsList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Looking For — PalMart",
+  title: "Requests — BearCart",
 };
 
 export default async function RequestsPage({ searchParams }: PageProps) {
@@ -156,7 +159,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-              Looking For
+              Requests
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Help PSU students and faculty find what they need

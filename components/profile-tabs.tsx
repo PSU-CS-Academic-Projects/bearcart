@@ -18,7 +18,8 @@ import {
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
 import { RequestRow } from "@/components/request-row";
-import { updateListingStatus } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
+import { updateListingStatus, deleteListing } from "@/lib/actions/listings";
 import { removeSavedListing } from "@/lib/actions/saved";
 import {
   markRequestFulfilled,
@@ -37,6 +38,7 @@ interface ListingRow {
   category: string;
   condition: string;
   status: string;
+  is_delisted?: boolean;
   created_at: string;
   listing_images: { image_url: string; is_cover: boolean; order: number }[];
 }
@@ -91,6 +93,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(props.variant === "own" ? "active" : "listings");
   const [markSoldId, setMarkSoldId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeItems, setActiveItems] = useState(props.activeListings);
   const [soldItems, setSoldItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).soldListings : []);
   const [savedItems, setSavedItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).savedListings : []);
@@ -105,10 +108,10 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     if (!markSoldId) return;
     try {
-      await updateListingStatus(markSoldId, "sold");
+      await updateListingStatus(markSoldId, "sold", soldToUserId);
       const listing = activeItems.find((l) => l.id === markSoldId);
       if (listing) {
         setActiveItems((prev) => prev.filter((l) => l.id !== markSoldId));
@@ -119,6 +122,20 @@ export function ProfileTabs(props: ProfileTabsProps) {
       toast.error("Failed to mark as sold");
     }
     setMarkSoldId(null);
+  };
+
+  // ── Delete Listing ────────────────────────────────────────────────────
+
+  const handleDeleteListing = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteListing(deleteId);
+      setActiveItems((prev) => prev.filter((l) => l.id !== deleteId));
+      toast.success("Listing removed!");
+    } catch {
+      toast.error("Failed to remove listing");
+    }
+    setDeleteId(null);
   };
 
   // ── Remove Saved ──────────────────────────────────────────────────────
@@ -190,9 +207,10 @@ export function ProfileTabs(props: ProfileTabsProps) {
           timePosted={formatTimeAgo(listing.created_at)}
           imageUrl={getCoverImage(listing)}
           variant={variant}
+          isDelisted={listing.is_delisted}
           onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
-          onDelete={undefined}
+          onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
           onRemoveSaved={variant === "saved" ? () => handleRemoveSaved(listing.id) : undefined}
         />
       ))}
@@ -376,18 +394,29 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </AlertDialog>
 
         {/* Mark as Sold Confirmation */}
-        <AlertDialog open={!!markSoldId} onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}>
+        <MarkAsSoldDialog
+          open={!!markSoldId}
+          onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}
+          listingId={markSoldId ?? ""}
+          onConfirm={handleMarkSold}
+        />
+
+        {/* Delete Listing Confirmation */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Mark as Sold?</AlertDialogTitle>
+              <AlertDialogTitle>Remove Listing?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to mark this listing as sold? This will hide it from the marketplace.
+                This will permanently delete the listing and cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleMarkSold}>
-                Yes, Mark as Sold
+              <AlertDialogAction
+                onClick={handleDeleteListing}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                Yes, Remove
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -409,7 +438,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="requests" className="gap-2">
           <MagnifyingGlass className="size-4" />
-          Looking For ({requests.length})
+          Requests ({requests.length})
         </TabsTrigger>
       </TabsList>
 
@@ -427,6 +456,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                 timePosted={formatTimeAgo(listing.created_at)}
                 imageUrl={getCoverImage(listing)}
                 variant="active"
+                isDelisted={listing.is_delisted}
               />
             ))}
           </div>

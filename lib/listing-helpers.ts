@@ -1,4 +1,5 @@
 import type { ListingWithImages } from "@/lib/actions/listings";
+import { formatPeso } from "@/lib/currency";
 
 /** Format a Postgres timestamp into a human-friendly relative string. */
 export function formatTimeAgo(dateString: string): string {
@@ -42,6 +43,10 @@ export function formatCondition(condition: string): string {
     poor: "Poor",
   };
   return map[condition] ?? condition;
+}
+
+export function formatListingPrice(price: number): string {
+  return formatPeso(price);
 }
 
 /** Map a display condition label back to the DB value. */

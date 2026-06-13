@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
+import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,8 +35,10 @@ export interface RequestRow {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   status: RequestStatus;
+  is_delisted: boolean;
   created_at: string;
   request_images: RequestImageRow[];
   requester: {
@@ -128,7 +132,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     .select(
       `
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -137,6 +141,7 @@ export async function getRequests(filters: RequestFilters = {}) {
       { count: "exact" }
     )
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null);
 
   if (search) {
@@ -187,13 +192,14 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -210,7 +216,7 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -240,7 +246,7 @@ export async function getSimilarRequests(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -248,6 +254,7 @@ export async function getSimilarRequests(
     `)
     .ilike("category", category)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .neq("id", requestId)
     .order("created_at", { ascending: false })
@@ -268,7 +275,7 @@ export async function getRequestsByRequester(
     .from("requests")
     .select(`
       id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
         id, full_name, first_name, last_name, avatar_url, role, college, created_at
@@ -293,6 +300,7 @@ export interface CreateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   /** Up to 3 base64-encoded images */
   photos: string[];
@@ -303,11 +311,22 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  if (input.budget_min !== null && input.budget_min < 0) {
-    throw new Error("Minimum budget must be 0 or greater");
+  const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
+  if (banRow?.ban_type === "post" || banRow?.ban_type === "full") {
+    throw new Error("Your account is banned from posting. Contact an admin if you believe this is a mistake.");
   }
-  if (input.budget_max !== null && input.budget_max < 0) {
-    throw new Error("Maximum budget must be 0 or greater");
+
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
+  }
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
   }
   if (
     input.budget_min !== null &&
@@ -316,6 +335,13 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
   ) {
     throw new Error("Minimum budget must be less than or equal to maximum budget");
   }
+
+  // 0. Content moderation — runs before any DB write.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(input.photos);
 
   // 1. Insert request row
   const { data: request, error: insertErr } = await supabase
@@ -327,6 +353,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: input.is_negotiable,
       urgency: input.urgency,
     })
     .select("id")
@@ -361,6 +388,7 @@ export interface UpdateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   /** Existing image URLs to keep (in new order) */
   existingPhotos: string[];
@@ -393,6 +421,25 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
   ) {
     throw new Error("Minimum budget must be less than or equal to maximum budget");
   }
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
+  }
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
+  }
+
+  // 0. Content moderation — text plus any newly added images.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(input.newPhotos);
 
   // 1. Update fields
   const { error: updateError } = await supabase
@@ -403,6 +450,7 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: input.is_negotiable,
       urgency: input.urgency,
     })
     .eq("id", input.requestId)

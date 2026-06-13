@@ -38,7 +38,7 @@ export async function RequestsSection() {
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Looking For</h2>
+            <h2 className="text-2xl font-bold text-foreground">Requests</h2>
             <p className="text-muted-foreground">
               Help PSU students and faculty find what they need
             </p>

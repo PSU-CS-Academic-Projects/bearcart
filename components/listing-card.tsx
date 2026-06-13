@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { User, ShoppingBag } from "@phosphor-icons/react/dist/ssr";
+import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ListingCardProps {
   id: string;
@@ -25,14 +26,17 @@ export function ListingCard({
   timePosted,
   imageUrl,
 }: ListingCardProps) {
-  const firstName = sellerName.split(" ")[0] || sellerName;
+  const parts = sellerName.trim().split(" ");
+  const displayName = parts.length >= 2
+    ? `${parts[0]} ${parts[parts.length - 1][0]}.`
+    : parts[0];
 
   return (
     <Link href={`/listings/${id}`} className="group block">
       <article className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={title} fill className="object-cover" />
+            <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
             <div className="flex size-full items-center justify-center">
               <ShoppingBag className="size-12 text-[oklch(0.75_0_0)]" />
@@ -46,9 +50,18 @@ export function ListingCard({
           </div>
         </div>
         <div className="p-3">
-          <p className="text-lg font-bold text-[oklch(0.585_0.144_55)] leading-tight">₱{price.toLocaleString()}</p>
-          <h3 className="mt-1 line-clamp-2 text-sm font-medium text-[oklch(0.2_0_0)]">{title}</h3>
-          <p className="mt-1.5 text-xs text-[oklch(0.5_0_0)]">{timePosted} · {condition}</p>
+          <p className="text-lg font-bold text-[oklch(0.585_0.144_55)] leading-tight">{formatListingPrice(price)}</p>
+          <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">{title}</h3>
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[oklch(0.5_0_0)]">
+            <div className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[oklch(0.92_0_0)]">
+              {sellerAvatar ? (
+                <Image src={sellerAvatar} alt={displayName} fill unoptimized className="object-cover" />
+              ) : (
+                <User className="size-full p-0.5" />
+              )}
+            </div>
+            <span>{displayName} · {timePosted} · {condition}</span>
+          </div>
         </div>
       </article>
     </Link>

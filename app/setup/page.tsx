@@ -116,10 +116,10 @@ export default function SetupPage() {
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
               <Link href="/" className="flex items-center gap-2">
                 <ShoppingCart className="size-10 text-primary" weight="fill" />
-                <span className="text-2xl font-bold text-foreground">PalMart</span>
+                <span className="text-2xl font-bold text-foreground">BearCart</span>
               </Link>
               <h1 className="mt-2 text-xl font-bold text-foreground">
-                Welcome to PalMart, {firstName}!
+                Welcome to BearCart, {firstName}!
               </h1>
               <p className="text-sm text-muted-foreground">
                 Just one quick step before you start

@@ -22,6 +22,7 @@ import Image from "next/image";
 
 export interface Conversation {
   id: string;
+  iAmSeller: boolean;
   otherUser: {
     id: string;
     name: string;
@@ -260,6 +261,7 @@ function ConversationItem({
                 src={conversation.otherUser.avatar}
                 alt={conversation.otherUser.name}
                 fill
+                unoptimized
                 className="object-cover"
               />
             ) : (

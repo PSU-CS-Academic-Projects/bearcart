@@ -36,16 +36,20 @@ import {
 import {
   Camera,
   ListBullets,
-  MapPin,
   FloppyDisk,
   SpinnerGap,
-  Buildings,
   Trash,
   CheckCircle,
   X as XIcon,
 } from "@phosphor-icons/react";
 
 import { updateListing, updateListingStatus, deleteListing } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -61,9 +65,6 @@ const categories = [
   { value: "others", label: "Others" },
 ];
 
-const meetupLocations = [
-  "Library", "Cafeteria", "Main Building Lobby", "Covered Court", "Department Office",
-];
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
@@ -98,7 +99,6 @@ interface FormData {
   negotiable: boolean;
   description: string;
   tags: string[];
-  meetupLocations: string[];
 }
 
 interface FormErrors {
@@ -165,12 +165,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [markingSold, setMarkingSold] = useState(false);
-
-  // ── Parse existing tags ────────────────────────────────────────────────
-  const existingMeetupLocations = listing.tags
-    .filter((t) => t.startsWith("meetup:"))
-    .map((t) => t.replace("meetup:", ""));
-  const existingRegularTags = listing.tags.filter((t) => !t.startsWith("meetup:"));
+  const [markSoldOpen, setMarkSoldOpen] = useState(false);
 
   // ── Photo State ────────────────────────────────────────────────────────
   // photos = mix of existing URLs and new base64 strings, in display order
@@ -191,11 +186,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     title: listing.title,
     category: listing.category.toLowerCase(),
     condition: conditionDbToUi[listing.condition] ?? listing.condition,
-    price: listing.price.toString(),
+    price: formatCurrencyInput(listing.price.toString()),
     negotiable: listing.is_negotiable,
     description: listing.description,
-    tags: existingRegularTags,
-    meetupLocations: existingMeetupLocations,
+    tags: listing.tags.filter((t) => !t.startsWith("meetup:")),
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -206,14 +200,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
-  };
-
-  const toggleArrayField = <K extends keyof FormData>(field: K, value: string) => {
-    const currentArray = formData[field] as string[];
-    const newArray = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    updateField(field, newArray as FormData[K]);
   };
 
   // ── Photo handlers ─────────────────────────────────────────────────────
@@ -242,7 +228,9 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     else if (formData.title.length > TITLE_MAX) newErrors.title = `Title must be ${TITLE_MAX} characters or less`;
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.condition) newErrors.condition = "Please select a condition";
-    if (!formData.price) newErrors.price = "Price is required";
+    const priceNum = parseCurrencyInput(formData.price);
+    if (priceNum === null) newErrors.price = "Price is required";
+    else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
     if (!formData.description.trim()) newErrors.description = "Description is required";
     else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     setErrors(newErrors);
@@ -260,18 +248,15 @@ export function EditListingForm({ listing }: EditListingFormProps) {
       const existingPhotos = photos.filter((p) => p.startsWith("http"));
       const newPhotos = photos.filter((p) => p.startsWith("data:"));
 
-      const meetupTags = formData.meetupLocations.map((loc) => `meetup:${loc}`);
-      const allTags = [...formData.tags, ...meetupTags];
-
       await updateListing({
         listingId: listing.id,
         title: formData.title.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: parseCurrencyInput(formData.price) ?? 0,
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
-        tags: allTags,
+        tags: formData.tags,
         existingPhotos,
         removedImageIds,
         newPhotos,
@@ -288,10 +273,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
 
   // ── Mark as Sold ───────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     setMarkingSold(true);
     try {
-      await updateListingStatus(listing.id, "sold");
+      await updateListingStatus(listing.id, "sold", soldToUserId);
       toast.success("Listing marked as sold");
       router.push("/profile");
     } catch (err) {
@@ -380,10 +365,24 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
           <Input
             id="edit-price"
-            type="number"
-            placeholder="0.00"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 500"
             value={formData.price}
-            onChange={(e) => updateField("price", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey || e.altKey) return;
+              if (
+                shouldBlockCurrencyKey(
+                  e.key,
+                  e.currentTarget.value,
+                  e.currentTarget.selectionStart,
+                  e.currentTarget.selectionEnd
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) => updateField("price", formatCurrencyInput(e.target.value))}
             className={cn("pl-7", errors.price && "border-destructive")}
             disabled={submitting}
           />
@@ -429,30 +428,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     </div>
   );
 
-  const meetupSection = (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <Label className="flex items-center gap-2">
-          <Buildings className="size-4 text-primary" />
-          Preferred Meetup Spots on PSU Campus
-        </Label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {meetupLocations.map((loc) => (
-            <div key={loc} className="flex items-center gap-2">
-              <Checkbox
-                id={`edit-location-${loc}`}
-                checked={formData.meetupLocations.includes(loc)}
-                onCheckedChange={() => toggleArrayField("meetupLocations", loc)}
-                disabled={submitting}
-              />
-              <Label htmlFor={`edit-location-${loc}`} className="text-sm font-normal">{loc}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
   const statusSection = (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -466,32 +441,23 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         </div>
 
         {listing.status === "available" && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={markingSold || submitting}>
-                <CheckCircle className="size-4" />
-                Mark as Sold
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mark this listing as sold?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  It will be hidden from the marketplace. This action cannot be easily undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleMarkSold} disabled={markingSold}>
-                  {markingSold ? (
-                    <><SpinnerGap className="size-4 animate-spin" /> Updating...</>
-                  ) : (
-                    "Yes, mark as sold"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={markingSold || submitting}
+              onClick={() => setMarkSoldOpen(true)}
+            >
+              <CheckCircle className="size-4" />
+              {markingSold ? "Updating…" : "Mark as Sold"}
+            </Button>
+            <MarkAsSoldDialog
+              open={markSoldOpen}
+              onOpenChange={setMarkSoldOpen}
+              listingId={listing.id}
+              onConfirm={handleMarkSold}
+            />
+          </>
         )}
       </div>
     </div>
@@ -585,16 +551,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                 <h2 className="text-lg font-semibold text-foreground">Listing Details</h2>
               </div>
               {detailsSection}
-            </section>
-            <div className="h-px bg-border" />
-
-            {/* Meetup */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-2">
-                <MapPin className="size-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Meetup Preferences</h2>
-              </div>
-              {meetupSection}
             </section>
             <div className="h-px bg-border" />
 

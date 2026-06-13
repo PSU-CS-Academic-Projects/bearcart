@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -23,11 +23,16 @@ import {
   Wrench,
   DotsThree,
   Faders,
-  MagnifyingGlass,
   Trash,
   GraduationCap,
   X,
 } from "@phosphor-icons/react";
+import {
+  formatCurrencyInput,
+  formatPeso,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -219,7 +224,7 @@ export function ActiveFilterBadges() {
       ))}
       {(minPrice || maxPrice) && (
         <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
-          ₱{minPrice || "0"} – ₱{maxPrice || "∞"}
+          {minPrice ? formatPeso(parseCurrencyInput(minPrice) ?? 0) : "₱0"} – {maxPrice ? formatPeso(parseCurrencyInput(maxPrice) ?? 0) : "₱∞"}
           <button
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
@@ -246,7 +251,6 @@ function FiltersContent() {
     toggleCategory,
     conditions,
     toggleCondition,
-    search,
     minPrice,
     maxPrice,
     set,
@@ -254,36 +258,8 @@ function FiltersContent() {
     hasActiveFilters,
   } = useFilterParams();
 
-  // Controlled search input — stays in sync when URL changes externally
-  const [searchInput, setSearchInput] = useState(search);
-  useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Search */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Search</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            set({ search: searchInput.trim() || null });
-          }}
-        >
-          <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
-            <MagnifyingGlass className="size-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search listings..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </form>
-      </div>
-
       {/* Categories — multi-select */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
@@ -339,9 +315,11 @@ function FiltersContent() {
             const fd = new FormData(e.currentTarget);
             const min = fd.get("min") as string;
             const max = fd.get("max") as string;
+            const minValue = parseCurrencyInput(min);
+            const maxValue = parseCurrencyInput(max);
             set({
-              min: min && parseInt(min) > 0 ? min : null,
-              max: max && parseInt(max) > 0 ? max : null,
+              min: minValue !== null && minValue > 0 ? String(minValue) : null,
+              max: maxValue !== null && maxValue > 0 ? String(maxValue) : null,
             });
           }}
           className="flex flex-col gap-3"
@@ -352,9 +330,26 @@ function FiltersContent() {
               <Input
                 id="min-price"
                 name="min"
-                type="number"
-                placeholder="₱ Min"
-                defaultValue={minPrice}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500"
+                defaultValue={formatCurrencyInput(minPrice)}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -364,9 +359,26 @@ function FiltersContent() {
               <Input
                 id="max-price"
                 name="max"
-                type="number"
-                placeholder="₱ Max"
-                defaultValue={maxPrice}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500"
+                defaultValue={formatCurrencyInput(maxPrice)}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>

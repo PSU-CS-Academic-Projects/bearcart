@@ -5,13 +5,13 @@ import { Footer } from "@/components/footer";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { SellerInfoCard } from "@/components/seller-info-card";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { MeetupInfo } from "@/components/meetup-info";
 import { ListingActions } from "@/components/listing-actions";
+import { ReportListingModal } from "@/components/report-listing-modal";
+import { ListingAdminControls } from "@/components/listing-admin-controls";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Clock,
-  Flag,
   Eye,
   Handshake,
   Tag,
@@ -19,12 +19,14 @@ import {
   PencilSimple,
   MapPin,
 } from "@phosphor-icons/react/dist/ssr";
-import { getListingById, getRelatedListings } from "@/lib/actions/listings";
+import { getListingById, getRelatedListings, getPostModerationState } from "@/lib/actions/listings";
+import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { isListingSaved } from "@/lib/actions/saved";
 import { createClient } from "@/lib/supabase-server";
 import {
   formatTimeAgo,
   formatCondition,
+  formatListingPrice,
 } from "@/lib/listing-helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,7 +59,34 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
   // Fetch listing data
   const listing = await getListingById(id);
-  if (!listing) notFound();
+  const isAdmin = await isCurrentUserAdmin();
+
+  // RLS hides delisted listings from non-owners/non-admins → null. Distinguish
+  // a genuinely-missing listing from a delisted one so we can show the right message.
+  if (!listing) {
+    const mod = await getPostModerationState("listing", id);
+    if (mod.exists && mod.is_delisted && !mod.is_removed) {
+      return (
+        <div className="flex min-h-screen flex-col">
+          <Navbar />
+          <main className="flex flex-1 items-center justify-center px-4">
+            <div className="max-w-md rounded-xl border border-border bg-card p-8 text-center">
+              <Warning className="mx-auto mb-3 size-10 text-muted-foreground" />
+              <h1 className="mb-2 text-lg font-semibold text-foreground">This listing has been removed</h1>
+              <p className="text-sm text-muted-foreground">
+                This listing is no longer available because it was removed by a BearCart admin.
+              </p>
+              <Link href="/listings" className="mt-5 inline-block text-sm font-medium text-primary hover:underline">
+                Browse other listings
+              </Link>
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+    notFound();
+  }
 
   // Check if listing is unavailable (sold or deleted)
   const isUnavailable = listing.status === "sold" || listing.status === "deleted";
@@ -135,7 +164,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
                 <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1.5">
                   <p className="text-4xl font-bold leading-none tracking-[-0.04em] text-primary sm:text-[2.9rem]">
-                    ₱{listing.price.toLocaleString()}
+                    {formatListingPrice(listing.price)}
                   </p>
                   {listing.is_negotiable && (
                     <span className="mb-0.5 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-200">
@@ -161,7 +190,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     variant="secondary"
                     className="rounded-full px-2 py-0.5 text-xs font-semibold"
                   >
-                    in {listing.category}
+                    {listing.category}
                   </Badge>
 
                   {listing.status === "sold" && (
@@ -199,19 +228,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       </span>
                     )}
                 </div>
-
-                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-foreground">
-                  <span className="flex size-5 items-center justify-center rounded-full bg-card text-primary">
-                    <MapPin className="size-3.5 text-primary" />
-                  </span>
-                  Campus pickup at PSU
-                </div>
-
                 <div className="rounded-xl bg-secondary/45 px-3 py-2.5">
                   <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
                     Seller&apos;s note
                   </h2>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-5 text-foreground/80">
+                  <p className="mt-1 whitespace-pre-line break-words text-sm leading-5 text-foreground/80">
                     {listing.description ?? "No description provided."}
                   </p>
                 </div>
@@ -250,12 +271,28 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               {seller && <SellerInfoCard seller={seller} />}
 
-              <MeetupInfo />
+              {/* Admin delisted indicator + controls */}
+              {isAdmin && (
+                <>
+                  {listing.is_delisted && (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs font-medium text-destructive">
+                      <Warning className="size-4 shrink-0" />
+                      This listing is currently delisted (hidden from regular users).
+                    </div>
+                  )}
+                  <ListingAdminControls listingId={listing.id} isDelisted={listing.is_delisted} />
+                </>
+              )}
 
-              <button className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive">
-                <Flag className="size-3.5" />
-                Report this listing
-              </button>
+              {/* Owner sees their own delisted listing flagged here too */}
+              {!isAdmin && listing.is_delisted && user?.id === listing.seller_id && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs font-medium text-amber-700">
+                  <Warning className="size-4 shrink-0" />
+                  This listing has been delisted by an admin and is hidden from other users.
+                </div>
+              )}
+
+              <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
             </div>
           </section>
 
