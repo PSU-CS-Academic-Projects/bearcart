@@ -45,7 +45,9 @@ export interface ReportedMessage {
   messageId: string;
   content: string | null;
   senderName: string | null;
+  senderAvatar: string | null;
   recipientName: string | null;
+  recipientAvatar: string | null;
   messageCreatedAt: string | null;
   reason: string;
   details: string | null;
@@ -196,8 +198,8 @@ export async function getReportedMessages(): Promise<ReportedMessage[]> {
       id, target_id, reason, details, status, created_at,
       message_content, message_created_at,
       reporter:users!reports_reporter_id_fkey(full_name),
-      sender:users!reports_message_sender_id_fkey(full_name),
-      recipient:users!reports_message_recipient_id_fkey(full_name)
+      sender:users!reports_message_sender_id_fkey(full_name, avatar_url),
+      recipient:users!reports_message_recipient_id_fkey(full_name, avatar_url)
     `)
     .eq("target_type", "message")
     .order("created_at", { ascending: false });
@@ -206,8 +208,10 @@ export async function getReportedMessages(): Promise<ReportedMessage[]> {
     reportId: r.id,
     messageId: r.target_id,
     content: r.message_content,
-    senderName: (r.sender as { full_name?: string } | null)?.full_name ?? null,
-    recipientName: (r.recipient as { full_name?: string } | null)?.full_name ?? null,
+    senderName: (r.sender as { full_name?: string; avatar_url?: string } | null)?.full_name ?? null,
+    senderAvatar: (r.sender as { full_name?: string; avatar_url?: string } | null)?.avatar_url ?? null,
+    recipientName: (r.recipient as { full_name?: string; avatar_url?: string } | null)?.full_name ?? null,
+    recipientAvatar: (r.recipient as { full_name?: string; avatar_url?: string } | null)?.avatar_url ?? null,
     messageCreatedAt: r.message_created_at,
     reason: r.reason,
     details: r.details,

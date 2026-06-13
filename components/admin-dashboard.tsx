@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -26,6 +27,62 @@ import {
   type AdminOverviewStats, type ReportedPost, type ReportedMessage,
   type AdminUserRow, type BanType,
 } from "@/lib/actions/admin";
+
+// ─── Shared UI helpers ────────────────────────────────────────────────────────
+
+function initials(name: string | null): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+}
+
+function MiniAvatar({ src, name, size = 28 }: { src: string | null; name: string | null; size?: number }) {
+  const sz = `${size}px`;
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt={name ?? ""}
+        width={size}
+        height={size}
+        unoptimized
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: sz, height: sz }}
+      />
+    );
+  }
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-muted font-mono font-semibold text-muted-foreground"
+      style={{ width: sz, height: sz, fontSize: `${Math.round(size * 0.38)}px` }}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+function MiniThumbnail({ src, title }: { src: string | null; title: string }) {
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt={title}
+        width={44}
+        height={44}
+        unoptimized
+        className="shrink-0 rounded-md object-cover"
+        style={{ width: 44, height: 44 }}
+      />
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-muted" style={{ width: 44, height: 44 }}>
+      <Package className="size-5 text-muted-foreground/50" />
+    </span>
+  );
+}
 
 // ─── Pending action (drives the single confirmation dialog) ───────────────────
 
@@ -203,7 +260,8 @@ export function AdminDashboard({
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Actions</span>
                   </div>
                   {reportedListings.map((post) => (
-                    <div key={post.id} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                    <div key={post.id} className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                      <MiniThumbnail src={post.thumbnail} title={post.title} />
                       {/* Left: item info */}
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
@@ -272,7 +330,8 @@ export function AdminDashboard({
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Actions</span>
                   </div>
                   {reportedRequests.map((post) => (
-                    <div key={post.id} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                    <div key={post.id} className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                      <MiniThumbnail src={post.thumbnail} title={post.title} />
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
@@ -347,9 +406,13 @@ export function AdminDashboard({
                             <span className="font-mono text-[0.62rem] text-muted-foreground">{m.details}</span>
                           )}
                         </div>
-                        <div className="font-mono text-[0.68rem] text-muted-foreground">
-                          {m.senderName ?? "unknown"} → {m.recipientName ?? "unknown"}
-                          {m.messageCreatedAt && <> · {formatTimeAgo(m.messageCreatedAt)}</>}
+                        <div className="flex items-center gap-1.5 font-mono text-[0.68rem] text-muted-foreground">
+                          <MiniAvatar src={m.senderAvatar} name={m.senderName} size={20} />
+                          <span>{m.senderName ?? "unknown"}</span>
+                          <span>→</span>
+                          <MiniAvatar src={m.recipientAvatar} name={m.recipientName} size={20} />
+                          <span>{m.recipientName ?? "unknown"}</span>
+                          {m.messageCreatedAt && <><span>·</span><span>{formatTimeAgo(m.messageCreatedAt)}</span></>}
                         </div>
                         <div className="mt-1.5 rounded border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground">
                           {m.content
@@ -532,19 +595,22 @@ function UserCard({
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,var(--primary),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-[0.06]"
       />
 
-      {/* User: severity dot + name + status badges */}
+      {/* User: avatar (with severity ring) + name + status badges */}
       <div className="relative flex min-w-0 items-center gap-2.5">
-        <span
-          aria-hidden
-          className={
-            "size-2 shrink-0 rounded-full " +
-            (user.is_admin
-              ? "bg-primary ring-[3px] ring-primary/20"
-              : user.ban_type !== "none"
-                ? "bg-destructive"
-                : "bg-primary/60")
-          }
-        />
+        <span className="relative shrink-0">
+          <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
+          <span
+            aria-hidden
+            className={
+              "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-background " +
+              (user.is_admin
+                ? "bg-primary"
+                : user.ban_type !== "none"
+                  ? "bg-destructive"
+                  : "bg-primary/50")
+            }
+          />
+        </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
