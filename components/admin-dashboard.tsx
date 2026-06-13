@@ -22,7 +22,7 @@ import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
   adminDelistListing, adminRestoreListing, adminTakedownListing,
   adminDelistRequest, adminRestoreRequest, adminTakedownRequest,
-  adminDismissReports,
+  adminDismissReports, adminDismissMessageReport, adminDeleteMessage,
   warnUser, banUser, unbanUser, promoteToAdmin, demoteSelf, searchAdminUsers,
   type AdminOverviewStats, type ReportedPost, type ReportedMessage,
   type AdminUserRow, type BanType,
@@ -96,6 +96,8 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
 type Pending =
   | { kind: "delist" | "restore" | "dismiss"; target: "listing" | "request"; id: string; title: string }
   | { kind: "takedown"; target: "listing" | "request"; id: string; title: string }
+  | { kind: "msg-dismiss"; reportId: string }
+  | { kind: "msg-delete"; reportId: string; messageId: string }
   | { kind: "warn" | "ban"; userId: string; userName: string }
   | { kind: "unban" | "promote"; userId: string; userName: string }
   | { kind: "demote-self" };
@@ -190,6 +192,10 @@ export function AdminDashboard({
           await promoteToAdmin(pending.userId); toast.success("Promoted to admin."); break;
         case "demote-self":
           await demoteSelf(); toast.success("You have stepped down as admin."); break;
+        case "msg-dismiss":
+          await adminDismissMessageReport(pending.reportId); toast.success("Report dismissed."); break;
+        case "msg-delete":
+          await adminDeleteMessage(pending.reportId, pending.messageId); toast.success("Message deleted."); break;
       }
       closeDialog();
       if (pending.kind === "demote-self") { router.push("/"); router.refresh(); }
@@ -408,17 +414,21 @@ export function AdminDashboard({
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Message</span>
-                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Status</span>
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Actions</span>
                   </div>
                   {reportedMessages.map((m) => (
                     <div key={m.reportId} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
                       <div>
-                        <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-mono text-[0.62rem] font-bold text-destructive">{m.reason}</span>
-                          {m.details && (
-                            <span className="font-mono text-[0.62rem] text-muted-foreground">{m.details}</span>
-                          )}
+                        {/* Report reason — expandable toggle (details inside) */}
+                        <div className="mb-1 flex flex-col gap-0.5 font-mono text-[0.65rem] text-muted-foreground">
+                          <ReportRow
+                            reason={m.reason}
+                            details={m.details}
+                            reporterName={m.reporterName}
+                            createdAt={m.createdAt}
+                          />
                         </div>
+                        {/* Sender → recipient with avatars */}
                         <div className="flex items-center gap-1.5 font-mono text-[0.68rem] text-muted-foreground">
                           <MiniAvatar src={m.senderAvatar} name={m.senderName} size={20} />
                           <span>{m.senderName ?? "unknown"}</span>
@@ -427,24 +437,28 @@ export function AdminDashboard({
                           <span>{m.recipientName ?? "unknown"}</span>
                           {m.messageCreatedAt && <><span>·</span><span>{formatTimeAgo(m.messageCreatedAt)}</span></>}
                         </div>
+                        {/* Message content preview */}
                         <div className="mt-1.5 rounded border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground">
                           {m.content
                             ? `"${m.content}"`
                             : <span className="italic text-muted-foreground">(no text content)</span>
                           }
                         </div>
-                        <div className="mt-1 font-mono text-[0.62rem] text-muted-foreground">
-                          › reported by {m.reporterName ?? "anon"} · {formatTimeAgo(m.createdAt)}
-                        </div>
                       </div>
-                      <div className="pt-0.5">
-                        <span className={`inline-flex items-center rounded border px-2 py-0.5 font-mono text-[0.62rem] font-semibold uppercase tracking-wider ${
-                          m.status === "open"
-                            ? "border-destructive/30 bg-destructive/5 text-destructive"
-                            : "border-border bg-muted text-muted-foreground"
-                        }`}>
-                          {m.status}
-                        </span>
+                      {/* Actions */}
+                      <div className="flex flex-col items-end gap-1.5 pt-0.5">
+                        <button
+                          className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
+                          onClick={() => setPending({ kind: "msg-dismiss", reportId: m.reportId })}
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          className="inline-flex h-7 items-center gap-1 rounded border border-destructive/40 bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive/8"
+                          onClick={() => setPending({ kind: "msg-delete", reportId: m.reportId, messageId: m.messageId })}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -583,6 +597,8 @@ function dialogTitle(p: Pending | null): string {
     case "unban": return `Lift ban on ${p.userName}?`;
     case "promote": return `Promote ${p.userName} to admin?`;
     case "demote-self": return "Step down as admin?";
+    case "msg-dismiss": return "Dismiss this message report?";
+    case "msg-delete": return "Delete this message?";
   }
 }
 
@@ -598,6 +614,8 @@ function dialogDescription(p: Pending | null): string {
     case "unban": return "The user regains full access.";
     case "promote": return "This grants the user full admin access to this dashboard and all moderation tools.";
     case "demote-self": return "You will lose admin access immediately. Only you can do this to your own account — admins cannot demote other admins.";
+    case "msg-dismiss": return "The report will be cleared. The message stays in the conversation.";
+    case "msg-delete": return "The message will be soft-deleted and replaced with a deleted placeholder. The report is marked as actioned.";
   }
 }
 
@@ -613,6 +631,8 @@ function dialogConfirmLabel(p: Pending | null): string {
     case "unban": return "Lift Ban";
     case "promote": return "Promote";
     case "demote-self": return "Step Down";
+    case "msg-dismiss": return "Dismiss";
+    case "msg-delete": return "Delete Message";
   }
 }
 

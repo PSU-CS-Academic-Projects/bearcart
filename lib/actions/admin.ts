@@ -311,6 +311,27 @@ export async function adminDismissReports(
   if (error) throw new Error(`Failed to dismiss reports: ${error.message}`);
 }
 
+/** Dismiss all reports for a specific message (report stays, message untouched). */
+export async function adminDismissMessageReport(reportId: string): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: "dismissed" })
+    .eq("id", reportId);
+  if (error) throw new Error(`Failed to dismiss message report: ${error.message}`);
+}
+
+/** Soft-delete a reported message (sets deleted_at) and dismiss its report. */
+export async function adminDeleteMessage(reportId: string, messageId: string): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId);
+  if (error) throw new Error(`Failed to delete message: ${error.message}`);
+  await supabase.from("reports").update({ status: "actioned" }).eq("id", reportId);
+}
+
 async function takedownPost(
   targetType: "listing" | "request",
   id: string,
