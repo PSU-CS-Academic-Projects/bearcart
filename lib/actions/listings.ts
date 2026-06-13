@@ -311,7 +311,8 @@ export async function getListingsBySeller(sellerId: string, status?: string) {
 
 export async function updateListingStatus(
   listingId: string,
-  status: "available" | "reserved" | "sold" | "deleted"
+  status: "available" | "reserved" | "sold" | "deleted",
+  soldToUserId?: string
 ) {
   const supabase = await createClient();
   const {
@@ -323,6 +324,9 @@ export async function updateListingStatus(
   if (status === "deleted") {
     update.deleted_at = new Date().toISOString();
   }
+  if (status === "sold" && soldToUserId) {
+    update.sold_to_user_id = soldToUserId;
+  }
 
   const { error } = await supabase
     .from("listings")
@@ -331,6 +335,32 @@ export async function updateListingStatus(
     .eq("seller_id", user.id);
 
   if (error) throw new Error(`Failed to update listing: ${error.message}`);
+}
+
+export async function getListingChatters(listingId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select(`buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url )`)
+    .eq("listing_id", listingId)
+    .eq("seller_id", user.id);
+
+  if (error) throw new Error(`Failed to fetch listing chatters: ${error.message}`);
+
+  const seen = new Set<string>();
+  return (data ?? [])
+    .map((c) => c.buyer as { id: string; full_name: string; avatar_url: string | null })
+    .filter((b) => {
+      if (!b || seen.has(b.id)) return false;
+      seen.add(b.id);
+      return true;
+    })
+    .map((b) => ({ id: b.id, name: b.full_name, avatar: b.avatar_url ?? "" }));
 }
 
 // ─── UPDATE (full) ───────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
 import { RequestRow } from "@/components/request-row";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
 import { updateListingStatus, deleteListing } from "@/lib/actions/listings";
 import { removeSavedListing } from "@/lib/actions/saved";
 import {
@@ -107,10 +108,10 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     if (!markSoldId) return;
     try {
-      await updateListingStatus(markSoldId, "sold");
+      await updateListingStatus(markSoldId, "sold", soldToUserId);
       const listing = activeItems.find((l) => l.id === markSoldId);
       if (listing) {
         setActiveItems((prev) => prev.filter((l) => l.id !== markSoldId));
@@ -393,22 +394,12 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </AlertDialog>
 
         {/* Mark as Sold Confirmation */}
-        <AlertDialog open={!!markSoldId} onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Mark as Sold?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to mark this listing as sold? This will hide it from the marketplace.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleMarkSold}>
-                Yes, Mark as Sold
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <MarkAsSoldDialog
+          open={!!markSoldId}
+          onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}
+          listingId={markSoldId ?? ""}
+          onConfirm={handleMarkSold}
+        />
 
         {/* Delete Listing Confirmation */}
         <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>

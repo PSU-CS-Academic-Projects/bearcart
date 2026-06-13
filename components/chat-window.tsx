@@ -43,6 +43,7 @@ import {
   DotsThree,
   ProhibitInset,
   Flag,
+  CheckCircle,
 } from "@phosphor-icons/react";
 import type { Conversation } from "./conversation-list";
 import { formatListingPrice } from "@/lib/listing-helpers";
@@ -75,6 +76,7 @@ interface ChatWindowProps {
   onBack?: () => void;
   showBackButton?: boolean;
   sending?: boolean;
+  onMarkAsSold?: () => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -164,6 +166,7 @@ export function ChatWindow({
   onBack,
   showBackButton = false,
   sending = false,
+  onMarkAsSold,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -273,6 +276,7 @@ export function ChatWindow({
   }
 
   const listing = conversation.listing;
+  const isSeller = conversation.iAmSeller;
   const isListingGone = listing?.status === "deleted";
 
   return (
@@ -371,9 +375,20 @@ export function ChatWindow({
                   {getListingStatusBadge(listing.status)}
                 </div>
               </div>
-              <Button asChild variant="ghost" size="sm" className="shrink-0">
-                <Link href={`/listings/${listing.id}`}>View Listing</Link>
-              </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/listings/${listing.id}`}>View Listing</Link>
+                </Button>
+                {isSeller && listing.status === "available" && onMarkAsSold && (
+                  <Button variant="outline" size="sm" onClick={onMarkAsSold}>
+                    <CheckCircle className="size-4" />
+                    Mark as Sold
+                  </Button>
+                )}
+                {listing.status === "sold" && (
+                  <Badge className="shrink-0 bg-emerald-100 text-emerald-800">Sold</Badge>
+                )}
+              </div>
             </div>
           )}
         </div>
