@@ -22,6 +22,7 @@ import Image from "next/image";
 
 export interface Conversation {
   id: string;
+  iAmSeller: boolean;
   otherUser: {
     id: string;
     name: string;

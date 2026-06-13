@@ -44,6 +44,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { updateListing, updateListingStatus, deleteListing } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
 import {
   formatCurrencyInput,
   parseCurrencyInput,
@@ -164,6 +165,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [markingSold, setMarkingSold] = useState(false);
+  const [markSoldOpen, setMarkSoldOpen] = useState(false);
 
   // ── Photo State ────────────────────────────────────────────────────────
   // photos = mix of existing URLs and new base64 strings, in display order
@@ -271,10 +273,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
 
   // ── Mark as Sold ───────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     setMarkingSold(true);
     try {
-      await updateListingStatus(listing.id, "sold");
+      await updateListingStatus(listing.id, "sold", soldToUserId);
       toast.success("Listing marked as sold");
       router.push("/profile");
     } catch (err) {
@@ -439,32 +441,23 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         </div>
 
         {listing.status === "available" && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={markingSold || submitting}>
-                <CheckCircle className="size-4" />
-                Mark as Sold
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mark this listing as sold?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  It will be hidden from the marketplace. This action cannot be easily undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleMarkSold} disabled={markingSold}>
-                  {markingSold ? (
-                    <><SpinnerGap className="size-4 animate-spin" /> Updating...</>
-                  ) : (
-                    "Yes, mark as sold"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={markingSold || submitting}
+              onClick={() => setMarkSoldOpen(true)}
+            >
+              <CheckCircle className="size-4" />
+              {markingSold ? "Updating…" : "Mark as Sold"}
+            </Button>
+            <MarkAsSoldDialog
+              open={markSoldOpen}
+              onOpenChange={setMarkSoldOpen}
+              listingId={listing.id}
+              onConfirm={handleMarkSold}
+            />
+          </>
         )}
       </div>
     </div>

@@ -19,6 +19,8 @@ import {
   type MessageRow,
 } from "@/lib/actions/messages";
 import { supabase } from "@/lib/supabase";
+import { updateListingStatus } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +71,7 @@ function mapConversation(
 
   return {
     id: conv.id,
+    iAmSeller: !isCurrentBuyer,
     otherUser: {
       id: otherUser.id,
       name: otherUser.full_name,
@@ -132,6 +135,7 @@ export function MessagesClient({
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const [sending, setSending] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [markSoldListingId, setMarkSoldListingId] = useState<string | null>(null);
 
   // Refs mirror state so the single persistent realtime channel reads fresh
   // values inside its handlers without re-subscribing on every change.
@@ -524,6 +528,24 @@ export function MessagesClient({
     }
   };
 
+  // ── Mark as Sold (from chat) ───────────────────────────────────────
+
+  const handleMarkSoldFromChat = async () => {
+    if (!markSoldListingId) return;
+    const listingId = markSoldListingId;
+    await updateListingStatus(listingId, "sold");
+    const bump = (convs: Conversation[]) =>
+      convs.map((c) =>
+        c.listing?.id === listingId
+          ? { ...c, listing: { ...c.listing!, status: "sold" } }
+          : c
+      );
+    setConversations(bump);
+    setArchivedConversations(bump);
+    toast.success("Listing marked as sold!");
+    setMarkSoldListingId(null);
+  };
+
   // ── Back handler (mobile) ──────────────────────────────────────────
 
   const handleBack = () => {
@@ -613,6 +635,18 @@ export function MessagesClient({
           onBack={handleBack}
           showBackButton={showChatOnMobile}
           sending={sending}
+          onMarkAsSold={
+            selectedConversation?.iAmSeller && selectedConversation.listing?.status === "available"
+              ? () => setMarkSoldListingId(selectedConversation.listing!.id)
+              : undefined
+          }
+        />
+        <MarkAsSoldDialog
+          open={!!markSoldListingId}
+          onOpenChange={(o) => { if (!o) setMarkSoldListingId(null); }}
+          listingId={markSoldListingId ?? ""}
+          onConfirm={handleMarkSoldFromChat}
+          showBuyerSelector={false}
         />
       </div>
     </main>
