@@ -21,6 +21,37 @@ export interface AdminOverviewStats {
   pendingReports: number;
 }
 
+export interface PlatformStats {
+  totalUsers: number;
+  totalListings: number;
+  totalRequests: number;
+  totalMessages: number;
+}
+
+export type ActivityType =
+  | "user_registered"
+  | "listing_posted"
+  | "request_posted"
+  | "report_submitted"
+  | "user_banned"
+  | "listing_delisted"
+  | "listing_restored"
+  | "message_deleted";
+
+export interface ActivityItem {
+  type: ActivityType;
+  description: string;
+  timestamp: string;
+}
+
+export interface ReportsPerDay {
+  /** ISO date (YYYY-MM-DD) */
+  date: string;
+  /** Short weekday label, e.g. "Mon" */
+  label: string;
+  count: number;
+}
+
 export interface ReportInfo {
   reason: string;
   details: string | null;
@@ -118,6 +149,114 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     bannedUsers: bannedUsers ?? 0,
     pendingReports: pendingReports ?? 0,
   };
+}
+
+// ─── Platform stats (totals) ──────────────────────────────────────────────────
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const { supabase } = await requireAdmin();
+
+  const headCount = async (table: string) => {
+    const { count } = await supabase.from(table).select("id", { count: "exact", head: true });
+    return count ?? 0;
+  };
+
+  const [totalUsers, totalListings, totalRequests, totalMessages] = await Promise.all([
+    headCount("users"),
+    headCount("listings"),
+    headCount("requests"),
+    headCount("messages"),
+  ]);
+
+  return { totalUsers, totalListings, totalRequests, totalMessages };
+}
+
+// ─── Recent activity feed ─────────────────────────────────────────────────────
+
+export async function getRecentActivity(): Promise<ActivityItem[]> {
+  const { supabase } = await requireAdmin();
+
+  // Pull a small recent slice from each source, then merge + sort + cap at 10.
+  const [users, listings, requests, reports, bans, delistedListings, deletedMessages] =
+    await Promise.all([
+      supabase.from("users").select("full_name, created_at").order("created_at", { ascending: false }).limit(10),
+      supabase.from("listings").select("title, created_at").order("created_at", { ascending: false }).limit(10),
+      supabase.from("requests").select("title, created_at").order("created_at", { ascending: false }).limit(10),
+      supabase.from("reports").select("target_type, created_at").order("created_at", { ascending: false }).limit(10),
+      supabase.from("users").select("full_name, banned_at").not("banned_at", "is", null).order("banned_at", { ascending: false }).limit(10),
+      supabase.from("listings").select("title, delisted_at, is_delisted").not("delisted_at", "is", null).order("delisted_at", { ascending: false }).limit(10),
+      supabase.from("messages").select("deleted_at").not("deleted_at", "is", null).order("deleted_at", { ascending: false }).limit(10),
+    ]);
+
+  const items: ActivityItem[] = [];
+
+  for (const u of users.data ?? []) {
+    items.push({ type: "user_registered", description: `${u.full_name ?? "Someone"} registered`, timestamp: u.created_at });
+  }
+  for (const l of listings.data ?? []) {
+    items.push({ type: "listing_posted", description: `New listing "${l.title}"`, timestamp: l.created_at });
+  }
+  for (const r of requests.data ?? []) {
+    items.push({ type: "request_posted", description: `New request "${r.title}"`, timestamp: r.created_at });
+  }
+  for (const rep of reports.data ?? []) {
+    items.push({ type: "report_submitted", description: `New report on a ${rep.target_type}`, timestamp: rep.created_at });
+  }
+  for (const b of bans.data ?? []) {
+    if (b.banned_at) items.push({ type: "user_banned", description: `${b.full_name ?? "A user"} was banned`, timestamp: b.banned_at });
+  }
+  for (const d of delistedListings.data ?? []) {
+    if (d.delisted_at) {
+      items.push({
+        type: d.is_delisted ? "listing_delisted" : "listing_restored",
+        description: d.is_delisted ? `Listing "${d.title}" was delisted` : `Listing "${d.title}" was restored`,
+        timestamp: d.delisted_at,
+      });
+    }
+  }
+  for (const m of deletedMessages.data ?? []) {
+    if (m.deleted_at) items.push({ type: "message_deleted", description: "A message was deleted", timestamp: m.deleted_at });
+  }
+
+  return items
+    .filter((i) => !!i.timestamp)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10);
+}
+
+// ─── Reports per day (last 7 days) ────────────────────────────────────────────
+
+export async function getReportsPerDay(): Promise<ReportsPerDay[]> {
+  const { supabase } = await requireAdmin();
+
+  // 7-day window starting at midnight 6 days ago.
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+
+  const { data } = await supabase
+    .from("reports")
+    .select("created_at")
+    .gte("created_at", start.toISOString());
+
+  // Seed 7 day buckets.
+  const days: ReportsPerDay[] = [];
+  const keyOf = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = keyOf(d);
+    buckets.set(key, 0);
+    days.push({ date: key, label: d.toLocaleDateString("en-US", { weekday: "short" }), count: 0 });
+  }
+
+  for (const r of data ?? []) {
+    const d = new Date(r.created_at);
+    const key = keyOf(d);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  return days.map((d) => ({ ...d, count: buckets.get(d.date) ?? 0 }));
 }
 
 // ─── Reported content ─────────────────────────────────────────────────────────
@@ -389,8 +528,8 @@ export async function searchAdminUsers(query: string): Promise<AdminUserRow[]> {
     .from("users")
     .select("id, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
     .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(40);
+    .order("full_name", { ascending: true })
+    .limit(200);
   if (query.trim()) {
     q = q.or(`full_name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`);
   }

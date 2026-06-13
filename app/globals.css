@@ -132,6 +132,9 @@
   grid-template-columns: repeat(5, 1fr);
   gap: .6rem;
 }
+.admin-stat-band.cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
 .admin-stat-band .tile {
   position: relative;
   border: 1px solid var(--border);

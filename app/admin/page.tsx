@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase-server";
 import {
   isCurrentUserAdmin,
   getAdminOverviewStats,
+  getPlatformStats,
+  getRecentActivity,
+  getReportsPerDay,
   getReportedListings,
   getReportedRequests,
   getReportedMessages,
@@ -23,9 +26,12 @@ export default async function AdminPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [stats, reportedListings, reportedRequests, reportedMessages, users] =
+  const [stats, platformStats, recentActivity, reportsPerDay, reportedListings, reportedRequests, reportedMessages, users] =
     await Promise.all([
       getAdminOverviewStats(),
+      getPlatformStats(),
+      getRecentActivity(),
+      getReportsPerDay(),
       getReportedListings(),
       getReportedRequests(),
       getReportedMessages(),
@@ -39,6 +45,9 @@ export default async function AdminPage() {
         <AdminDashboard
           currentUserId={user?.id ?? ""}
           stats={stats}
+          platformStats={platformStats}
+          recentActivity={recentActivity}
+          reportsPerDay={reportsPerDay}
           reportedListings={reportedListings}
           reportedRequests={reportedRequests}
           reportedMessages={reportedMessages}

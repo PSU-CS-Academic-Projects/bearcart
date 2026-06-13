@@ -338,6 +338,24 @@ export function MessagesClient({
             .catch(() => {});
         }
       )
+      // ── Listing status changed (e.g. marked as sold) ────────────────
+      // Keeps both parties' listing preview in sync without a re-fetch.
+      // Only patches the status field so thumbnail/title/id are never lost.
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "listings" },
+        (payload) => {
+          const updated = payload.new as { id: string; status: string };
+          const patchStatus = (convs: Conversation[]) =>
+            convs.map((c) =>
+              c.listing?.id === updated.id
+                ? { ...c, listing: { ...c.listing!, status: updated.status } }
+                : c
+            );
+          setConversations(patchStatus);
+          setArchivedConversations(patchStatus);
+        }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

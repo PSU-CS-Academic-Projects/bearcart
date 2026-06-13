@@ -354,7 +354,7 @@ export async function getListingChatters(listingId: string) {
 
   const seen = new Set<string>();
   return (data ?? [])
-    .map((c) => c.buyer as { id: string; full_name: string; avatar_url: string | null })
+    .map((c) => c.buyer as unknown as { id: string; full_name: string; avatar_url: string | null })
     .filter((b) => {
       if (!b || seen.has(b.id)) return false;
       seen.add(b.id);

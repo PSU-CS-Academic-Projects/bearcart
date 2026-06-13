@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   Flag, Package, ChatCircle, Prohibit, ArrowCounterClockwise, Trash,
   Warning, ShieldCheck, User as UserIcon, ArrowUpRight,
+  UserPlus, Note, ArrowClockwise, EyeSlash, CaretLeft, CaretRight,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,8 @@ import {
   adminDelistRequest, adminRestoreRequest, adminTakedownRequest,
   adminDismissReports, adminDismissMessageReport, adminDeleteMessage,
   warnUser, banUser, unbanUser, promoteToAdmin, demoteSelf, searchAdminUsers,
-  type AdminOverviewStats, type ReportedPost, type ReportedMessage,
+  type AdminOverviewStats, type PlatformStats, type ActivityItem, type ActivityType,
+  type ReportsPerDay, type ReportedPost, type ReportedMessage,
   type AdminUserRow, type BanType,
 } from "@/lib/actions/admin";
 
@@ -108,6 +110,9 @@ type Pending =
 interface Props {
   currentUserId: string;
   stats: AdminOverviewStats;
+  platformStats: PlatformStats;
+  recentActivity: ActivityItem[];
+  reportsPerDay: ReportsPerDay[];
   reportedListings: ReportedPost[];
   reportedRequests: ReportedPost[];
   reportedMessages: ReportedMessage[];
@@ -115,19 +120,27 @@ interface Props {
 }
 
 export function AdminDashboard({
-  currentUserId, stats, reportedListings, reportedRequests, reportedMessages, initialUsers,
+  currentUserId, stats, platformStats, recentActivity, reportsPerDay,
+  reportedListings, reportedRequests, reportedMessages, initialUsers,
 }: Props) {
   const router = useRouter();
   const [tab, setTab] = useState<"overview" | "reported" | "users">("overview");
   const [reportedTab, setReportedTab] = useState<"listings" | "requests" | "messages">("listings");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
-  // user search — current admin always first
+  // user search — current admin first, then other admins, then members A→Z
   const [userQuery, setUserQuery] = useState("");
+  const [userPage, setUserPage] = useState(0);
   const sortUsers = (list: AdminUserRow[]) => {
-    const me = list.find((u) => u.id === currentUserId);
-    const rest = list.filter((u) => u.id !== currentUserId);
-    return me ? [me, ...rest] : rest;
+    return [...list].sort((a, b) => {
+      // current admin always first
+      if (a.id === currentUserId) return -1;
+      if (b.id === currentUserId) return 1;
+      // other admins before members
+      if (a.is_admin !== b.is_admin) return a.is_admin ? -1 : 1;
+      // alphabetical by full_name
+      return (a.full_name ?? "").localeCompare(b.full_name ?? "");
+    });
   };
   const [users, setUsers] = useState<AdminUserRow[]>(() => sortUsers(initialUsers));
   const [searching, startSearch] = useTransition();
@@ -142,6 +155,7 @@ export function AdminDashboard({
 
   const handleSearch = (q: string) => {
     setUserQuery(q);
+    setUserPage(0);
     startSearch(async () => {
       try { setUsers(sortUsers(await searchAdminUsers(q))); } catch { /* ignore */ }
     });
@@ -224,12 +238,63 @@ export function AdminDashboard({
         const max = Math.max(stats.reportedListings, stats.reportedRequests, stats.reportedMessages, stats.bannedUsers, stats.pendingReports, 1);
         const pct = (v: number) => `${Math.round((v / max) * 100)}%`;
         return (
-          <div className="admin-stat-band">
-            <div className="tile"><span className="lbl">Reported listings</span><span className="num">{stats.reportedListings}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedListings) }} /></div>
-            <div className="tile"><span className="lbl">Reported requests</span><span className="num">{stats.reportedRequests}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedRequests) }} /></div>
-            <div className="tile"><span className="lbl">Reported messages</span><span className="num">{stats.reportedMessages}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedMessages) }} /></div>
-            <div className="tile"><span className="lbl">Banned users</span><span className="num">{stats.bannedUsers}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.bannedUsers) }} /></div>
-            <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{stats.pendingReports}</span></div>
+          <div className="space-y-8">
+            {/* Moderation stats — amber band */}
+            <div className="admin-stat-band">
+              <div className="tile"><span className="lbl">Reported listings</span><span className="num">{stats.reportedListings}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedListings) }} /></div>
+              <div className="tile"><span className="lbl">Reported requests</span><span className="num">{stats.reportedRequests}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedRequests) }} /></div>
+              <div className="tile"><span className="lbl">Reported messages</span><span className="num">{stats.reportedMessages}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedMessages) }} /></div>
+              <div className="tile"><span className="lbl">Banned users</span><span className="num">{stats.bannedUsers}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.bannedUsers) }} /></div>
+              <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{stats.pendingReports}</span></div>
+            </div>
+
+            {/* Platform stats — totals, plain cards (no peak highlight) */}
+            <div>
+              <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Platform Stats
+              </p>
+              <div className="admin-stat-band cols-4">
+                <div className="tile"><span className="lbl">Total users</span><span className="num">{platformStats.totalUsers}</span></div>
+                <div className="tile"><span className="lbl">Total listings</span><span className="num">{platformStats.totalListings}</span></div>
+                <div className="tile"><span className="lbl">Total requests</span><span className="num">{platformStats.totalRequests}</span></div>
+                <div className="tile"><span className="lbl">Total messages</span><span className="num">{platformStats.totalMessages}</span></div>
+              </div>
+            </div>
+
+            {/* Recent activity feed */}
+            <div>
+              <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Recent Activity
+              </p>
+              {recentActivity.length === 0 ? (
+                <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
+                  No recent activity.
+                </p>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  {recentActivity.map((a, i) => {
+                    const { Icon, tone } = activityVisual(a.type);
+                    return (
+                      <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-b-0">
+                        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                          <Icon className="size-3.5" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
+                        <span className="shrink-0 font-mono text-[0.68rem] text-muted-foreground">{formatTimeAgo(a.timestamp)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Reports over time — last 7 days */}
+            <div>
+              <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Reports — Last 7 Days
+              </p>
+              <ReportsChart data={reportsPerDay} />
+            </div>
           </div>
         );
       })()}
@@ -459,38 +524,70 @@ export function AdminDashboard({
       )}
 
       {/* ── Users ── */}
-      {tab === "users" && (
-        <div>
-          <div className="mb-3 flex items-center gap-2 rounded-lg border bg-card px-3">
-            <span className="font-mono text-sm font-semibold text-primary">/</span>
-            <input
-              value={userQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Filter users by name or account ID…"
-              className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-            {searching && <span className="text-xs text-muted-foreground">…</span>}
+      {tab === "users" && (() => {
+        const PAGE_SIZE = 10;
+        const pageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+        const safePage = Math.min(userPage, pageCount - 1);
+        const pageUsers = users.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+        return (
+          <div>
+            <div className="mb-3 flex items-center gap-2 rounded-lg border bg-card px-3">
+              <span className="font-mono text-sm font-semibold text-primary">/</span>
+              <input
+                value={userQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Filter users by name or account ID…"
+                className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+              {searching && <span className="text-xs text-muted-foreground">…</span>}
+            </div>
+            {users.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
+            ) : (
+              <>
+                {/* Column header — aligned to UserCard grid (sm+ only) */}
+                <div className="hidden grid-cols-[1.6fr_1.4fr_0.7fr_0.7fr_auto] items-center gap-4 px-3.5 pb-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:grid">
+                  <span>User</span>
+                  <span>Account</span>
+                  <span>Role</span>
+                  <span>Standing</span>
+                  <span className="text-right">Actions</span>
+                </div>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  {pageUsers.map((u) => (
+                    <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {pageCount > 1 && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="font-mono text-[0.68rem] text-muted-foreground">
+                      Page {safePage + 1} of {pageCount} · {users.length} users
+                    </span>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                        disabled={safePage === 0}
+                        onClick={() => setUserPage((p) => Math.max(0, p - 1))}
+                      >
+                        <CaretLeft className="size-3.5" /> Prev
+                      </Button>
+                      <Button
+                        size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                        disabled={safePage >= pageCount - 1}
+                        onClick={() => setUserPage((p) => Math.min(pageCount - 1, p + 1))}
+                      >
+                        Next <CaretRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          {users.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
-          ) : (
-            <>
-              {/* Column header */}
-              <div className="grid grid-cols-[1.5fr_1.3fr_auto] gap-4 px-3.5 pb-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:grid-cols-[1.6fr_1.4fr_0.7fr_auto]">
-                <span>User</span>
-                <span>Account</span>
-                <span className="hidden sm:block">Standing</span>
-                <span className="text-right">Actions</span>
-              </div>
-              <div className="overflow-hidden rounded-xl border bg-card">
-                {users.map((u) => (
-                  <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Single confirmation dialog ── */}
       <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) closeDialog(); }}>
@@ -665,12 +762,63 @@ function ReportRow({ reason, details, reporterName, createdAt }: {
   );
 }
 
+// ─── Activity feed visuals ────────────────────────────────────────────────────
+
+function activityVisual(type: ActivityType): {
+  Icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+} {
+  switch (type) {
+    case "user_registered":
+      return { Icon: UserPlus, tone: "bg-primary/10 text-primary" };
+    case "listing_posted":
+      return { Icon: Package, tone: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" };
+    case "request_posted":
+      return { Icon: Note, tone: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400" };
+    case "report_submitted":
+      return { Icon: Flag, tone: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" };
+    case "user_banned":
+      return { Icon: Prohibit, tone: "bg-destructive/10 text-destructive" };
+    case "listing_delisted":
+      return { Icon: EyeSlash, tone: "bg-destructive/10 text-destructive" };
+    case "listing_restored":
+      return { Icon: ArrowClockwise, tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" };
+    case "message_deleted":
+      return { Icon: Trash, tone: "bg-muted text-muted-foreground" };
+  }
+}
+
+// ─── Reports-over-time bar chart ──────────────────────────────────────────────
+
+function ReportsChart({ data }: { data: ReportsPerDay[] }) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+  const total = data.reduce((sum, d) => sum + d.count, 0);
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      {total === 0 && (
+        <p className="mb-3 text-center text-xs text-muted-foreground">No reports in the last 7 days.</p>
+      )}
+      <div className="flex items-end justify-between gap-2" style={{ height: 120 }}>
+        {data.map((d) => (
+          <div key={d.date} className="flex flex-1 flex-col items-center justify-end gap-1.5" style={{ height: "100%" }}>
+            <span className="font-mono text-[0.6rem] font-semibold text-muted-foreground">{d.count}</span>
+            <div
+              className="w-full rounded-t-sm bg-primary/70 transition-all"
+              style={{ height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 4 : 2, opacity: d.count > 0 ? 1 : 0.25 }}
+            />
+            <span className="font-mono text-[0.6rem] uppercase tracking-wider text-muted-foreground">{d.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── User card ────────────────────────────────────────────────────────────────
 
 const BAN_BADGE: Record<BanType, string | null> = {
   none: null, post: "Post banned", chat: "Chat banned", full: "Fully banned",
 };
-
 function UserCard({
   user, isSelf, onAction,
 }: {
@@ -679,7 +827,7 @@ function UserCard({
   onAction: (p: Pending) => void;
 }) {
   return (
-    <div className="group relative grid grid-cols-[1.5fr_1.3fr_auto] items-center gap-4 border-t border-border px-3.5 py-3 first:border-t-0 sm:grid-cols-[1.6fr_1.4fr_0.7fr_auto]">
+    <div className="group relative grid grid-cols-[1.5fr_auto] items-center gap-4 border-t border-border px-3.5 py-3 first:border-t-0 sm:grid-cols-[1.6fr_1.4fr_0.7fr_0.7fr_auto]">
       {/* amber active sweep on hover — full-bleed gradient, not a side stripe */}
       <span
         aria-hidden
@@ -714,13 +862,20 @@ function UserCard({
               <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] font-medium text-amber-700">{user.warning_count}⚠</span>
             )}
           </div>
-          {/* account shown inline under name on mobile only */}
-          <p className="truncate font-mono text-[0.7rem] text-muted-foreground sm:hidden">{user.email}</p>
+          {/* account + role shown inline under name on mobile only */}
+          <p className="truncate font-mono text-[0.7rem] text-muted-foreground sm:hidden">
+            {user.email} · {user.role === "faculty" ? "Faculty" : "Student"}
+          </p>
         </div>
       </div>
 
       {/* Account (mono) — sm+ column */}
       <p className="relative hidden truncate font-mono text-xs text-muted-foreground sm:block">{user.email}</p>
+
+      {/* Role — sm+ column */}
+      <span className="relative hidden text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:block">
+        {user.role === "faculty" ? "Faculty" : "Student"}
+      </span>
 
       {/* Standing — sm+ column */}
       <span className={"relative hidden text-[0.68rem] font-semibold uppercase tracking-[0.08em] sm:block " + (user.is_admin ? "text-primary" : "text-muted-foreground")}>
