@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -163,26 +163,101 @@ export function AdminDashboard({
         </div>
       )}
 
-      {/* ── Reported content ── */}
+      {/* ── Reported content — Command Console Queue ── */}
       {tab === "reported" && (
         <div>
-          <div className="mb-4 flex gap-2">
-            {(["listings", "requests", "messages"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setReportedTab(t)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                  reportedTab === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+          {/* Header: label + segmented mode toggle */}
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Moderation Queue
+            </span>
+            <div className="flex overflow-hidden rounded-lg border border-border">
+              {(["listings", "requests", "messages"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setReportedTab(t)}
+                  className={`border-r border-border px-3 py-1.5 font-mono text-[0.65rem] font-semibold uppercase tracking-wider transition-colors last:border-r-0 ${
+                    reportedTab === t
+                      ? "bg-foreground text-background"
+                      : "bg-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Listings queue */}
           {reportedTab === "listings" && (
-            <PostReportList posts={reportedListings} target="listing" onAction={setPending} />
+            reportedListings.length === 0
+              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              : <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  {/* Column header */}
+                  <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Item</span>
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Actions</span>
+                  </div>
+                  {reportedListings.map((post) => (
+                    <div key={post.id} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                      {/* Left: item info */}
+                      <div>
+                        <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                          <a
+                            href={`/listings/${post.id}`}
+                            className="text-sm font-semibold text-foreground hover:underline"
+                          >
+                            {post.title}
+                          </a>
+                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-mono text-[0.62rem] font-bold text-destructive">
+                            {post.reportCount}×
+                          </span>
+                          {post.isTakenDown && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[0.62rem] font-medium text-muted-foreground">Taken down</span>
+                          )}
+                          {!post.isTakenDown && post.isDelisted && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.62rem] font-medium text-amber-700">DELISTED</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[0.68rem] text-muted-foreground">@{post.ownerName ?? "unknown"}</div>
+                        <div className="mt-1 font-mono text-[0.65rem] leading-relaxed text-muted-foreground">
+                          {post.reports.map((r, i) => (
+                            <div key={i}>› {r.reason} — {r.reporterName ?? "anon"} {formatTimeAgo(r.created_at)}</div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Right: actions */}
+                      <div className="flex flex-col items-end gap-1.5 pt-0.5">
+                        {!post.isTakenDown && (
+                          <>
+                            {!post.isDelisted
+                              ? <button
+                                  className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
+                                  onClick={() => setPending({ kind: "delist", target: "listing", id: post.id, title: post.title })}
+                                >
+                                  Delist <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">L</kbd>
+                                </button>
+                              : <button
+                                  className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
+                                  onClick={() => setPending({ kind: "restore", target: "listing", id: post.id, title: post.title })}
+                                >
+                                  Restore <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">R</kbd>
+                                </button>
+                            }
+                            <button
+                              className="inline-flex h-7 items-center gap-1 rounded border border-destructive/40 bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive/8"
+                              onClick={() => setPending({ kind: "takedown", target: "listing", id: post.id, title: post.title })}
+                            >
+                              Takedown <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-destructive/30 bg-destructive/5 px-1 font-mono text-[0.55rem] text-destructive/70">X</kbd>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
           )}
+
           {reportedTab === "requests" && (
             <PostReportList posts={reportedRequests} target="request" onAction={setPending} />
           )}
