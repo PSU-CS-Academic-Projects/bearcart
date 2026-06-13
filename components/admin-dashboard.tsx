@@ -295,9 +295,9 @@ export function AdminDashboard({
                           )}
                         </div>
                         <div className="font-mono text-[0.68rem] text-muted-foreground">@{post.ownerName ?? "unknown"}</div>
-                        <div className="mt-1 font-mono text-[0.65rem] leading-relaxed text-muted-foreground">
+                        <div className="mt-1 flex flex-col gap-0.5 font-mono text-[0.65rem] text-muted-foreground">
                           {post.reports.map((r, i) => (
-                            <div key={i}>› {r.reason} — {r.reporterName ?? "anon"} {formatTimeAgo(r.created_at)}</div>
+                            <ReportRow key={i} reason={r.reason} details={r.details} reporterName={r.reporterName} createdAt={r.created_at} />
                           ))}
                         </div>
                       </div>
@@ -364,9 +364,9 @@ export function AdminDashboard({
                           )}
                         </div>
                         <div className="font-mono text-[0.68rem] text-muted-foreground">@{post.ownerName ?? "unknown"}</div>
-                        <div className="mt-1 font-mono text-[0.65rem] leading-relaxed text-muted-foreground">
+                        <div className="mt-1 flex flex-col gap-0.5 font-mono text-[0.65rem] text-muted-foreground">
                           {post.reports.map((r, i) => (
-                            <div key={i}>› {r.reason} — {r.reporterName ?? "anon"} {formatTimeAgo(r.created_at)}</div>
+                            <ReportRow key={i} reason={r.reason} details={r.details} reporterName={r.reporterName} createdAt={r.created_at} />
                           ))}
                         </div>
                       </div>
@@ -614,6 +614,44 @@ function dialogConfirmLabel(p: Pending | null): string {
     case "promote": return "Promote";
     case "demote-self": return "Step Down";
   }
+}
+
+// ─── Expandable report-reason row ────────────────────────────────────────────
+
+function ReportRow({ reason, details, reporterName, createdAt }: {
+  reason: string;
+  details: string | null;
+  reporterName: string | null;
+  createdAt: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1 text-left transition-colors hover:text-foreground"
+      >
+        <span
+          className="shrink-0 transition-transform duration-200"
+          style={{ display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
+        >
+          ›
+        </span>
+        <span>{reason}</span>
+        <span className="mx-0.5 text-muted-foreground/50">—</span>
+        <span className="text-muted-foreground">{reporterName ?? "anon"} {formatTimeAgo(createdAt)}</span>
+      </button>
+      {open && (
+        <div className="ml-3.5 mt-0.5 rounded border-l-2 border-border pl-2 font-mono text-[0.62rem] leading-relaxed">
+          {details?.trim()
+            ? <span className="text-foreground">{details.trim()}</span>
+            : <span className="italic text-muted-foreground/70">No additional details provided.</span>
+          }
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── User card ────────────────────────────────────────────────────────────────
