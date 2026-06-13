@@ -237,9 +237,9 @@ export function AdminDashboard({
                             {!post.isDelisted
                               ? <button
                                   className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
-                                  onClick={() => setPending({ kind: "delist", target: "listing", id: post.id, title: post.title })}
+                                  onClick={() => setPending({ kind: "dismiss", target: "listing", id: post.id, title: post.title })}
                                 >
-                                  Delist <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">L</kbd>
+                                  Dismiss <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">D</kbd>
                                 </button>
                               : <button
                                   className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
