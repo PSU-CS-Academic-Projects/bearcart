@@ -18,7 +18,7 @@ export interface AdminOverviewStats {
   reportedRequests: number;
   reportedMessages: number;
   bannedUsers: number;
-  openReports: number;
+  pendingReports: number;
 }
 
 export interface ReportInfo {
@@ -104,7 +104,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
 
   const { count: bannedUsers } = await supabase
     .from("users").select("id", { count: "exact", head: true }).neq("ban_type", "none");
-  const { count: openReports } = await supabase
+  const { count: pendingReports } = await supabase
     .from("reports").select("id", { count: "exact", head: true }).eq("status", "open");
 
   return {
@@ -112,7 +112,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     reportedRequests,
     reportedMessages,
     bannedUsers: bannedUsers ?? 0,
-    openReports: openReports ?? 0,
+    pendingReports: pendingReports ?? 0,
   };
 }
 

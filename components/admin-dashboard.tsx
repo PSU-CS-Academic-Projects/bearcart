@@ -159,7 +159,7 @@ export function AdminDashboard({
           <StatCard icon={Package} label="Reported requests" value={stats.reportedRequests} />
           <StatCard icon={ChatCircle} label="Reported messages" value={stats.reportedMessages} />
           <StatCard icon={Prohibit} label="Banned users" value={stats.bannedUsers} />
-          <StatCard icon={Flag} label="Open reports" value={stats.openReports} />
+          <StatCard icon={Flag} label="Pending reports" value={stats.pendingReports} />
         </div>
       )}
 
