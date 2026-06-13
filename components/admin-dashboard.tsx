@@ -102,19 +102,6 @@ type Pending =
   | { kind: "unban" | "promote"; userId: string; userName: string }
   | { kind: "demote-self" };
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number }) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" />
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
-    </div>
-  );
-}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -233,15 +220,19 @@ export function AdminDashboard({
       </div>
 
       {/* ── Overview ── */}
-      {tab === "overview" && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard icon={Package} label="Reported listings" value={stats.reportedListings} />
-          <StatCard icon={Package} label="Reported requests" value={stats.reportedRequests} />
-          <StatCard icon={ChatCircle} label="Reported messages" value={stats.reportedMessages} />
-          <StatCard icon={Prohibit} label="Banned users" value={stats.bannedUsers} />
-          <StatCard icon={Flag} label="Pending reports" value={stats.pendingReports} />
-        </div>
-      )}
+      {tab === "overview" && (() => {
+        const max = Math.max(stats.reportedListings, stats.reportedRequests, stats.reportedMessages, stats.bannedUsers, stats.pendingReports, 1);
+        const pct = (v: number) => `${Math.round((v / max) * 100)}%`;
+        return (
+          <div className="admin-stat-band">
+            <div className="tile"><span className="lbl">Reported listings</span><span className="num">{stats.reportedListings}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedListings) }} /></div>
+            <div className="tile"><span className="lbl">Reported requests</span><span className="num">{stats.reportedRequests}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedRequests) }} /></div>
+            <div className="tile"><span className="lbl">Reported messages</span><span className="num">{stats.reportedMessages}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedMessages) }} /></div>
+            <div className="tile"><span className="lbl">Banned users</span><span className="num">{stats.bannedUsers}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.bannedUsers) }} /></div>
+            <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{stats.pendingReports}</span></div>
+          </div>
+        );
+      })()}
 
       {/* ── Reported content — Command Console Queue ── */}
       {tab === "reported" && (
