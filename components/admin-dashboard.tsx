@@ -21,6 +21,7 @@ import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
   adminDelistListing, adminRestoreListing, adminTakedownListing,
   adminDelistRequest, adminRestoreRequest, adminTakedownRequest,
+  adminDismissReports,
   warnUser, banUser, unbanUser, promoteToAdmin, demoteSelf, searchAdminUsers,
   type AdminOverviewStats, type ReportedPost, type ReportedMessage,
   type AdminUserRow, type BanType,
@@ -29,7 +30,7 @@ import {
 // ─── Pending action (drives the single confirmation dialog) ───────────────────
 
 type Pending =
-  | { kind: "delist" | "restore"; target: "listing" | "request"; id: string; title: string }
+  | { kind: "delist" | "restore" | "dismiss"; target: "listing" | "request"; id: string; title: string }
   | { kind: "takedown"; target: "listing" | "request"; id: string; title: string }
   | { kind: "warn" | "ban"; userId: string; userName: string }
   | { kind: "unban" | "promote"; userId: string; userName: string }
@@ -95,12 +96,15 @@ export function AdminDashboard({
     setBusy(true);
     try {
       switch (pending.kind) {
+        case "dismiss":
+          await adminDismissReports(pending.target, pending.id);
+          toast.success("Reports dismissed. Listing stays active."); break;
         case "delist":
           await (pending.target === "listing" ? adminDelistListing(pending.id) : adminDelistRequest(pending.id));
           toast.success("Delisted."); break;
         case "restore":
           await (pending.target === "listing" ? adminRestoreListing(pending.id) : adminRestoreRequest(pending.id));
-          toast.success("Restored."); break;
+          toast.success("Restored. Report count reset."); break;
         case "takedown":
           await (pending.target === "listing"
             ? adminTakedownListing(pending.id, reason.trim())
@@ -359,6 +363,7 @@ export function AdminDashboard({
 function dialogTitle(p: Pending | null): string {
   if (!p) return "";
   switch (p.kind) {
+    case "dismiss": return `Dismiss all reports for this ${p.target}?`;
     case "delist": return `Delist this ${p.target}?`;
     case "restore": return `Restore this ${p.target}?`;
     case "takedown": return `Permanently take down this ${p.target}?`;
@@ -373,8 +378,9 @@ function dialogTitle(p: Pending | null): string {
 function dialogDescription(p: Pending | null): string {
   if (!p) return "";
   switch (p.kind) {
+    case "dismiss": return "All pending reports will be cleared and the report count reset to zero. The listing stays active and visible.";
     case "delist": return "It will be hidden from regular users but kept on file. The owner is notified.";
-    case "restore": return "It will become visible to everyone again. The owner is notified.";
+    case "restore": return "It will become visible again and all pending reports will be cleared so the report count resets. The owner is notified.";
     case "takedown": return "This permanently removes it for everyone, including the owner. This cannot be undone.";
     case "warn": return "The user is notified in-app and by email with your reason.";
     case "ban": return "The user can still browse and log in, but is blocked from the selected actions. They are notified.";
@@ -387,6 +393,7 @@ function dialogDescription(p: Pending | null): string {
 function dialogConfirmLabel(p: Pending | null): string {
   if (!p) return "Confirm";
   switch (p.kind) {
+    case "dismiss": return "Dismiss Reports";
     case "delist": return "Delist";
     case "restore": return "Restore";
     case "takedown": return "Take Down";
@@ -451,11 +458,13 @@ function PostReportList({
           {!post.isTakenDown && (
             <div className="mt-3 flex flex-wrap gap-2">
               {!post.isDelisted ? (
+                // Active listing with pending reports: dismiss (keep listing) or take down
                 <Button size="sm" variant="outline" className="h-8 gap-1.5"
-                  onClick={() => onAction({ kind: "delist", target, id: post.id, title: post.title })}>
-                  <Prohibit className="size-4" /> Delist
+                  onClick={() => onAction({ kind: "dismiss", target, id: post.id, title: post.title })}>
+                  <ArrowCounterClockwise className="size-4" /> Dismiss reports
                 </Button>
               ) : (
+                // Auto-delisted or manually delisted: restore (clears reports) or take down
                 <Button size="sm" variant="outline" className="h-8 gap-1.5"
                   onClick={() => onAction({ kind: "restore", target, id: post.id, title: post.title })}>
                   <ArrowCounterClockwise className="size-4" /> Restore

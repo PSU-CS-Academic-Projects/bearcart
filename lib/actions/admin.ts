@@ -91,8 +91,10 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const { supabase } = await requireAdmin();
 
+  // Count distinct target_ids that still have at least one open (unresolved) report.
   const distinctCount = async (targetType: string) => {
-    const { data } = await supabase.from("reports").select("target_id").eq("target_type", targetType);
+    const { data } = await supabase.from("reports").select("target_id")
+      .eq("target_type", targetType).eq("status", "open");
     return new Set((data ?? []).map((r) => r.target_id)).size;
   };
 
@@ -123,10 +125,12 @@ async function buildReportedPosts(
 ): Promise<ReportedPost[]> {
   const { supabase } = await requireAdmin();
 
+  // Only surface items that still have at least one open (unresolved) report.
   const { data: reps } = await supabase
     .from("reports")
-    .select("target_id, reason, details, created_at, reporter:users!reports_reporter_id_fkey(full_name)")
+    .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
     .eq("target_type", targetType)
+    .eq("status", "open")
     .order("created_at", { ascending: false });
 
   if (!reps || reps.length === 0) return [];
@@ -285,6 +289,23 @@ export async function adminDelistListing(id: string) { return setPostDelisted("l
 export async function adminRestoreListing(id: string) { return setPostDelisted("listing", id, false); }
 export async function adminDelistRequest(id: string) { return setPostDelisted("request", id, true); }
 export async function adminRestoreRequest(id: string) { return setPostDelisted("request", id, false); }
+
+/** Dismiss all reports for a post without changing its listing status.
+ *  Marks every open report as 'dismissed' so the item disappears from the
+ *  queue and the report counts reset to zero. */
+export async function adminDismissReports(
+  targetType: "listing" | "request",
+  targetId: string
+): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: "dismissed" })
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .eq("status", "open");
+  if (error) throw new Error(`Failed to dismiss reports: ${error.message}`);
+}
 
 async function takedownPost(
   targetType: "listing" | "request",
