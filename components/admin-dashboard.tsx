@@ -63,18 +63,25 @@ function MiniAvatar({ src, name, size = 28 }: { src: string | null; name: string
   );
 }
 
-function MiniThumbnail({ src, title }: { src: string | null; title: string }) {
+function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: string; onOpen?: (s: string) => void }) {
   if (src) {
     return (
-      <Image
-        src={src}
-        alt={title}
-        width={44}
-        height={44}
-        unoptimized
-        className="shrink-0 rounded-md object-cover"
+      <button
+        type="button"
+        onClick={() => onOpen?.(src)}
+        className="shrink-0 overflow-hidden rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         style={{ width: 44, height: 44 }}
-      />
+        aria-label={`View image for ${title}`}
+      >
+        <Image
+          src={src}
+          alt={title}
+          width={44}
+          height={44}
+          unoptimized
+          className="size-full object-cover transition-opacity hover:opacity-80"
+        />
+      </button>
     );
   }
   return (
@@ -124,10 +131,16 @@ export function AdminDashboard({
   const router = useRouter();
   const [tab, setTab] = useState<"overview" | "reported" | "users">("overview");
   const [reportedTab, setReportedTab] = useState<"listings" | "requests" | "messages">("listings");
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
-  // user search
+  // user search — current admin always first
   const [userQuery, setUserQuery] = useState("");
-  const [users, setUsers] = useState<AdminUserRow[]>(initialUsers);
+  const sortUsers = (list: AdminUserRow[]) => {
+    const me = list.find((u) => u.id === currentUserId);
+    const rest = list.filter((u) => u.id !== currentUserId);
+    return me ? [me, ...rest] : rest;
+  };
+  const [users, setUsers] = useState<AdminUserRow[]>(() => sortUsers(initialUsers));
   const [searching, startSearch] = useTransition();
 
   // confirmation dialog
@@ -141,7 +154,7 @@ export function AdminDashboard({
   const handleSearch = (q: string) => {
     setUserQuery(q);
     startSearch(async () => {
-      try { setUsers(await searchAdminUsers(q)); } catch { /* ignore */ }
+      try { setUsers(sortUsers(await searchAdminUsers(q))); } catch { /* ignore */ }
     });
   };
 
@@ -261,7 +274,7 @@ export function AdminDashboard({
                   </div>
                   {reportedListings.map((post) => (
                     <div key={post.id} className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
-                      <MiniThumbnail src={post.thumbnail} title={post.title} />
+                      <MiniThumbnail src={post.thumbnail} title={post.title} onOpen={setLightboxSrc} />
                       {/* Left: item info */}
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
@@ -331,7 +344,7 @@ export function AdminDashboard({
                   </div>
                   {reportedRequests.map((post) => (
                     <div key={post.id} className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
-                      <MiniThumbnail src={post.thumbnail} title={post.title} />
+                      <MiniThumbnail src={post.thumbnail} title={post.title} onOpen={setLightboxSrc} />
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
@@ -523,6 +536,35 @@ export function AdminDashboard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Fullscreen image lightbox ──────────────────────────────────── */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={() => setLightboxSrc(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            onClick={() => setLightboxSrc(null)}
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" className="size-5">
+              <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/>
+            </svg>
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxSrc}
+            alt="Full size preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
