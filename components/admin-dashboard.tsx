@@ -262,11 +262,117 @@ export function AdminDashboard({
                 </div>
           )}
 
+          {/* Requests queue */}
           {reportedTab === "requests" && (
-            <PostReportList posts={reportedRequests} target="request" onAction={setPending} />
+            reportedRequests.length === 0
+              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              : <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Item</span>
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Actions</span>
+                  </div>
+                  {reportedRequests.map((post) => (
+                    <div key={post.id} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                      <div>
+                        <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                          <a
+                            href={`/requests/${post.id}`}
+                            className="text-sm font-semibold text-foreground hover:underline"
+                          >
+                            {post.title}
+                          </a>
+                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-mono text-[0.62rem] font-bold text-destructive">
+                            {post.reportCount}×
+                          </span>
+                          {post.isTakenDown && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[0.62rem] font-medium text-muted-foreground">Taken down</span>
+                          )}
+                          {!post.isTakenDown && post.isDelisted && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.62rem] font-medium text-amber-700">DELISTED</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[0.68rem] text-muted-foreground">@{post.ownerName ?? "unknown"}</div>
+                        <div className="mt-1 font-mono text-[0.65rem] leading-relaxed text-muted-foreground">
+                          {post.reports.map((r, i) => (
+                            <div key={i}>› {r.reason} — {r.reporterName ?? "anon"} {formatTimeAgo(r.created_at)}</div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 pt-0.5">
+                        {!post.isTakenDown && (
+                          <>
+                            {!post.isDelisted
+                              ? <button
+                                  className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
+                                  onClick={() => setPending({ kind: "dismiss", target: "request", id: post.id, title: post.title })}
+                                >
+                                  Dismiss <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">D</kbd>
+                                </button>
+                              : <button
+                                  className="inline-flex h-7 items-center gap-1 rounded border border-border bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-muted/50"
+                                  onClick={() => setPending({ kind: "restore", target: "request", id: post.id, title: post.title })}
+                                >
+                                  Restore <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-border bg-muted px-1 font-mono text-[0.55rem] text-muted-foreground">R</kbd>
+                                </button>
+                            }
+                            <button
+                              className="inline-flex h-7 items-center gap-1 rounded border border-destructive/40 bg-transparent px-2.5 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive/8"
+                              onClick={() => setPending({ kind: "takedown", target: "request", id: post.id, title: post.title })}
+                            >
+                              Takedown <kbd className="ml-0.5 inline-flex items-center rounded-sm border border-destructive/30 bg-destructive/5 px-1 font-mono text-[0.55rem] text-destructive/70">X</kbd>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
           )}
+
+          {/* Messages queue */}
           {reportedTab === "messages" && (
-            <MessageReportList messages={reportedMessages} />
+            reportedMessages.length === 0
+              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              : <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Message</span>
+                    <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Status</span>
+                  </div>
+                  {reportedMessages.map((m) => (
+                    <div key={m.reportId} className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-muted/20 transition-colors">
+                      <div>
+                        <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-mono text-[0.62rem] font-bold text-destructive">{m.reason}</span>
+                          {m.details && (
+                            <span className="font-mono text-[0.62rem] text-muted-foreground">{m.details}</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[0.68rem] text-muted-foreground">
+                          {m.senderName ?? "unknown"} → {m.recipientName ?? "unknown"}
+                          {m.messageCreatedAt && <> · {formatTimeAgo(m.messageCreatedAt)}</>}
+                        </div>
+                        <div className="mt-1.5 rounded border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground">
+                          {m.content
+                            ? `"${m.content}"`
+                            : <span className="italic text-muted-foreground">(no text content)</span>
+                          }
+                        </div>
+                        <div className="mt-1 font-mono text-[0.62rem] text-muted-foreground">
+                          › reported by {m.reporterName ?? "anon"} · {formatTimeAgo(m.createdAt)}
+                        </div>
+                      </div>
+                      <div className="pt-0.5">
+                        <span className={`inline-flex items-center rounded border px-2 py-0.5 font-mono text-[0.62rem] font-semibold uppercase tracking-wider ${
+                          m.status === "open"
+                            ? "border-destructive/30 bg-destructive/5 text-destructive"
+                            : "border-border bg-muted text-muted-foreground"
+                        }`}>
+                          {m.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
           )}
         </div>
       )}
@@ -403,116 +509,6 @@ function dialogConfirmLabel(p: Pending | null): string {
     case "promote": return "Promote";
     case "demote-self": return "Step Down";
   }
-}
-
-// ─── Reported posts list ──────────────────────────────────────────────────────
-
-function PostReportList({
-  posts, target, onAction,
-}: {
-  posts: ReportedPost[];
-  target: "listing" | "request";
-  onAction: (p: Pending) => void;
-}) {
-  if (posts.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No reported {target}s.</p>;
-  }
-  return (
-    <div className="flex flex-col gap-3">
-      {posts.map((post) => (
-        <div key={post.id} className="rounded-xl border bg-card p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={target === "listing" ? `/listings/${post.id}` : `/requests`}
-                  className="flex items-center gap-1 font-semibold text-foreground hover:underline"
-                >
-                  {post.title} <ArrowUpRight className="size-3.5 text-muted-foreground" />
-                </Link>
-                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
-                  {post.reportCount} report{post.reportCount !== 1 ? "s" : ""}
-                </span>
-                {post.isTakenDown ? (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Taken down</span>
-                ) : post.isDelisted ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Delisted</span>
-                ) : null}
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">by {post.ownerName ?? "Unknown"}</p>
-            </div>
-          </div>
-
-          {/* Reasons */}
-          <ul className="mt-3 space-y-1.5">
-            {post.reports.map((r, i) => (
-              <li key={i} className="rounded-md bg-muted/50 px-3 py-2 text-xs">
-                <span className="font-medium text-foreground">{r.reason}</span>
-                {r.details && <span className="text-muted-foreground"> — {r.details}</span>}
-                <span className="text-muted-foreground"> · {r.reporterName ?? "Someone"} · {formatTimeAgo(r.created_at)}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Actions */}
-          {!post.isTakenDown && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {!post.isDelisted ? (
-                // Active listing with pending reports: dismiss (keep listing) or take down
-                <Button size="sm" variant="outline" className="h-8 gap-1.5"
-                  onClick={() => onAction({ kind: "dismiss", target, id: post.id, title: post.title })}>
-                  <ArrowCounterClockwise className="size-4" /> Dismiss reports
-                </Button>
-              ) : (
-                // Auto-delisted or manually delisted: restore (clears reports) or take down
-                <Button size="sm" variant="outline" className="h-8 gap-1.5"
-                  onClick={() => onAction({ kind: "restore", target, id: post.id, title: post.title })}>
-                  <ArrowCounterClockwise className="size-4" /> Restore
-                </Button>
-              )}
-              <Button size="sm" variant="outline" className="h-8 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
-                onClick={() => onAction({ kind: "takedown", target, id: post.id, title: post.title })}>
-                <Trash className="size-4" /> Take down
-              </Button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Reported messages list ───────────────────────────────────────────────────
-
-function MessageReportList({ messages }: { messages: ReportedMessage[] }) {
-  if (messages.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No reported messages.</p>;
-  }
-  return (
-    <div className="flex flex-col gap-3">
-      {messages.map((m) => (
-        <div key={m.reportId} className="rounded-xl border bg-card p-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-semibold text-destructive">{m.reason}</span>
-            <span>Reported by {m.reporterName ?? "Someone"} · {formatTimeAgo(m.createdAt)}</span>
-          </div>
-          {/* Only the reported message + context, never the full thread */}
-          <div className="rounded-lg border border-dashed bg-muted/40 p-3">
-            <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-              {m.content ? `“${m.content}”` : <span className="italic text-muted-foreground">(no text content)</span>}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              From <span className="font-medium text-foreground">{m.senderName ?? "Unknown"}</span>
-              {" → "}
-              <span className="font-medium text-foreground">{m.recipientName ?? "Unknown"}</span>
-              {m.messageCreatedAt && <> · {formatTimeAgo(m.messageCreatedAt)}</>}
-            </p>
-          </div>
-          {m.details && <p className="mt-2 text-xs text-muted-foreground">Reporter note: {m.details}</p>}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 // ─── User card ────────────────────────────────────────────────────────────────
