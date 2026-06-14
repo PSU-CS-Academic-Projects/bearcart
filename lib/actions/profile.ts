@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { uploadImage } from "./storage";
+import { moderateImageOrThrow } from "@/lib/moderation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,7 @@ export async function updateProfile(updates: {
   if (updates.college !== undefined) dbUpdates.college = updates.college;
 
   if (updates.avatar_base64) {
+    await moderateImageOrThrow(updates.avatar_base64);
     const avatarUrl = await uploadImage("avatars", updates.avatar_base64, user.id);
     dbUpdates.avatar_url = avatarUrl;
   }

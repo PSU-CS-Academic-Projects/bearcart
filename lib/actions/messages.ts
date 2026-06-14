@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { sendMessageNotificationEmail } from "@/lib/email";
+import { moderateImageOrThrow } from "@/lib/moderation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -376,6 +377,9 @@ export async function uploadMessageImage(
   if (conv.buyer_id !== user.id && conv.seller_id !== user.id) {
     throw new Error("Not a participant of this conversation");
   }
+
+  // Moderate before uploading — throws if flagged
+  await moderateImageOrThrow(base64Data);
 
   // Parse the base64 data URL — accept jpeg, png, webp, gif
   const match = base64Data.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/);
