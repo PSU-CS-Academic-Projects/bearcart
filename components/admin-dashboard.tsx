@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +32,21 @@ import {
 } from "@/lib/actions/admin";
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
+
+/**
+ * Relative timestamps ("2 hours ago") differ between the server render and the
+ * client hydration moment, which trips a hydration mismatch. Render them only
+ * after mount so server and first client paint agree (empty), then fill in.
+ */
+function TimeAgo({ iso, className }: { iso: string; className?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return (
+    <span className={className} suppressHydrationWarning>
+      {mounted ? formatTimeAgo(iso) : ""}
+    </span>
+  );
+}
 
 function initials(name: string | null): string {
   if (!name) return "?";
@@ -287,7 +302,7 @@ export function AdminDashboard({
                           <Icon className="size-3.5" />
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
-                        <span className="shrink-0 font-mono text-[0.68rem] text-muted-foreground">{formatTimeAgo(a.timestamp)}</span>
+                        <TimeAgo iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
                       </>
                     );
                     const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
@@ -516,7 +531,7 @@ export function AdminDashboard({
                           <span>→</span>
                           <MiniAvatar src={m.recipientAvatar} name={m.recipientName} size={20} />
                           <span>{m.recipientName ?? "unknown"}</span>
-                          {m.messageCreatedAt && <><span>·</span><span>{formatTimeAgo(m.messageCreatedAt)}</span></>}
+                          {m.messageCreatedAt && <><span>·</span><TimeAgo iso={m.messageCreatedAt} /></>}
                         </div>
                         {/* Message content preview */}
                         <div className="mt-1.5 rounded border border-border/60 bg-muted/30 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground">
@@ -776,7 +791,7 @@ function ReportRow({ reason, details, reporterName, createdAt }: {
         </span>
         <span>{reason}</span>
         <span className="mx-0.5 text-muted-foreground/50">—</span>
-        <span className="text-muted-foreground">{reporterName ?? "anon"} {formatTimeAgo(createdAt)}</span>
+        <span className="text-muted-foreground">{reporterName ?? "anon"} <TimeAgo iso={createdAt} /></span>
       </button>
       {open && (
         <div className="ml-3.5 mt-0.5 rounded border-l-2 border-border pl-2 font-mono text-[0.62rem] leading-relaxed">

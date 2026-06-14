@@ -204,9 +204,10 @@ type RawActivity = {
   targetId: string | null;
 };
 
-function describeLogActivity(type: string, actorName: string | null, title: string | null): string {
+function describeLogActivity(type: string, actorName: string | null, title: string | null, detail: string | null): string {
   const who = actorName ?? "An admin";
   const t = title ?? "untitled";
+  const reasonSuffix = detail?.trim() ? ` · Reason: ${detail.trim()}` : "";
   switch (type) {
     case "listing_sold": return `Listing "${t}" was marked as sold`;
     case "request_closed": return `Request "${t}" was closed`;
@@ -214,8 +215,8 @@ function describeLogActivity(type: string, actorName: string | null, title: stri
     case "listing_delisted": return `Listing "${t}" was delisted by ${who}`;
     case "listing_auto_delisted": return `Listing "${t}" was automatically delisted after receiving 2 reports`;
     case "listing_restored": return `Listing "${t}" was restored by ${who}`;
-    case "listing_takedown": return `Listing "${t}" was taken down by ${who}`;
-    case "request_takedown": return `Request "${t}" was taken down by ${who}`;
+    case "listing_takedown": return `Listing "${t}" was taken down by ${who}${reasonSuffix}`;
+    case "request_takedown": return `Request "${t}" was taken down by ${who}${reasonSuffix}`;
     case "user_banned": return `${t} was banned by ${who}`;
     case "user_warned": return `${t} was warned by ${who}`;
     case "message_deleted": return `A message was deleted by ${who}`;
@@ -233,7 +234,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
     supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
     supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(12),
-    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, created_at").order("created_at", { ascending: false }).limit(20),
+    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(20),
   ]);
 
   const raw: RawActivity[] = [];
@@ -253,7 +254,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
   for (const lg of logs.data ?? []) {
     raw.push({
       type: lg.type as ActivityType,
-      description: describeLogActivity(lg.type, lg.actor_name, lg.target_title),
+      description: describeLogActivity(lg.type, lg.actor_name, lg.target_title, lg.detail ?? null),
       timestamp: lg.created_at,
       targetKind: (lg.target_type ?? null) as RawActivity["targetKind"],
       targetId: lg.target_id ?? null,
@@ -365,7 +366,16 @@ async function buildReportedPosts(
 
   const byId = new Map((posts ?? []).map((p) => [p.id as string, p]));
 
-  return ids.map((id) => {
+  return ids
+    // Drop items that no longer exist or have been removed (taken down / deleted).
+    // Their reports are moot — there is nothing left to moderate, and showing a
+    // dead row in the queue is confusing. The takedown reason is preserved in the
+    // activity feed instead.
+    .filter((id) => {
+      const post = byId.get(id) as Record<string, unknown> | undefined;
+      return post && !post.deleted_at;
+    })
+    .map((id) => {
     const post = byId.get(id) as Record<string, unknown> | undefined;
     const postReports = reps.filter((r) => r.target_id === id);
     const owner = post?.[targetType === "listing" ? "seller" : "requester"] as { full_name?: string } | null;
@@ -609,7 +619,8 @@ async function takedownPost(
     } catch (err) { console.error("[admin] takedown email error:", err); }
   }
 
-  // Audit
+  // Audit — store the admin's official takedown reason so it survives the
+  // item leaving the moderation queue.
   await logActivity({
     type: targetType === "listing" ? "listing_takedown" : "request_takedown",
     actorId: userId,
@@ -617,6 +628,7 @@ async function takedownPost(
     targetType,
     targetId: id,
     targetTitle: title,
+    detail: cleanReason,
   });
 }
 

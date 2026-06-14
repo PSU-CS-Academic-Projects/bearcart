@@ -28,6 +28,8 @@ export interface LogActivityParams {
   targetId?: string | null;
   /** Denormalized target title (listing/request title or affected user's name). */
   targetTitle?: string | null;
+  /** Extra context shown inline in the feed (e.g. the admin's takedown reason). */
+  detail?: string | null;
 }
 
 /**
@@ -46,6 +48,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
       target_type: params.targetType ?? null,
       target_id: params.targetId ?? null,
       target_title: params.targetTitle ?? null,
+      detail: params.detail ?? null,
     });
   } catch (err) {
     console.error("[activity-log] failed to record activity:", err);
