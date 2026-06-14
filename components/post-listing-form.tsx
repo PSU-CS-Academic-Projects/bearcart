@@ -8,7 +8,6 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ConditionSelector } from "@/components/condition-selector";
 import { ListingTypeSelector } from "@/components/listing-type-selector";
-import { TagsInput } from "@/components/tags-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,7 +59,6 @@ interface FormData {
   price: string;
   negotiable: boolean;
   description: string;
-  tags: string[];
 }
 
 interface FormErrors {
@@ -123,7 +121,7 @@ export function PostListingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     photos: [], title: "", category: "", condition: "", listingType: "for-sale",
-    price: "", negotiable: false, description: "", tags: [],
+    price: "", negotiable: false, description: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -242,7 +240,6 @@ export function PostListingForm() {
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionMap[formData.condition] ?? "good",
-        tags: formData.tags,
         photos: formData.photos,
       });
       toast.success("Listing posted successfully!");
@@ -378,19 +375,6 @@ export function PostListingForm() {
           <CharCounter current={formData.description.length} max={DESC_MAX} />
         </div>
       </div>
-
-      {/* Tags */}
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagsInput
-          tags={formData.tags}
-          onTagsChange={(tags) => updateField("tags", tags)}
-          placeholder="Add tags and press Enter"
-          maxTags={5}
-          maxTagLength={20}
-          disabled={submitting}
-        />
-      </div>
     </div>
   );
 
@@ -417,14 +401,6 @@ export function PostListingForm() {
             {formData.condition && <span className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground">{formData.condition.charAt(0).toUpperCase() + formData.condition.slice(1).replace("-", " ")}</span>}
           </div>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{formData.description || "No description provided."}</p>
-          {formData.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {formData.tags.map((tag) => (
-                <span key={tag} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">#{tag}</span>
-              ))}
-            </div>
-          )}
-
         </div>
       </div>
       <p className="text-center text-xs text-muted-foreground">By posting you agree to Bearcart&apos;s community guidelines</p>

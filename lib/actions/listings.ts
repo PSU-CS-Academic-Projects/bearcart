@@ -15,7 +15,6 @@ export interface CreateListingInput {
   is_negotiable: boolean;
   category: string;
   condition: "new" | "like_new" | "good" | "fair" | "poor";
-  tags: string[];
   /** Base64-encoded images from the photo upload component */
   photos: string[];
 }
@@ -100,7 +99,6 @@ export async function createListing(input: CreateListingInput) {
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
-    ...(input.tags.length > 0 ? [{ label: "tags", value: input.tags.join(", ") }] : []),
   ]);
   await moderateImagesOrThrow(input.photos);
 
@@ -115,7 +113,6 @@ export async function createListing(input: CreateListingInput) {
       is_negotiable: input.is_negotiable,
       category: input.category,
       condition: input.condition,
-      tags: input.tags.length > 0 ? input.tags : null,
     })
     .select("id")
     .single();
@@ -390,7 +387,6 @@ export interface UpdateListingInput {
   is_negotiable: boolean;
   category: string;
   condition: "new" | "like_new" | "good" | "fair" | "poor";
-  tags: string[];
   /** Existing image URLs to keep (in the new order) */
   existingPhotos: string[];
   /** Image IDs that were removed by the user */
@@ -425,7 +421,6 @@ export async function updateListing(input: UpdateListingInput) {
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
-    ...(input.tags.length > 0 ? [{ label: "tags", value: input.tags.join(", ") }] : []),
   ]);
   await moderateImagesOrThrow(input.newPhotos);
 
@@ -439,7 +434,6 @@ export async function updateListing(input: UpdateListingInput) {
       is_negotiable: input.is_negotiable,
       category: input.category,
       condition: input.condition,
-      tags: input.tags.length > 0 ? input.tags : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.listingId)

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Tag, ShoppingCart, BookmarkSimple, Storefront, Package,
-  MagnifyingGlass, Star, User, Plus, PencilSimple, XCircle, Check,
+  MagnifyingGlass, User, Plus, PencilSimple, XCircle, Check,
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
 import { RequestRow } from "@/components/request-row";
@@ -73,20 +73,6 @@ function getCoverImage(listing: ListingRow): string {
   return cover?.image_url ?? listing.listing_images?.[0]?.image_url ?? "";
 }
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`size-4 ${i <= rating ? "text-amber-500" : "text-muted-foreground/30"}`}
-          weight={i <= rating ? "fill" : "regular"}
-        />
-      ))}
-    </div>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ProfileTabs(props: ProfileTabsProps) {
@@ -104,6 +90,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
     id: string;
     type: "fulfilled" | "closed";
   } | null>(null);
+  const [removeSavedId, setRemoveSavedId] = useState<string | null>(null);
   const ownUserId = props.variant === "own" ? (props as OwnProfileTabsProps).currentUserId : "";
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
@@ -140,14 +127,16 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ── Remove Saved ──────────────────────────────────────────────────────
 
-  const handleRemoveSaved = async (listingId: string) => {
+  const handleRemoveSaved = async () => {
+    if (!removeSavedId) return;
     try {
-      await removeSavedListing(listingId);
-      setSavedItems((prev) => prev.filter((l) => l.id !== listingId));
+      await removeSavedListing(removeSavedId);
+      setSavedItems((prev) => prev.filter((l) => l.id !== removeSavedId));
       toast.success("Removed from saved!");
     } catch {
       toast.error("Failed to remove saved listing");
     }
+    setRemoveSavedId(null);
   };
 
   // ── Request Status Action ─────────────────────────────────────────────
@@ -211,7 +200,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
           onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
-          onRemoveSaved={variant === "saved" ? () => handleRemoveSaved(listing.id) : undefined}
+          onRemoveSaved={variant === "saved" ? () => setRemoveSavedId(listing.id) : undefined}
         />
       ))}
     </div>
@@ -418,6 +407,22 @@ export function ProfileTabs(props: ProfileTabsProps) {
               >
                 Yes, Remove
               </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Remove Saved Confirmation */}
+        <AlertDialog open={!!removeSavedId} onOpenChange={(o) => { if (!o) setRemoveSavedId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove from saved?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove this from your saved items?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRemoveSaved}>Remove</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

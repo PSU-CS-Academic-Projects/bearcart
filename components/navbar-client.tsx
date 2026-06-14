@@ -27,7 +27,6 @@ import {
   User as UserIcon,
   SignOut,
   ChatCircle,
-  ListBullets,
   Plus,
   Bell,
   ShieldCheck,
@@ -214,13 +213,6 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
           <Link href="/profile" className="flex cursor-pointer items-center gap-2">
             <UserIcon className="size-4" />
             My Profile
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex cursor-pointer items-center gap-2">
-            <ListBullets className="size-4" />
-            My Listings
           </Link>
         </DropdownMenuItem>
 

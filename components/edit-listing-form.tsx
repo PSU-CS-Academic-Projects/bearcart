@@ -8,7 +8,6 @@ import { Footer } from "@/components/footer";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ConditionSelector } from "@/components/condition-selector";
-import { TagsInput } from "@/components/tags-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,7 +86,6 @@ interface ListingData {
   category: string;
   condition: string;
   status: string;
-  tags: string[];
   images: ExistingImage[];
 }
 
@@ -98,7 +96,6 @@ interface FormData {
   price: string;
   negotiable: boolean;
   description: string;
-  tags: string[];
 }
 
 interface FormErrors {
@@ -189,7 +186,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     price: formatCurrencyInput(listing.price.toString()),
     negotiable: listing.is_negotiable,
     description: listing.description,
-    tags: listing.tags.filter((t) => !t.startsWith("meetup:")),
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -256,7 +252,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
-        tags: formData.tags,
         existingPhotos,
         removedImageIds,
         newPhotos,
@@ -411,19 +406,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           {errors.description ? <p className="text-sm text-destructive">{errors.description}</p> : <span />}
           <CharCounter current={formData.description.length} max={DESC_MAX} />
         </div>
-      </div>
-
-      {/* Tags */}
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagsInput
-          tags={formData.tags}
-          onTagsChange={(tags) => updateField("tags", tags)}
-          placeholder="Add tags and press Enter"
-          maxTags={5}
-          maxTagLength={20}
-          disabled={submitting}
-        />
       </div>
     </div>
   );

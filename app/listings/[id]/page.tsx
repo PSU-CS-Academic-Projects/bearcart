@@ -14,7 +14,6 @@ import {
   Clock,
   Eye,
   Handshake,
-  Tag,
   Warning,
   PencilSimple,
   MapPin,
@@ -237,28 +236,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                   </p>
                 </div>
 
-                {listing.tags && listing.tags.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="flex items-center gap-1 font-semibold text-muted-foreground">
-                      <Tag className="size-3.5" />
-                      Tags
-                    </span>
-                    {listing.tags.map((tag) => (
-                      <Link
-                        key={tag}
-                        href={`/listings?search=${encodeURIComponent(tag)}`}
-                      >
-                        <Badge
-                          variant="outline"
-                          className="cursor-pointer rounded-full bg-card px-2 py-0.5 font-medium hover:bg-accent"
-                        >
-                          #{tag}
-                        </Badge>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+</div>
 
               {!isUnavailable && (
                 <ListingActions
