@@ -22,7 +22,6 @@ BearCart reserves the right to update or modify these Terms of Service at any ti
 BearCart is exclusively available to currently enrolled students and faculty of Palawan State University (PalSU). To use the platform, you must:
 
 • Have a valid and active PalSU institutional Google account (@psu.palawan.edu.ph)
-• Be at least 18 years of age, or have the consent of a parent or guardian if younger
 • Agree to these Terms of Service and our Privacy Policy
 
 BearCart reserves the right to suspend or terminate accounts of users who no longer meet these eligibility requirements.
