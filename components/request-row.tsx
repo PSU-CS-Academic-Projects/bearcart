@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -15,6 +15,12 @@ import {
   PencilSimple,
   Check,
   XCircle,
+  CaretDown,
+  X,
+  Flag,
+  Prohibit,
+  ArrowCounterClockwise,
+  Trash,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +39,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Flag, Prohibit, ArrowCounterClockwise, Trash } from "@phosphor-icons/react";
 import { Textarea } from "@/components/ui/textarea";
 import { ReportDialog } from "@/components/report-dialog";
 import { cn } from "@/lib/utils";
@@ -67,7 +72,6 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
 };
 
 function categoryIconFor(category: string): React.ComponentType<{ className?: string }> {
-  // Exact match first, fall back to lowercase comparison, fall back to Package
   if (CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
   const found = Object.entries(CATEGORY_ICONS).find(
     ([k]) => k.toLowerCase() === category.toLowerCase()
@@ -100,13 +104,9 @@ function UrgencyBadge({ urgency }: { urgency: RequestUrgency }) {
 
 interface RequestRowProps {
   request: RequestRowType;
-  /** ID of the current logged-in user, or null */
   currentUserId: string | null;
-  /** Variant changes the right action; default shows "I Have This" */
   variant?: "default" | "owner";
-  /** Custom right-side action node (used by profile page) */
   rightAction?: React.ReactNode;
-  /** When true, shows admin moderation controls (delist/restore/takedown) */
   isAdmin?: boolean;
 }
 
@@ -121,6 +121,10 @@ export function RequestRow({
   const Icon = categoryIconFor(request.category);
   const isOwn = currentUserId === request.requester_id;
   const cover = getRequestCoverImage(request);
+  const hasDescription = !!(request.description?.trim());
+
+  const [expanded, setExpanded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | "delete" | null>(null);
   const [acting, setActing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -129,6 +133,16 @@ export function RequestRow({
 
   const canReport = !!currentUserId && !isOwn;
   const showMenu = canReport || isAdmin;
+
+  // Close lightbox on Escape key
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [lightboxOpen]);
 
   const runAdminAction = async () => {
     if (!adminConfirm) return;
@@ -190,16 +204,21 @@ export function RequestRow({
   };
 
   return (
-    <div className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30 sm:gap-4 sm:px-5 sm:py-4">
-      {/* Left section: image thumbnail */}
+    <div
+      className={cn(
+        "group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30 sm:gap-4 sm:px-5 sm:py-4",
+        hasDescription && "cursor-pointer select-none"
+      )}
+      onClick={hasDescription ? () => setExpanded((prev) => !prev) : undefined}
+    >
+      {/* Left: image thumbnail / lightbox trigger */}
       <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
         {cover ? (
-          <a
-            href={cover}
-            target="_blank"
-            rel="noreferrer"
-            className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          <button
+            type="button"
             aria-label={`View image for ${request.title}`}
+            onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }}
+            className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Image
               src={cover}
@@ -209,26 +228,36 @@ export function RequestRow({
               className="object-cover transition-transform hover:scale-105"
               sizes="(max-width: 640px) 64px, 80px"
             />
-          </a>
+          </button>
         ) : (
           <Icon className="size-8 text-muted-foreground opacity-50 sm:size-10" />
         )}
       </div>
 
-      {/* Right section: content & actions */}
+      {/* Right: content & actions */}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        
-        {/* Title + Urgency */}
-        <div className="flex flex-wrap items-center gap-2">
-          <UrgencyBadge urgency={request.urgency} />
-          <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground">
-            {request.title}
-          </h3>
-          {request.is_delisted && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-              <Prohibit className="size-3" />
-              Delisted
-            </span>
+
+        {/* Title + Urgency + expand caret */}
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <UrgencyBadge urgency={request.urgency} />
+            <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground">
+              {request.title}
+            </h3>
+            {request.is_delisted && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                <Prohibit className="size-3" />
+                Delisted
+              </span>
+            )}
+          </div>
+          {hasDescription && (
+            <CaretDown
+              className={cn(
+                "size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                expanded && "rotate-180"
+              )}
+            />
           )}
         </div>
 
@@ -331,6 +360,20 @@ export function RequestRow({
             </div>
           )}
         </div>
+
+        {/* Expandable description */}
+        {hasDescription && (
+          <div
+            className="grid transition-all duration-200 ease-in-out"
+            style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <p className="pb-1 pt-2 text-sm leading-relaxed text-muted-foreground">
+                {request.description}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Report dialog */}
@@ -386,6 +429,7 @@ export function RequestRow({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Owner action confirmation */}
       <AlertDialog open={!!confirmAction} onOpenChange={(o) => { if (!o) setConfirmAction(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -412,6 +456,33 @@ export function RequestRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image lightbox */}
+      {lightboxOpen && cover && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+        >
+          <button
+            type="button"
+            aria-label="Close image"
+            onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+            className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <X className="size-5" />
+          </button>
+          <div
+            className="relative max-h-[90vh] max-w-[90vw]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={cover}
+              alt={request.title}
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -421,10 +492,7 @@ export function RequestRow({
 export function RequestRowSkeleton() {
   return (
     <div className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
-      {/* Thumbnail skeleton */}
       <div className="size-16 shrink-0 animate-pulse rounded-md bg-muted sm:size-20" />
-      
-      {/* Content skeleton */}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center gap-2">
           <div className="h-5 w-16 animate-pulse rounded bg-muted" />

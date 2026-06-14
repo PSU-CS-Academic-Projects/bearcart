@@ -290,7 +290,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     } else if (i.targetKind === "listing" && i.targetId && aliveListings.has(i.targetId)) {
       href = `/listings/${i.targetId}`;
     } else if (i.targetKind === "request" && i.targetId && aliveRequests.has(i.targetId)) {
-      href = `/requests/${i.targetId}`;
+      href = `/requests`;
     }
     return { type: i.type, description: i.description, timestamp: i.timestamp, href, jumpToReported };
   });

@@ -450,7 +450,7 @@ export function AdminDashboard({
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
-                            href={`/requests/${post.id}`}
+                            href="/requests"
                             className="text-sm font-semibold text-foreground hover:underline"
                           >
                             {post.title}

@@ -216,13 +216,6 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href="/post" className="flex cursor-pointer items-center gap-2">
-            <Plus className="size-4" />
-            Create a Post
-          </Link>
-        </DropdownMenuItem>
-
         {user.is_admin && (
           <>
             <DropdownMenuSeparator />
@@ -699,15 +692,6 @@ export function NavbarClient({
                   >
                     <UserIcon className="size-4" />
                     My Profile
-                  </Link>
-
-                  <Link
-                    href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
-                  >
-                    <Plus className="size-4" />
-                    Create a Post
                   </Link>
 
                   <div className="h-px bg-border" />

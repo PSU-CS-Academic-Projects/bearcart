@@ -411,79 +411,66 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   );
 
   const statusSection = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Label>Listing Status</Label>
-          <div className="flex items-center gap-2">
-            <Badge className={statusConfig[listing.status]?.className ?? "bg-gray-100 text-gray-800"}>
-              {statusConfig[listing.status]?.label ?? listing.status}
-            </Badge>
-          </div>
-        </div>
-
-        {listing.status === "available" && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={markingSold || submitting}
-              onClick={() => setMarkSoldOpen(true)}
+    <div className="flex flex-wrap items-center gap-3">
+      {listing.status !== "available" && (
+        <Badge className={statusConfig[listing.status]?.className ?? "bg-gray-100 text-gray-800"}>
+          {statusConfig[listing.status]?.label ?? listing.status}
+        </Badge>
+      )}
+      {listing.status === "available" && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={markingSold || submitting}
+            onClick={() => setMarkSoldOpen(true)}
+          >
+            <CheckCircle className="size-4" />
+            {markingSold ? "Updating…" : "Mark as Sold"}
+          </Button>
+          <MarkAsSoldDialog
+            open={markSoldOpen}
+            onOpenChange={setMarkSoldOpen}
+            listingId={listing.id}
+            onConfirm={handleMarkSold}
+          />
+        </>
+      )}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={deleting || submitting}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash className="size-4" />
+            Delete Listing
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. The listing will be permanently removed from the marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <CheckCircle className="size-4" />
-              {markingSold ? "Updating…" : "Mark as Sold"}
-            </Button>
-            <MarkAsSoldDialog
-              open={markSoldOpen}
-              onOpenChange={setMarkSoldOpen}
-              listingId={listing.id}
-              onConfirm={handleMarkSold}
-            />
-          </>
-        )}
-      </div>
-    </div>
-  );
-
-  const deleteSection = (
-    <div className="space-y-4">
-      <div className="h-px bg-border" />
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-          <p className="text-xs text-muted-foreground">Permanently remove this listing</p>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={deleting || submitting}>
-              <Trash className="size-4" />
-              Delete Listing
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete this listing?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This cannot be undone. The listing will be permanently removed from the marketplace.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deleting ? (
-                  <><SpinnerGap className="size-4 animate-spin" /> Deleting...</>
-                ) : (
-                  "Yes, delete listing"
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+              {deleting ? (
+                <><SpinnerGap className="size-4 animate-spin" /> Deleting...</>
+              ) : (
+                "Yes, delete listing"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 
@@ -565,8 +552,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
               </div>
             </section>
 
-            {/* Delete Section */}
-            {deleteSection}
           </form>
         </div>
       </main>

@@ -231,7 +231,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
             <Breadcrumb
               items={[
                 { label: "Requests", href: "/requests" },
-                { label: request.title, href: `/requests/${request.id}` },
                 { label: "Edit" },
               ]}
             />
@@ -240,6 +239,43 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Status actions — top of form, same position as Mark as Sold in listing edit */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("fulfilled")}
+              >
+                <Check className="size-4 text-emerald-600" />
+                Mark as Fulfilled
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("closed")}
+              >
+                <XCircle className="size-4 text-muted-foreground" />
+                Close Request
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("delete")}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash className="size-4" />
+                Delete Request
+              </Button>
+            </div>
+
+            <div className="h-px bg-border" />
+
             {/* Photos */}
             <section className="space-y-3">
               <div>
@@ -416,10 +452,10 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                       onClick={() => setUrgency(u.value)}
                       disabled={submitting}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground transition-colors",
                         active
-                          ? "border-primary bg-primary/5 text-primary ring-1 ring-primary"
-                          : "border-border text-foreground hover:bg-accent/50",
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border hover:bg-accent/50",
                         submitting && "opacity-50"
                       )}
                     >
@@ -451,47 +487,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
               )}
             </Button>
           </form>
-
-          {/* Status Actions */}
-          <div className="mt-12 space-y-4 rounded-xl border bg-card p-5">
-            <h2 className="text-lg font-semibold text-foreground">Manage Request</h2>
-            <div className="space-y-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start gap-2"
-                disabled={submitting}
-                onClick={() => setConfirmAction("fulfilled")}
-              >
-                <Check className="size-4 text-emerald-600" />
-                Mark as Fulfilled
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start gap-2"
-                disabled={submitting}
-                onClick={() => setConfirmAction("closed")}
-              >
-                <XCircle className="size-4 text-muted-foreground" />
-                Close Request (without fulfilling)
-              </Button>
-            </div>
-          </div>
-
-          {/* Delete */}
-          <div className="mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
-              disabled={submitting}
-              onClick={() => setConfirmAction("delete")}
-            >
-              <Trash className="size-4" />
-              Delete Request
-            </Button>
-          </div>
         </div>
       </main>
       <Footer />
