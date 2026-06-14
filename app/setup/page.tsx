@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,8 @@ type Role = "student" | "faculty";
 
 export default function SetupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo") || "/listings";
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<Role | null>(null);
@@ -38,27 +40,30 @@ export default function SetupPage() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) {
-        // Not logged in → go to homepage
         router.replace("/");
         return;
       }
 
-      // Already has college set → skip setup
       const { data } = await supabase
         .from("users")
-        .select("college")
+        .select("college, terms_accepted")
         .eq("id", session.user.id)
         .single();
 
-      if (data?.college) {
-        router.replace("/listings");
+      if (data?.college && data?.terms_accepted) {
+        router.replace(returnTo);
+        return;
+      }
+
+      if (data?.college && !data?.terms_accepted) {
+        router.replace(`/consent?returnTo=${encodeURIComponent(returnTo)}`);
         return;
       }
 
       setUser(session.user);
       setLoading(false);
     });
-  }, [router]);
+  }, [router, returnTo]);
 
   const firstName =
     (user?.user_metadata?.given_name as string | undefined) ??
@@ -91,10 +96,9 @@ export default function SetupPage() {
       return;
     }
 
-    // Send welcome email (fire-and-forget — don't block navigation)
     fetch("/api/send-welcome", { method: "POST" }).catch(() => {});
 
-    router.replace("/listings");
+    router.replace(`/consent?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
   if (loading) {
@@ -109,7 +113,6 @@ export default function SetupPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-lg">
-          {/* Card */}
           <div className="rounded-2xl border bg-card p-6 shadow-sm md:p-10">
 
             {/* Logo */}
@@ -132,7 +135,6 @@ export default function SetupPage() {
                 I am a…
               </p>
               <div className="grid grid-cols-2 gap-3">
-                {/* Student Card */}
                 <button
                   type="button"
                   onClick={() => setRole("student")}
@@ -159,7 +161,6 @@ export default function SetupPage() {
                   </span>
                 </button>
 
-                {/* Faculty Card */}
                 <button
                   type="button"
                   onClick={() => setRole("faculty")}
@@ -213,7 +214,6 @@ export default function SetupPage() {
             {/* Submit */}
             <Button
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              style={{ backgroundColor: canSubmit ? undefined : undefined }}
               disabled={!canSubmit || saving}
               onClick={handleSubmit}
             >
