@@ -143,6 +143,7 @@ export function AdminDashboard({
   const [tab, setTab] = useState<"overview" | "reported" | "users">("overview");
   const [reportedTab, setReportedTab] = useState<"listings" | "requests" | "messages">("listings");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [activityPage, setActivityPage] = useState(0);
 
   // user search — current admin first, then other admins, then members A→Z
   const [userQuery, setUserQuery] = useState("");
@@ -275,58 +276,96 @@ export function AdminDashboard({
             </div>
 
             {/* Recent activity feed */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Recent Activity
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setTab("reported")}
-                  className="font-mono text-[0.65rem] font-semibold text-primary transition-colors hover:text-primary/80"
-                >
-                  View all →
-                </button>
-              </div>
-              {recentActivity.length === 0 ? (
-                <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
-                  No recent activity.
-                </p>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                  {recentActivity.map((a, i) => {
-                    const { Icon, tone } = activityVisual(a.type);
-                    const inner = (
-                      <>
-                        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
-                          <Icon className="size-3.5" />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
-                        <TimeAgo iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
-                      </>
-                    );
-                    const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
-                    const interactive = "transition-colors hover:bg-muted/30";
+            {(() => {
+              const ACTIVITY_PAGE_SIZE = 10;
+              const activityPageCount = Math.max(1, Math.ceil(recentActivity.length / ACTIVITY_PAGE_SIZE));
+              const safeActivityPage = Math.min(activityPage, activityPageCount - 1);
+              const pageActivity = recentActivity.slice(
+                safeActivityPage * ACTIVITY_PAGE_SIZE,
+                safeActivityPage * ACTIVITY_PAGE_SIZE + ACTIVITY_PAGE_SIZE
+              );
+              return (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Recent Activity
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTab("reported")}
+                      className="font-mono text-[0.65rem] font-semibold text-primary transition-colors hover:text-primary/80"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  {recentActivity.length === 0 ? (
+                    <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
+                      No recent activity.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="overflow-hidden rounded-xl border border-border bg-card">
+                        {pageActivity.map((a, i) => {
+                          const { Icon, tone } = activityVisual(a.type);
+                          const inner = (
+                            <>
+                              <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                                <Icon className="size-3.5" />
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
+                              <TimeAgo iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
+                            </>
+                          );
+                          const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
+                          const interactive = "transition-colors hover:bg-muted/30";
 
-                    if (a.jumpToReported) {
-                      return (
-                        <button key={i} type="button" onClick={() => setTab("reported")} className={`${rowClass} ${interactive}`}>
-                          {inner}
-                        </button>
-                      );
-                    }
-                    if (a.href) {
-                      return (
-                        <Link key={i} href={a.href} className={`${rowClass} ${interactive}`}>
-                          {inner}
-                        </Link>
-                      );
-                    }
-                    return <div key={i} className={rowClass}>{inner}</div>;
-                  })}
+                          if (a.jumpToReported) {
+                            return (
+                              <button key={i} type="button" onClick={() => setTab("reported")} className={`${rowClass} ${interactive}`}>
+                                {inner}
+                              </button>
+                            );
+                          }
+                          if (a.href) {
+                            return (
+                              <Link key={i} href={a.href} className={`${rowClass} ${interactive}`}>
+                                {inner}
+                              </Link>
+                            );
+                          }
+                          return <div key={i} className={rowClass}>{inner}</div>;
+                        })}
+                      </div>
+
+                      {/* Pagination */}
+                      {activityPageCount > 1 && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="font-mono text-[0.68rem] text-muted-foreground">
+                            Page {safeActivityPage + 1} of {activityPageCount} · {recentActivity.length} events
+                          </span>
+                          <div className="flex gap-1.5">
+                            <Button
+                              size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                              disabled={safeActivityPage === 0}
+                              onClick={() => setActivityPage((p) => Math.max(0, p - 1))}
+                            >
+                              <CaretLeft className="size-3.5" /> Prev
+                            </Button>
+                            <Button
+                              size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                              disabled={safeActivityPage >= activityPageCount - 1}
+                              onClick={() => setActivityPage((p) => Math.min(activityPageCount - 1, p + 1))}
+                            >
+                              Next <CaretRight className="size-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Reports over time — last 7 days */}
             <div>

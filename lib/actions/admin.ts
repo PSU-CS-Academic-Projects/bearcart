@@ -230,11 +230,11 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
   // Creation events come straight from the base tables (reliable + historical);
   // action / status events come from the activity_log audit table.
   const [users, listings, requests, reports, logs] = await Promise.all([
-    supabase.from("users").select("id, full_name, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(12),
-    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(20),
+    supabase.from("users").select("id, full_name, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(50),
+    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(50),
   ]);
 
   const raw: RawActivity[] = [];
@@ -264,7 +264,7 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
   const top = raw
     .filter((i) => !!i.timestamp)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 10);
+    .slice(0, 50);
 
   // Resolve which listing/request targets still exist → only link to live items.
   const listingIds = [...new Set(top.filter((i) => i.targetKind === "listing" && i.targetId).map((i) => i.targetId as string))];

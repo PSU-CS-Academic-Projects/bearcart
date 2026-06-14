@@ -39,9 +39,10 @@ export default async function PublicProfilePage({
   if (!profile) notFound();
 
   // ── Fetch data ─────────────────────────────────────────────────────────
-  const [stats, activeListings, requests] = await Promise.all([
+  const [stats, activeListings, soldListings, requests] = await Promise.all([
     getProfileStats(id),
     getListingsBySeller(id, "available"),
+    getListingsBySeller(id, "sold"),
     getRequestsByRequester(id, "open"),
   ]);
 
@@ -60,6 +61,7 @@ export default async function PublicProfilePage({
           <ProfileTabs
             variant="public"
             activeListings={activeListings}
+            soldListings={soldListings}
             requests={requests}
           />
         </div>

@@ -62,6 +62,7 @@ interface OwnProfileTabsProps {
 interface PublicProfileTabsProps {
   variant: "public";
   activeListings: ListingRow[];
+  soldListings: ListingRow[];
   requests: RequestRowType[];
 }
 
@@ -82,7 +83,11 @@ export function ProfileTabs(props: ProfileTabsProps) {
   const [markSoldId, setMarkSoldId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeItems, setActiveItems] = useState(props.activeListings);
-  const [soldItems, setSoldItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).soldListings : []);
+  const [soldItems, setSoldItems] = useState(
+    props.variant === "own"
+      ? (props as OwnProfileTabsProps).soldListings
+      : (props as PublicProfileTabsProps).soldListings
+  );
   const [savedItems, setSavedItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).savedListings : []);
   const [requestItems, setRequestItems] = useState<RequestRowType[]>(
     props.variant === "own" ? (props as OwnProfileTabsProps).ownRequests : []
@@ -488,6 +493,10 @@ export function ProfileTabs(props: ProfileTabsProps) {
           <Tag className="size-4" />
           Active Listings ({activeItems.length})
         </TabsTrigger>
+        <TabsTrigger value="sold" className="gap-2">
+          <ShoppingCart className="size-4" />
+          Sold ({soldItems.length})
+        </TabsTrigger>
         <TabsTrigger value="requests" className="gap-2">
           <MagnifyingGlass className="size-4" />
           Requests ({requests.length})
@@ -513,6 +522,27 @@ export function ProfileTabs(props: ProfileTabsProps) {
             ))}
           </div>
         ) : emptyActive}
+      </TabsContent>
+
+      <TabsContent value="sold" className="mt-6">
+        {soldItems.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {soldItems.map((listing) => (
+              <ProfileListingCard
+                key={listing.id}
+                id={listing.id}
+                title={listing.title}
+                price={listing.price}
+                category={listing.category}
+                condition={formatCondition(listing.condition)}
+                timePosted={formatTimeAgo(listing.created_at)}
+                imageUrl={getCoverImage(listing)}
+                variant="sold"
+                isDelisted={listing.is_delisted}
+              />
+            ))}
+          </div>
+        ) : emptySold}
       </TabsContent>
 
       <TabsContent value="requests" className="mt-6">
