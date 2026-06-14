@@ -211,7 +211,7 @@ export default function PrivacyPolicyPage() {
 
             <Section title="12. Contact and Complaints">
               <p>
-                For questions, concerns, or requests related to this Privacy Policy or the processing of your personal data, please reach out through BearCart's available support channels within the platform.
+                For questions, concerns, or requests related to this Privacy Policy or the processing of your personal data, you may contact us at bearcartpalsu@gmail.com.
               </p>
               <p>You also have the right to file a complaint directly with the National Privacy Commission of the Philippines:</p>
               <div className="rounded-lg border bg-muted/40 p-4 text-sm">

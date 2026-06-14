@@ -147,7 +147,7 @@ Any disputes arising from the use of BearCart shall be subject to the jurisdicti
 
 13. CONTACT
 
-For questions, concerns, or feedback regarding these Terms of Service, please reach out through BearCart's available support channels within the platform.
+For questions, concerns, or feedback regarding these Terms of Service, you may contact us at bearcartpalsu@gmail.com.
 
 Effective Date: June 2026`;
 
@@ -274,7 +274,7 @@ We may update this Privacy Policy from time to time. Changes will be posted on t
 
 12. CONTACT AND COMPLAINTS
 
-For questions, concerns, or requests related to this Privacy Policy or the processing of your personal data, please reach out through BearCart's available support channels within the platform.
+For questions, concerns, or requests related to this Privacy Policy or the processing of your personal data, you may contact us at bearcartpalsu@gmail.com.
 
 You also have the right to file a complaint directly with the National Privacy Commission of the Philippines:
 

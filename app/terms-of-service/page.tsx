@@ -240,7 +240,7 @@ export default function TermsOfServicePage() {
 
             <Section title="13. Contact">
               <p>
-                For questions, concerns, or feedback regarding these Terms of Service, please reach out through BearCart's available support channels within the platform.
+                For questions, concerns, or feedback regarding these Terms of Service, you may contact us at bearcartpalsu@gmail.com.
               </p>
             </Section>
 
