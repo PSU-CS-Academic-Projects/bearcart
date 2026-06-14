@@ -18,7 +18,6 @@ function isPublicRoute(pathname: string): boolean {
 // (keeps the OAuth flow and onboarding pages from redirect-looping)
 function isOnboardingExempt(pathname: string): boolean {
   return (
-    pathname === '/' ||
     pathname.startsWith('/auth/') ||
     pathname === '/setup' ||
     pathname === '/consent' ||
