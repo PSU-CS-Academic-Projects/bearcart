@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { uploadImage, deleteImage } from "./storage";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
+import { logActivity } from "@/lib/activity-log";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -335,6 +336,22 @@ export async function updateListingStatus(
     .eq("seller_id", user.id);
 
   if (error) throw new Error(`Failed to update listing: ${error.message}`);
+
+  // Audit: record "marked as sold" for the admin activity feed.
+  if (status === "sold") {
+    const [{ data: listing }, { data: actor }] = await Promise.all([
+      supabase.from("listings").select("title").eq("id", listingId).single(),
+      supabase.from("users").select("full_name").eq("id", user.id).single(),
+    ]);
+    await logActivity({
+      type: "listing_sold",
+      actorId: user.id,
+      actorName: actor?.full_name ?? null,
+      targetType: "listing",
+      targetId: listingId,
+      targetTitle: listing?.title ?? null,
+    });
+  }
 }
 
 export async function getListingChatters(listingId: string) {
@@ -354,7 +371,7 @@ export async function getListingChatters(listingId: string) {
 
   const seen = new Set<string>();
   return (data ?? [])
-    .map((c) => c.buyer as { id: string; full_name: string; avatar_url: string | null })
+    .map((c) => c.buyer as unknown as { id: string; full_name: string; avatar_url: string | null })
     .filter((b) => {
       if (!b || seen.has(b.id)) return false;
       seen.add(b.id);

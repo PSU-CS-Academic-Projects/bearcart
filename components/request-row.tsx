@@ -48,7 +48,6 @@ import {
 import { markRequestFulfilled, closeRequest } from "@/lib/actions/requests";
 import { reportRequest } from "@/lib/actions/reports";
 import {
-  adminDelistRequest,
   adminRestoreRequest,
   adminTakedownRequest,
 } from "@/lib/actions/admin";
@@ -125,7 +124,7 @@ export function RequestRow({
   const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | null>(null);
   const [acting, setActing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [adminConfirm, setAdminConfirm] = useState<"delist" | "restore" | "takedown" | null>(null);
+  const [adminConfirm, setAdminConfirm] = useState<"restore" | "takedown" | null>(null);
   const [takedownReason, setTakedownReason] = useState("");
 
   const canReport = !!currentUserId && !isOwn;
@@ -135,10 +134,7 @@ export function RequestRow({
     if (!adminConfirm) return;
     setActing(true);
     try {
-      if (adminConfirm === "delist") {
-        await adminDelistRequest(request.id);
-        toast.success("Request delisted.");
-      } else if (adminConfirm === "restore") {
+      if (adminConfirm === "restore") {
         await adminRestoreRequest(request.id);
         toast.success("Request restored.");
       } else {
@@ -308,12 +304,6 @@ export function RequestRow({
                       Report request
                     </DropdownMenuItem>
                   )}
-                  {isAdmin && !request.is_delisted && (
-                    <DropdownMenuItem onClick={() => setAdminConfirm("delist")}>
-                      <Prohibit className="size-4" />
-                      Delist (admin)
-                    </DropdownMenuItem>
-                  )}
                   {isAdmin && request.is_delisted && (
                     <DropdownMenuItem onClick={() => setAdminConfirm("restore")}>
                       <ArrowCounterClockwise className="size-4" />
@@ -351,12 +341,10 @@ export function RequestRow({
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {adminConfirm === "delist" && "Delist this request?"}
               {adminConfirm === "restore" && "Restore this request?"}
               {adminConfirm === "takedown" && "Permanently take down this request?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {adminConfirm === "delist" && "It will be hidden from all users but kept on file. The requester is notified."}
               {adminConfirm === "restore" && "It will become visible to everyone again. The requester is notified."}
               {adminConfirm === "takedown" && "This permanently removes the request for everyone, including the requester. This cannot be undone."}
             </AlertDialogDescription>
@@ -384,7 +372,6 @@ export function RequestRow({
               disabled={acting || (adminConfirm === "takedown" && !takedownReason.trim())}
               className={adminConfirm === "takedown" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
-              {adminConfirm === "delist" && "Delist"}
               {adminConfirm === "restore" && "Restore"}
               {adminConfirm === "takedown" && "Take Down"}
             </AlertDialogAction>

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { logActivity } from "@/lib/activity-log";
 import {
   sendPostDelistedEmail,
   sendPostRestoredEmail,
@@ -18,7 +19,49 @@ export interface AdminOverviewStats {
   reportedRequests: number;
   reportedMessages: number;
   bannedUsers: number;
-  openReports: number;
+  pendingReports: number;
+}
+
+export interface PlatformStats {
+  totalUsers: number;
+  totalListings: number;
+  totalRequests: number;
+  totalSold: number;
+}
+
+export type ActivityType =
+  | "user_registered"
+  | "listing_posted"
+  | "request_posted"
+  | "report_submitted"
+  | "listing_sold"
+  | "request_closed"
+  | "request_fulfilled"
+  | "listing_delisted"
+  | "listing_auto_delisted"
+  | "listing_restored"
+  | "listing_takedown"
+  | "request_takedown"
+  | "user_banned"
+  | "user_warned"
+  | "message_deleted";
+
+export interface ActivityItem {
+  type: ActivityType;
+  description: string;
+  timestamp: string;
+  /** Resolved navigation link, or null when the target no longer exists / isn't linkable. */
+  href: string | null;
+  /** When true, clicking should jump to the Reported Content tab (no URL). */
+  jumpToReported: boolean;
+}
+
+export interface ReportsPerDay {
+  /** ISO date (YYYY-MM-DD) */
+  date: string;
+  /** Short weekday label, e.g. "Mon" */
+  label: string;
+  count: number;
 }
 
 export interface ReportInfo {
@@ -45,7 +88,9 @@ export interface ReportedMessage {
   messageId: string;
   content: string | null;
   senderName: string | null;
+  senderAvatar: string | null;
   recipientName: string | null;
+  recipientAvatar: string | null;
   messageCreatedAt: string | null;
   reason: string;
   details: string | null;
@@ -77,6 +122,15 @@ async function requireAdmin() {
   return { supabase, userId: user.id };
 }
 
+/** Look up the acting user's display name (for activity-log attribution). */
+async function getActorName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<string | null> {
+  const { data } = await supabase.from("users").select("full_name").eq("id", userId).single();
+  return data?.full_name ?? null;
+}
+
 /** Non-throwing check for guarding pages / conditionally rendering UI. */
 export async function isCurrentUserAdmin(): Promise<boolean> {
   const supabase = await createClient();
@@ -91,8 +145,10 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
 export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
   const { supabase } = await requireAdmin();
 
+  // Count distinct target_ids that still have at least one open (unresolved) report.
   const distinctCount = async (targetType: string) => {
-    const { data } = await supabase.from("reports").select("target_id").eq("target_type", targetType);
+    const { data } = await supabase.from("reports").select("target_id")
+      .eq("target_type", targetType).eq("status", "open");
     return new Set((data ?? []).map((r) => r.target_id)).size;
   };
 
@@ -104,7 +160,7 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
 
   const { count: bannedUsers } = await supabase
     .from("users").select("id", { count: "exact", head: true }).neq("ban_type", "none");
-  const { count: openReports } = await supabase
+  const { count: pendingReports } = await supabase
     .from("reports").select("id", { count: "exact", head: true }).eq("status", "open");
 
   return {
@@ -112,8 +168,167 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
     reportedRequests,
     reportedMessages,
     bannedUsers: bannedUsers ?? 0,
-    openReports: openReports ?? 0,
+    pendingReports: pendingReports ?? 0,
   };
+}
+
+// ─── Platform stats (totals) ──────────────────────────────────────────────────
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const { supabase } = await requireAdmin();
+
+  const headCount = async (table: string) => {
+    const { count } = await supabase.from(table).select("id", { count: "exact", head: true });
+    return count ?? 0;
+  };
+
+  const [totalUsers, totalListings, totalRequests] = await Promise.all([
+    headCount("users"),
+    headCount("listings"),
+    headCount("requests"),
+  ]);
+
+  const { count: totalSold } = await supabase
+    .from("listings").select("id", { count: "exact", head: true }).eq("status", "sold");
+
+  return { totalUsers, totalListings, totalRequests, totalSold: totalSold ?? 0 };
+}
+
+// ─── Recent activity feed ─────────────────────────────────────────────────────
+
+type RawActivity = {
+  type: ActivityType;
+  description: string;
+  timestamp: string;
+  targetKind: "listing" | "request" | "user" | "report" | "message" | null;
+  targetId: string | null;
+};
+
+function describeLogActivity(type: string, actorName: string | null, title: string | null, detail: string | null): string {
+  const who = actorName ?? "An admin";
+  const t = title ?? "untitled";
+  const reasonSuffix = detail?.trim() ? ` · Reason: ${detail.trim()}` : "";
+  switch (type) {
+    case "listing_sold": return `Listing "${t}" was marked as sold`;
+    case "request_closed": return `Request "${t}" was closed`;
+    case "request_fulfilled": return `Request "${t}" was fulfilled`;
+    case "listing_delisted": return `Listing "${t}" was delisted by ${who}`;
+    case "listing_auto_delisted": return `Listing "${t}" was automatically delisted after receiving 2 reports`;
+    case "listing_restored": return `Listing "${t}" was restored by ${who}`;
+    case "listing_takedown": return `Listing "${t}" was taken down by ${who}${reasonSuffix}`;
+    case "request_takedown": return `Request "${t}" was taken down by ${who}${reasonSuffix}`;
+    case "user_banned": return `${t} was banned by ${who}`;
+    case "user_warned": return `${t} was warned by ${who}`;
+    case "message_deleted": return `A message was deleted by ${who}`;
+    default: return "Activity";
+  }
+}
+
+export async function getRecentActivity(): Promise<ActivityItem[]> {
+  const { supabase } = await requireAdmin();
+
+  // Creation events come straight from the base tables (reliable + historical);
+  // action / status events come from the activity_log audit table.
+  const [users, listings, requests, reports, logs] = await Promise.all([
+    supabase.from("users").select("id, full_name, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
+    supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
+    supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
+    supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(12),
+    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(20),
+  ]);
+
+  const raw: RawActivity[] = [];
+
+  for (const u of users.data ?? []) {
+    raw.push({ type: "user_registered", description: `${u.full_name ?? "Someone"} registered`, timestamp: u.created_at, targetKind: "user", targetId: u.id });
+  }
+  for (const l of listings.data ?? []) {
+    raw.push({ type: "listing_posted", description: `New listing "${l.title}"`, timestamp: l.created_at, targetKind: "listing", targetId: l.id });
+  }
+  for (const r of requests.data ?? []) {
+    raw.push({ type: "request_posted", description: `New request "${r.title}"`, timestamp: r.created_at, targetKind: "request", targetId: r.id });
+  }
+  for (const rep of reports.data ?? []) {
+    raw.push({ type: "report_submitted", description: `New report on a ${rep.target_type}`, timestamp: rep.created_at, targetKind: "report", targetId: rep.id });
+  }
+  for (const lg of logs.data ?? []) {
+    raw.push({
+      type: lg.type as ActivityType,
+      description: describeLogActivity(lg.type, lg.actor_name, lg.target_title, lg.detail ?? null),
+      timestamp: lg.created_at,
+      targetKind: (lg.target_type ?? null) as RawActivity["targetKind"],
+      targetId: lg.target_id ?? null,
+    });
+  }
+
+  const top = raw
+    .filter((i) => !!i.timestamp)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10);
+
+  // Resolve which listing/request targets still exist → only link to live items.
+  const listingIds = [...new Set(top.filter((i) => i.targetKind === "listing" && i.targetId).map((i) => i.targetId as string))];
+  const requestIds = [...new Set(top.filter((i) => i.targetKind === "request" && i.targetId).map((i) => i.targetId as string))];
+  const aliveListings = new Set<string>();
+  const aliveRequests = new Set<string>();
+  if (listingIds.length) {
+    const { data } = await supabase.from("listings").select("id").in("id", listingIds).is("deleted_at", null);
+    for (const r of data ?? []) aliveListings.add(r.id);
+  }
+  if (requestIds.length) {
+    const { data } = await supabase.from("requests").select("id").in("id", requestIds).is("deleted_at", null);
+    for (const r of data ?? []) aliveRequests.add(r.id);
+  }
+
+  return top.map((i) => {
+    let href: string | null = null;
+    let jumpToReported = false;
+    if (i.targetKind === "report") {
+      jumpToReported = true;
+    } else if (i.targetKind === "user" && i.targetId) {
+      href = `/profile/${i.targetId}`;
+    } else if (i.targetKind === "listing" && i.targetId && aliveListings.has(i.targetId)) {
+      href = `/listings/${i.targetId}`;
+    } else if (i.targetKind === "request" && i.targetId && aliveRequests.has(i.targetId)) {
+      href = `/requests/${i.targetId}`;
+    }
+    return { type: i.type, description: i.description, timestamp: i.timestamp, href, jumpToReported };
+  });
+}
+
+// ─── Reports per day (last 7 days) ────────────────────────────────────────────
+
+export async function getReportsPerDay(): Promise<ReportsPerDay[]> {
+  const { supabase } = await requireAdmin();
+
+  // 7-day window starting at midnight 6 days ago.
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+
+  const { data } = await supabase
+    .from("reports")
+    .select("created_at")
+    .gte("created_at", start.toISOString());
+
+  // Seed 7 day buckets.
+  const days: ReportsPerDay[] = [];
+  const keyOf = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = keyOf(d);
+    buckets.set(key, 0);
+    days.push({ date: key, label: d.toLocaleDateString("en-US", { weekday: "short" }), count: 0 });
+  }
+
+  for (const r of data ?? []) {
+    const d = new Date(r.created_at);
+    const key = keyOf(d);
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  return days.map((d) => ({ ...d, count: buckets.get(d.date) ?? 0 }));
 }
 
 // ─── Reported content ─────────────────────────────────────────────────────────
@@ -123,10 +338,12 @@ async function buildReportedPosts(
 ): Promise<ReportedPost[]> {
   const { supabase } = await requireAdmin();
 
+  // Only surface items that still have at least one open (unresolved) report.
   const { data: reps } = await supabase
     .from("reports")
-    .select("target_id, reason, details, created_at, reporter:users!reports_reporter_id_fkey(full_name)")
+    .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
     .eq("target_type", targetType)
+    .eq("status", "open")
     .order("created_at", { ascending: false });
 
   if (!reps || reps.length === 0) return [];
@@ -149,7 +366,16 @@ async function buildReportedPosts(
 
   const byId = new Map((posts ?? []).map((p) => [p.id as string, p]));
 
-  return ids.map((id) => {
+  return ids
+    // Drop items that no longer exist or have been removed (taken down / deleted).
+    // Their reports are moot — there is nothing left to moderate, and showing a
+    // dead row in the queue is confusing. The takedown reason is preserved in the
+    // activity feed instead.
+    .filter((id) => {
+      const post = byId.get(id) as Record<string, unknown> | undefined;
+      return post && !post.deleted_at;
+    })
+    .map((id) => {
     const post = byId.get(id) as Record<string, unknown> | undefined;
     const postReports = reps.filter((r) => r.target_id === id);
     const owner = post?.[targetType === "listing" ? "seller" : "requester"] as { full_name?: string } | null;
@@ -192,8 +418,8 @@ export async function getReportedMessages(): Promise<ReportedMessage[]> {
       id, target_id, reason, details, status, created_at,
       message_content, message_created_at,
       reporter:users!reports_reporter_id_fkey(full_name),
-      sender:users!reports_message_sender_id_fkey(full_name),
-      recipient:users!reports_message_recipient_id_fkey(full_name)
+      sender:users!reports_message_sender_id_fkey(full_name, avatar_url),
+      recipient:users!reports_message_recipient_id_fkey(full_name, avatar_url)
     `)
     .eq("target_type", "message")
     .order("created_at", { ascending: false });
@@ -202,8 +428,10 @@ export async function getReportedMessages(): Promise<ReportedMessage[]> {
     reportId: r.id,
     messageId: r.target_id,
     content: r.message_content,
-    senderName: (r.sender as { full_name?: string } | null)?.full_name ?? null,
-    recipientName: (r.recipient as { full_name?: string } | null)?.full_name ?? null,
+    senderName: (r.sender as { full_name?: string; avatar_url?: string } | null)?.full_name ?? null,
+    senderAvatar: (r.sender as { full_name?: string; avatar_url?: string } | null)?.avatar_url ?? null,
+    recipientName: (r.recipient as { full_name?: string; avatar_url?: string } | null)?.full_name ?? null,
+    recipientAvatar: (r.recipient as { full_name?: string; avatar_url?: string } | null)?.avatar_url ?? null,
     messageCreatedAt: r.message_created_at,
     reason: r.reason,
     details: r.details,
@@ -234,7 +462,7 @@ async function setPostDelisted(
   id: string,
   delisted: boolean
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
   const table = targetType === "listing" ? "listings" : "requests";
   const ownerCol = targetType === "listing" ? "seller_id" : "requester_id";
 
@@ -279,6 +507,18 @@ async function setPostDelisted(
       }
     } catch (err) { console.error("[admin] delist/restore email error:", err); }
   }
+
+  // Audit (listings only — the activity feed tracks listing delist/restore)
+  if (targetType === "listing") {
+    await logActivity({
+      type: delisted ? "listing_delisted" : "listing_restored",
+      actorId: userId,
+      actorName: await getActorName(supabase, userId),
+      targetType: "listing",
+      targetId: id,
+      targetTitle: title,
+    });
+  }
 }
 
 export async function adminDelistListing(id: string) { return setPostDelisted("listing", id, true); }
@@ -286,12 +526,60 @@ export async function adminRestoreListing(id: string) { return setPostDelisted("
 export async function adminDelistRequest(id: string) { return setPostDelisted("request", id, true); }
 export async function adminRestoreRequest(id: string) { return setPostDelisted("request", id, false); }
 
+/** Dismiss all reports for a post without changing its listing status.
+ *  Marks every open report as 'dismissed' so the item disappears from the
+ *  queue and the report counts reset to zero. */
+export async function adminDismissReports(
+  targetType: "listing" | "request",
+  targetId: string
+): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: "dismissed" })
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .eq("status", "open");
+  if (error) throw new Error(`Failed to dismiss reports: ${error.message}`);
+}
+
+/** Dismiss all reports for a specific message (report stays, message untouched). */
+export async function adminDismissMessageReport(reportId: string): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase
+    .from("reports")
+    .update({ status: "dismissed" })
+    .eq("id", reportId);
+  if (error) throw new Error(`Failed to dismiss message report: ${error.message}`);
+}
+
+/** Soft-delete a reported message (sets deleted_at) and dismiss its report. */
+export async function adminDeleteMessage(reportId: string, messageId: string): Promise<void> {
+  const { supabase, userId } = await requireAdmin();
+  const { error } = await supabase
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId);
+  if (error) throw new Error(`Failed to delete message: ${error.message}`);
+  await supabase.from("reports").update({ status: "actioned" }).eq("id", reportId);
+
+  // Audit
+  await logActivity({
+    type: "message_deleted",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType: "message",
+    targetId: messageId,
+    targetTitle: null,
+  });
+}
+
 async function takedownPost(
   targetType: "listing" | "request",
   id: string,
   reason: string
 ) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
   if (!reason || !reason.trim()) throw new Error("A takedown reason is required.");
   const cleanReason = reason.trim().slice(0, 300);
 
@@ -330,6 +618,18 @@ async function takedownPost(
       await sendPostTakedownEmail({ toEmail: owner.email, firstName: owner.first_name ?? "there", postType: targetType, postTitle: title, reason: cleanReason });
     } catch (err) { console.error("[admin] takedown email error:", err); }
   }
+
+  // Audit — store the admin's official takedown reason so it survives the
+  // item leaving the moderation queue.
+  await logActivity({
+    type: targetType === "listing" ? "listing_takedown" : "request_takedown",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType,
+    targetId: id,
+    targetTitle: title,
+    detail: cleanReason,
+  });
 }
 
 export async function adminTakedownListing(id: string, reason: string) { return takedownPost("listing", id, reason); }
@@ -343,8 +643,8 @@ export async function searchAdminUsers(query: string): Promise<AdminUserRow[]> {
     .from("users")
     .select("id, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
     .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(40);
+    .order("full_name", { ascending: true })
+    .limit(200);
   if (query.trim()) {
     q = q.or(`full_name.ilike.%${query.trim()}%,email.ilike.%${query.trim()}%`);
   }
@@ -363,7 +663,7 @@ async function requireNonAdminTarget(
 }
 
 export async function warnUser(targetId: string, reason: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
   if (!reason?.trim()) throw new Error("A reason is required.");
   const cleanReason = reason.trim().slice(0, 300);
   const target = await requireNonAdminTarget(supabase, targetId);
@@ -382,10 +682,20 @@ export async function warnUser(targetId: string, reason: string) {
       await sendAccountWarnedEmail({ toEmail: target.email, firstName: target.first_name ?? "there", reason: cleanReason });
     } catch (err) { console.error("[admin] warn email error:", err); }
   }
+
+  // Audit
+  await logActivity({
+    type: "user_warned",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType: "user",
+    targetId,
+    targetTitle: target.full_name ?? null,
+  });
 }
 
 export async function banUser(targetId: string, banType: Exclude<BanType, "none">, reason: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
   if (!reason?.trim()) throw new Error("A reason is required.");
   if (!["post", "chat", "full"].includes(banType)) throw new Error("Invalid ban type.");
   const cleanReason = reason.trim().slice(0, 300);
@@ -408,6 +718,16 @@ export async function banUser(targetId: string, banType: Exclude<BanType, "none"
       await sendAccountBannedEmail({ toEmail: target.email, firstName: target.first_name ?? "there", banType, reason: cleanReason });
     } catch (err) { console.error("[admin] ban email error:", err); }
   }
+
+  // Audit
+  await logActivity({
+    type: "user_banned",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType: "user",
+    targetId,
+    targetTitle: target.full_name ?? null,
+  });
 }
 
 export async function unbanUser(targetId: string) {

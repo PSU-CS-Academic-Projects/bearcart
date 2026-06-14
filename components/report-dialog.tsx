@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -69,7 +70,7 @@ export function ReportDialog({ open, onOpenChange, targetType, onConfirm }: Repo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-1">
+        <div className="space-y-4 pt-1 min-w-0">
           <div className="space-y-2">
             <Label>Reason</Label>
             <RadioGroup value={reason} onValueChange={setReason} className="space-y-2">
@@ -93,12 +94,15 @@ export function ReportDialog({ open, onOpenChange, targetType, onConfirm }: Repo
               onChange={(e) => setDetails(e.target.value.slice(0, REPORT_DETAILS_MAX))}
               rows={3}
               maxLength={REPORT_DETAILS_MAX}
-              className="break-words"
             />
-            <p className={`text-right text-xs ${details.length >= REPORT_DETAILS_MAX ? "text-destructive" : "text-muted-foreground"}`}>
-              {details.length}/{REPORT_DETAILS_MAX}
-              {details.length >= REPORT_DETAILS_MAX && "  Character limit reached"}
-            </p>
+            <div className="flex justify-end">
+              <span className={cn(
+                "text-xs",
+                details.length / REPORT_DETAILS_MAX > 0.8 ? "text-destructive font-medium" : "text-muted-foreground"
+              )}>
+                {details.length} / {REPORT_DETAILS_MAX} characters
+              </span>
+            </div>
           </div>
         </div>
 

@@ -336,61 +336,60 @@ export function ChatWindow({
 
       {/* ── Listing Context Card ─────────────────────────────────── */}
       {listing && (
-        <div className="border-b bg-accent/50 px-4 py-3">
-          {isListingGone ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <WarningCircle className="size-4 shrink-0" />
-              This listing is no longer available
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              {listing.thumbnail ? (
-                <button
-                  type="button"
-                  onClick={() => setLightboxUrl(listing.thumbnail)}
-                  className="shrink-0 cursor-pointer"
-                  aria-label="View listing image">
-                  <Image
-                    src={listing.thumbnail}
-                    alt={listing.title}
-                    width={56}
-                    height={56}
-                    unoptimized
-                    className="size-14 shrink-0 rounded-lg object-cover transition-opacity hover:opacity-80"
-                  />
-                </button>
-              ) : (
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <ShoppingBag className="size-6 text-muted-foreground/60" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {listing.title}
-                </p>
-                <p className="text-sm font-semibold text-primary">
-                  {formatListingPrice(listing.price)}
-                </p>
-                <div className="mt-1">
-                  {getListingStatusBadge(listing.status)}
-                </div>
+        <div className="border-b">
+          <div className="bg-accent/50 px-4 py-3">
+            {isListingGone ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <WarningCircle className="size-4 shrink-0" />
+                This listing is no longer available
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button asChild variant="ghost" size="sm">
-                  <Link href={`/listings/${listing.id}`}>View Listing</Link>
-                </Button>
-                {isSeller && listing.status === "available" && onMarkAsSold && (
-                  <Button variant="outline" size="sm" onClick={onMarkAsSold}>
-                    <CheckCircle className="size-4" />
-                    Mark as Sold
+            ) : (
+              <div className="flex items-center gap-3">
+                {listing.thumbnail ? (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxUrl(listing.thumbnail)}
+                    className="shrink-0 cursor-pointer"
+                    aria-label="View listing image">
+                    <Image
+                      src={listing.thumbnail}
+                      alt={listing.title}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="size-14 shrink-0 rounded-lg object-cover transition-opacity hover:opacity-80"
+                    />
+                  </button>
+                ) : (
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <ShoppingBag className="size-6 text-muted-foreground/60" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {listing.title}
+                  </p>
+                  <p className="text-sm font-semibold text-primary">
+                    {formatListingPrice(listing.price)}
+                  </p>
+                  <div className="mt-1">
+                    {getListingStatusBadge(listing.status)}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={`/listings/${listing.id}`}>View Listing</Link>
                   </Button>
-                )}
-                {listing.status === "sold" && (
-                  <Badge className="shrink-0 bg-emerald-100 text-emerald-800">Sold</Badge>
-                )}
+                  {isSeller && listing.status === "available" && onMarkAsSold && (
+                    <Button variant="outline" size="sm" onClick={onMarkAsSold}>
+                      <CheckCircle className="size-4" />
+                      Mark as Sold
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

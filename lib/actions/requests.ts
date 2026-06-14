@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
+import { logActivity, type ActivityLogType } from "@/lib/activity-log";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -533,12 +534,33 @@ async function setRequestStatus(
   if (error) throw new Error(`Failed to update request: ${error.message}`);
 }
 
+/** Audit: record a user-driven request status change to the activity feed. */
+async function logRequestStatusChange(requestId: string, type: ActivityLogType): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const [{ data: req }, { data: actor }] = await Promise.all([
+    supabase.from("requests").select("title").eq("id", requestId).single(),
+    supabase.from("users").select("full_name").eq("id", user.id).single(),
+  ]);
+  await logActivity({
+    type,
+    actorId: user.id,
+    actorName: actor?.full_name ?? null,
+    targetType: "request",
+    targetId: requestId,
+    targetTitle: req?.title ?? null,
+  });
+}
+
 export async function markRequestFulfilled(requestId: string): Promise<void> {
-  return setRequestStatus(requestId, "fulfilled");
+  await setRequestStatus(requestId, "fulfilled");
+  await logRequestStatusChange(requestId, "request_fulfilled");
 }
 
 export async function closeRequest(requestId: string): Promise<void> {
-  return setRequestStatus(requestId, "closed");
+  await setRequestStatus(requestId, "closed");
+  await logRequestStatusChange(requestId, "request_closed");
 }
 
 export async function deleteRequest(requestId: string): Promise<void> {

@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
-import Script from 'next/script'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -48,7 +47,7 @@ export default function RootLayout({
         <Toaster richColors position="top-right" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       {/* impeccable-live-start */}
-<Script src="http://localhost:8401/live.js"></Script>
+<script src="http://localhost:8400/live.js"></script>
 {/* impeccable-live-end */}
 </body>
     </html>
