@@ -5,9 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Flag, Package, ChatCircle, Prohibit, ArrowCounterClockwise, Trash,
-  Warning, ShieldCheck, User as UserIcon, ArrowUpRight,
+  Flag, Package, Prohibit, ArrowCounterClockwise, Trash,
+  Warning, ShieldCheck,
   UserPlus, Note, ArrowClockwise, EyeSlash, CaretLeft, CaretRight,
+  Tag, CheckCircle, XCircle,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +22,8 @@ import {
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
-  adminDelistListing, adminRestoreListing, adminTakedownListing,
-  adminDelistRequest, adminRestoreRequest, adminTakedownRequest,
+  adminRestoreListing, adminTakedownListing,
+  adminRestoreRequest, adminTakedownRequest,
   adminDismissReports, adminDismissMessageReport, adminDeleteMessage,
   warnUser, banUser, unbanUser, promoteToAdmin, demoteSelf, searchAdminUsers,
   type AdminOverviewStats, type PlatformStats, type ActivityItem, type ActivityType,
@@ -96,7 +97,7 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
 // ─── Pending action (drives the single confirmation dialog) ───────────────────
 
 type Pending =
-  | { kind: "delist" | "restore" | "dismiss"; target: "listing" | "request"; id: string; title: string }
+  | { kind: "restore" | "dismiss"; target: "listing" | "request"; id: string; title: string }
   | { kind: "takedown"; target: "listing" | "request"; id: string; title: string }
   | { kind: "msg-dismiss"; reportId: string }
   | { kind: "msg-delete"; reportId: string; messageId: string }
@@ -172,9 +173,6 @@ export function AdminDashboard({
         case "dismiss":
           await adminDismissReports(pending.target, pending.id);
           toast.success("Reports dismissed. Listing stays active."); break;
-        case "delist":
-          await (pending.target === "listing" ? adminDelistListing(pending.id) : adminDelistRequest(pending.id));
-          toast.success("Delisted."); break;
         case "restore":
           await (pending.target === "listing" ? adminRestoreListing(pending.id) : adminRestoreRequest(pending.id));
           toast.success("Restored. Report count reset."); break;
@@ -257,15 +255,24 @@ export function AdminDashboard({
                 <div className="tile"><span className="lbl">Total users</span><span className="num">{platformStats.totalUsers}</span></div>
                 <div className="tile"><span className="lbl">Total listings</span><span className="num">{platformStats.totalListings}</span></div>
                 <div className="tile"><span className="lbl">Total requests</span><span className="num">{platformStats.totalRequests}</span></div>
-                <div className="tile"><span className="lbl">Total messages</span><span className="num">{platformStats.totalMessages}</span></div>
+                <div className="tile"><span className="lbl">Total sold</span><span className="num">{platformStats.totalSold}</span></div>
               </div>
             </div>
 
             {/* Recent activity feed */}
             <div>
-              <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Recent Activity
-              </p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Recent Activity
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTab("reported")}
+                  className="font-mono text-[0.65rem] font-semibold text-primary transition-colors hover:text-primary/80"
+                >
+                  View all →
+                </button>
+              </div>
               {recentActivity.length === 0 ? (
                 <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
                   No recent activity.
@@ -274,15 +281,33 @@ export function AdminDashboard({
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {recentActivity.map((a, i) => {
                     const { Icon, tone } = activityVisual(a.type);
-                    return (
-                      <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 last:border-b-0">
+                    const inner = (
+                      <>
                         <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
                           <Icon className="size-3.5" />
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
                         <span className="shrink-0 font-mono text-[0.68rem] text-muted-foreground">{formatTimeAgo(a.timestamp)}</span>
-                      </div>
+                      </>
                     );
+                    const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
+                    const interactive = "transition-colors hover:bg-muted/30";
+
+                    if (a.jumpToReported) {
+                      return (
+                        <button key={i} type="button" onClick={() => setTab("reported")} className={`${rowClass} ${interactive}`}>
+                          {inner}
+                        </button>
+                      );
+                    }
+                    if (a.href) {
+                      return (
+                        <Link key={i} href={a.href} className={`${rowClass} ${interactive}`}>
+                          {inner}
+                        </Link>
+                      );
+                    }
+                    return <div key={i} className={rowClass}>{inner}</div>;
                   })}
                 </div>
               )}
@@ -677,7 +702,6 @@ function dialogTitle(p: Pending | null): string {
   if (!p) return "";
   switch (p.kind) {
     case "dismiss": return `Dismiss all reports for this ${p.target}?`;
-    case "delist": return `Delist this ${p.target}?`;
     case "restore": return `Restore this ${p.target}?`;
     case "takedown": return `Permanently take down this ${p.target}?`;
     case "warn": return `Warn ${p.userName}?`;
@@ -694,7 +718,6 @@ function dialogDescription(p: Pending | null): string {
   if (!p) return "";
   switch (p.kind) {
     case "dismiss": return "All pending reports will be cleared and the report count reset to zero. The listing stays active and visible.";
-    case "delist": return "It will be hidden from regular users but kept on file. The owner is notified.";
     case "restore": return "It will become visible again and all pending reports will be cleared so the report count resets. The owner is notified.";
     case "takedown": return "This permanently removes it for everyone, including the owner. This cannot be undone.";
     case "warn": return "The user is notified in-app and by email with your reason.";
@@ -711,7 +734,6 @@ function dialogConfirmLabel(p: Pending | null): string {
   if (!p) return "Confirm";
   switch (p.kind) {
     case "dismiss": return "Dismiss Reports";
-    case "delist": return "Delist";
     case "restore": return "Restore";
     case "takedown": return "Take Down";
     case "warn": return "Issue Warning";
@@ -764,27 +786,45 @@ function ReportRow({ reason, details, reporterName, createdAt }: {
 
 // ─── Activity feed visuals ────────────────────────────────────────────────────
 
+// Admin/moderation actions are amber-toned; regular user activity is neutral.
+const AMBER = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+const NEUTRAL = "bg-muted text-muted-foreground";
+
 function activityVisual(type: ActivityType): {
   Icon: React.ComponentType<{ className?: string }>;
   tone: string;
 } {
   switch (type) {
+    // ── Regular user activity (neutral) ──
     case "user_registered":
-      return { Icon: UserPlus, tone: "bg-primary/10 text-primary" };
+      return { Icon: UserPlus, tone: NEUTRAL };
     case "listing_posted":
-      return { Icon: Package, tone: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" };
+      return { Icon: Package, tone: NEUTRAL };
     case "request_posted":
-      return { Icon: Note, tone: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400" };
+      return { Icon: Note, tone: NEUTRAL };
     case "report_submitted":
-      return { Icon: Flag, tone: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" };
-    case "user_banned":
-      return { Icon: Prohibit, tone: "bg-destructive/10 text-destructive" };
-    case "listing_delisted":
-      return { Icon: EyeSlash, tone: "bg-destructive/10 text-destructive" };
+      return { Icon: Flag, tone: NEUTRAL };
+    case "listing_sold":
+      return { Icon: Tag, tone: NEUTRAL };
+    case "request_fulfilled":
+      return { Icon: CheckCircle, tone: NEUTRAL };
+    case "request_closed":
+      return { Icon: XCircle, tone: NEUTRAL };
     case "listing_restored":
-      return { Icon: ArrowClockwise, tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" };
+      return { Icon: ArrowClockwise, tone: NEUTRAL };
+    // ── Admin / moderation actions (amber) ──
+    case "listing_delisted":
+      return { Icon: EyeSlash, tone: AMBER };
+    case "listing_takedown":
+      return { Icon: Trash, tone: AMBER };
+    case "request_takedown":
+      return { Icon: Trash, tone: AMBER };
+    case "user_banned":
+      return { Icon: Prohibit, tone: AMBER };
+    case "user_warned":
+      return { Icon: Warning, tone: AMBER };
     case "message_deleted":
-      return { Icon: Trash, tone: "bg-muted text-muted-foreground" };
+      return { Icon: Trash, tone: AMBER };
   }
 }
 
