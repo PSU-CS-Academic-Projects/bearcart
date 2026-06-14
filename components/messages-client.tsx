@@ -493,7 +493,9 @@ export function MessagesClient({
         }));
       }
       toast.error(
-        image
+        err instanceof Error
+          ? err.message
+          : image
           ? "Failed to send image. Please try again."
           : "Failed to send message. Please try again."
       );
