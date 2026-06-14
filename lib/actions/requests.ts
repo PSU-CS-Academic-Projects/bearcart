@@ -272,6 +272,15 @@ export async function getRequestsByRequester(
   status?: RequestStatus
 ): Promise<RequestRow[]> {
   const supabase = await createClient();
+
+  // Delisted requests are only visible to their owner and to admins.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canSeeDelisted = !!user && user.id === requesterId;
+  if (user && !canSeeDelisted) {
+    const { data: viewer } = await supabase.from("users").select("is_admin").eq("id", user.id).single();
+    canSeeDelisted = !!viewer?.is_admin;
+  }
+
   let query = supabase
     .from("requests")
     .select(`
@@ -285,6 +294,10 @@ export async function getRequestsByRequester(
     .eq("requester_id", requesterId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  if (!canSeeDelisted) {
+    query = query.eq("is_delisted", false);
+  }
 
   if (status) query = query.eq("status", status);
 

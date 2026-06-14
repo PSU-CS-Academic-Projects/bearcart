@@ -338,18 +338,6 @@ async function buildReportedPosts(
 ): Promise<ReportedPost[]> {
   const { supabase } = await requireAdmin();
 
-  // Only surface items that still have at least one open (unresolved) report.
-  const { data: reps } = await supabase
-    .from("reports")
-    .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
-    .eq("target_type", targetType)
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
-
-  if (!reps || reps.length === 0) return [];
-
-  const ids = [...new Set(reps.map((r) => r.target_id))];
-
   const table = targetType === "listing" ? "listings" : "requests";
   const ownerFk = targetType === "listing"
     ? "seller:users!listings_seller_id_fkey(full_name)"
@@ -358,6 +346,37 @@ async function buildReportedPosts(
   const imageSel = targetType === "listing"
     ? "listing_images(image_url, is_cover)"
     : "request_images(image_url)";
+
+  // The moderation queue must surface two kinds of items:
+  //   1. Anything with an open (unresolved) report — the report needs review.
+  //   2. Anything currently delisted but not taken down — even if its reports
+  //      are already 'reviewed' (delisting flips them) or it was delisted
+  //      manually with no reports at all. Otherwise an admin has no way to
+  //      restore or take down a delisted post from the dashboard.
+  const [{ data: reps }, { data: delistedPosts }] = await Promise.all([
+    supabase
+      .from("reports")
+      .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
+      .eq("target_type", targetType)
+      .in("status", ["open", "reviewed"])
+      .order("created_at", { ascending: false }),
+    supabase
+      .from(table)
+      .select("id")
+      .eq("is_delisted", true)
+      .is("deleted_at", null),
+  ]);
+
+  const allReps = reps ?? [];
+  // Reports that still need attention drive inclusion on their own.
+  const openReps = allReps.filter((r) => r.status === "open");
+
+  const ids = [...new Set([
+    ...openReps.map((r) => r.target_id),
+    ...(delistedPosts ?? []).map((p) => p.id as string),
+  ])];
+
+  if (ids.length === 0) return [];
 
   const { data: posts } = await supabase
     .from(table)
@@ -377,7 +396,9 @@ async function buildReportedPosts(
     })
     .map((id) => {
     const post = byId.get(id) as Record<string, unknown> | undefined;
-    const postReports = reps.filter((r) => r.target_id === id);
+    // Show open + reviewed reports (reviewed = the ones that triggered delisting).
+    // A manually-delisted post with no reports shows an empty report list.
+    const postReports = allReps.filter((r) => r.target_id === id);
     const owner = post?.[targetType === "listing" ? "seller" : "requester"] as { full_name?: string } | null;
     const images = (post?.[targetType === "listing" ? "listing_images" : "request_images"] ?? []) as { image_url: string; is_cover?: boolean }[];
     const thumb = images.find((i) => i.is_cover)?.image_url ?? images[0]?.image_url ?? null;

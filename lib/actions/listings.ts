@@ -282,6 +282,15 @@ export async function getListingById(id: string) {
 export async function getListingsBySeller(sellerId: string, status?: string) {
   const supabase = await createClient();
 
+  // Delisted listings are only visible to their owner and to admins. Everyone
+  // else (e.g. visitors browsing a public profile) must not see them.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canSeeDelisted = !!user && user.id === sellerId;
+  if (user && !canSeeDelisted) {
+    const { data: viewer } = await supabase.from("users").select("is_admin").eq("id", user.id).single();
+    canSeeDelisted = !!viewer?.is_admin;
+  }
+
   let query = supabase
     .from("listings")
     .select(
@@ -294,6 +303,10 @@ export async function getListingsBySeller(sellerId: string, status?: string) {
     .eq("seller_id", sellerId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  if (!canSeeDelisted) {
+    query = query.eq("is_delisted", false);
+  }
 
   if (status) {
     query = query.eq("status", status);
