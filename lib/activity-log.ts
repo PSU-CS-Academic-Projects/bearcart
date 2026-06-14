@@ -10,6 +10,7 @@ export type ActivityLogType =
   | "request_closed"
   | "request_fulfilled"
   | "listing_delisted"
+  | "listing_auto_delisted"
   | "listing_restored"
   | "listing_takedown"
   | "request_takedown"

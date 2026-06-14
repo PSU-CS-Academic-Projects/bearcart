@@ -570,18 +570,24 @@ export function AdminDashboard({
               <p className="py-8 text-center text-sm text-muted-foreground">No users found.</p>
             ) : (
               <>
-                {/* Column header — aligned to UserCard grid (sm+ only) */}
-                <div className="hidden grid-cols-[1.6fr_1.4fr_0.7fr_0.7fr_auto] items-center gap-4 px-3.5 pb-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:grid">
-                  <span>User</span>
-                  <span>Account</span>
-                  <span>Role</span>
-                  <span>Standing</span>
-                  <span className="text-right">Actions</span>
-                </div>
+                {/* Real table layout → columns always align regardless of content length */}
                 <div className="overflow-hidden rounded-xl border bg-card">
-                  {pageUsers.map((u) => (
-                    <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
-                  ))}
+                  <table className="w-full table-fixed border-collapse">
+                    <thead>
+                      <tr className="border-b border-border text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                        <th className="px-3.5 py-2 text-left font-medium">User</th>
+                        <th className="hidden w-[26%] px-3.5 py-2 text-left font-medium sm:table-cell">Account</th>
+                        <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Role</th>
+                        <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Standing</th>
+                        <th className="w-[150px] px-3.5 py-2 text-right font-medium sm:w-[210px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageUsers.map((u) => (
+                        <UserCard key={u.id} user={u} isSelf={u.id === currentUserId} onAction={setPending} />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
                 {/* Pagination */}
@@ -815,6 +821,8 @@ function activityVisual(type: ActivityType): {
     // ── Admin / moderation actions (amber) ──
     case "listing_delisted":
       return { Icon: EyeSlash, tone: AMBER };
+    case "listing_auto_delisted":
+      return { Icon: EyeSlash, tone: AMBER };
     case "listing_takedown":
       return { Icon: Trash, tone: AMBER };
     case "request_takedown":
@@ -859,6 +867,13 @@ function ReportsChart({ data }: { data: ReportsPerDay[] }) {
 const BAN_BADGE: Record<BanType, string | null> = {
   none: null, post: "Post banned", chat: "Chat banned", full: "Fully banned",
 };
+
+/** All users share the @psu.palawan.edu.ph domain — show only the student-number local part. */
+function emailLocalPart(email: string): string {
+  const at = email.indexOf("@");
+  return at === -1 ? email : email.slice(0, at);
+}
+
 function UserCard({
   user, isSelf, onAction,
 }: {
@@ -866,97 +881,89 @@ function UserCard({
   isSelf: boolean;
   onAction: (p: Pending) => void;
 }) {
+  const roleLabel = user.role === "faculty" ? "Faculty" : "Student";
   return (
-    <div className="group relative grid grid-cols-[1.5fr_auto] items-center gap-4 border-t border-border px-3.5 py-3 first:border-t-0 sm:grid-cols-[1.6fr_1.4fr_0.7fr_0.7fr_auto]">
-      {/* amber active sweep on hover — full-bleed gradient, not a side stripe */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,var(--primary),transparent_55%)] opacity-0 transition-opacity duration-300 group-hover:opacity-[0.06]"
-      />
-
-      {/* User: avatar (with severity ring) + name + status badges */}
-      <div className="relative flex min-w-0 items-center gap-2.5">
-        <span className="relative shrink-0">
+    <tr className="group border-t border-border first:border-t-0 hover:bg-primary/[0.04]">
+      {/* User: avatar + name + status badges */}
+      <td className="px-3.5 py-3 align-middle">
+        <div className="flex min-w-0 items-center gap-2.5">
           <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
-          <span
-            aria-hidden
-            className={
-              "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-background " +
-              (user.is_admin
-                ? "bg-primary"
-                : user.ban_type !== "none"
-                  ? "bg-destructive"
-                  : "bg-primary/50")
-            }
-          />
-        </span>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
-              {user.full_name}
-            </Link>
-            {BAN_BADGE[user.ban_type] && (
-              <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.6rem] font-semibold text-destructive">{BAN_BADGE[user.ban_type]}</span>
-            )}
-            {user.warning_count > 0 && (
-              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] font-medium text-amber-700">{user.warning_count}⚠</span>
-            )}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
+                {user.full_name}
+              </Link>
+              {BAN_BADGE[user.ban_type] && (
+                <span className="rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.6rem] font-semibold text-destructive">{BAN_BADGE[user.ban_type]}</span>
+              )}
+              {user.warning_count > 0 && (
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] font-medium text-amber-700">{user.warning_count}⚠</span>
+              )}
+            </div>
+            {/* account + role shown inline under name on mobile only */}
+            <p className="truncate font-mono text-[0.7rem] text-muted-foreground sm:hidden" title={user.email}>
+              {emailLocalPart(user.email)} · {roleLabel}
+            </p>
           </div>
-          {/* account + role shown inline under name on mobile only */}
-          <p className="truncate font-mono text-[0.7rem] text-muted-foreground sm:hidden">
-            {user.email} · {user.role === "faculty" ? "Faculty" : "Student"}
-          </p>
         </div>
-      </div>
+      </td>
 
-      {/* Account (mono) — sm+ column */}
-      <p className="relative hidden truncate font-mono text-xs text-muted-foreground sm:block">{user.email}</p>
+      {/* Account — local part only, full email on hover */}
+      <td className="hidden px-3.5 py-3 align-middle sm:table-cell">
+        <span className="block truncate font-mono text-xs text-muted-foreground" title={user.email}>
+          {emailLocalPart(user.email)}
+        </span>
+      </td>
 
-      {/* Role — sm+ column */}
-      <span className="relative hidden text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:block">
-        {user.role === "faculty" ? "Faculty" : "Student"}
-      </span>
+      {/* Role */}
+      <td className="hidden px-3.5 py-3 align-middle sm:table-cell">
+        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{roleLabel}</span>
+      </td>
 
-      {/* Standing — sm+ column */}
-      <span className={"relative hidden text-[0.68rem] font-semibold uppercase tracking-[0.08em] sm:block " + (user.is_admin ? "text-primary" : "text-muted-foreground")}>
-        {user.is_admin ? "Admin" : "Member"}
-      </span>
+      {/* Standing */}
+      <td className="hidden px-3.5 py-3 align-middle sm:table-cell">
+        <span className={"text-[0.68rem] font-semibold uppercase tracking-[0.08em] " + (user.is_admin ? "text-primary" : "text-muted-foreground")}>
+          {user.is_admin ? "Admin" : "Member"}
+        </span>
+      </td>
 
-      {/* Actions */}
-      <div className="relative flex flex-wrap justify-end gap-1.5">
-        {isSelf ? (
-          user.is_admin && (
-            <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-destructive hover:bg-destructive/10"
-              onClick={() => onAction({ kind: "demote-self" })}>
-              <ShieldCheck className="size-3.5" /> Step down
-            </Button>
-          )
-        ) : user.is_admin ? (
-          <span className="text-xs text-muted-foreground">Protected</span>
-        ) : (
-          <>
-            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
-              onClick={() => onAction({ kind: "warn", userId: user.id, userName: user.full_name })}>
-              <Warning className="size-3.5" /> Warn
-            </Button>
-            {user.ban_type === "none" ? (
-              <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-xs text-destructive hover:bg-destructive/10"
-                onClick={() => onAction({ kind: "ban", userId: user.id, userName: user.full_name })}>
-                <Prohibit className="size-3.5" /> Ban
+      {/* Actions — fixed-width column so Protected rows never collapse it */}
+      <td className="px-3.5 py-3 text-right align-middle">
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {isSelf ? (
+            user.is_admin && (
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-destructive hover:bg-destructive/10"
+                onClick={() => onAction({ kind: "demote-self" })}>
+                <ShieldCheck className="size-3.5" /> Step down
               </Button>
-            ) : (
+            )
+          ) : user.is_admin ? (
+            <span className="text-xs text-muted-foreground">Protected</span>
+          ) : (
+            <>
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
-                onClick={() => onAction({ kind: "unban", userId: user.id, userName: user.full_name })}>
-                <ArrowCounterClockwise className="size-3.5" /> Lift ban
+                onClick={() => onAction({ kind: "warn", userId: user.id, userName: user.full_name })}>
+                <Warning className="size-3.5" /> Warn
               </Button>
-            )}
-            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
-              onClick={() => onAction({ kind: "promote", userId: user.id, userName: user.full_name })}>
-              <ShieldCheck className="size-3.5" /> Make admin
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
+              {user.ban_type === "none" ? (
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-xs text-destructive hover:bg-destructive/10"
+                  onClick={() => onAction({ kind: "ban", userId: user.id, userName: user.full_name })}>
+                  <Prohibit className="size-3.5" /> Ban
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
+                  onClick={() => onAction({ kind: "unban", userId: user.id, userName: user.full_name })}>
+                  <ArrowCounterClockwise className="size-3.5" /> Lift ban
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5 text-xs"
+                onClick={() => onAction({ kind: "promote", userId: user.id, userName: user.full_name })}>
+                <ShieldCheck className="size-3.5" /> Make admin
+              </Button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }

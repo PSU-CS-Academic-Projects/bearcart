@@ -38,6 +38,7 @@ export type ActivityType =
   | "request_closed"
   | "request_fulfilled"
   | "listing_delisted"
+  | "listing_auto_delisted"
   | "listing_restored"
   | "listing_takedown"
   | "request_takedown"
@@ -211,6 +212,7 @@ function describeLogActivity(type: string, actorName: string | null, title: stri
     case "request_closed": return `Request "${t}" was closed`;
     case "request_fulfilled": return `Request "${t}" was fulfilled`;
     case "listing_delisted": return `Listing "${t}" was delisted by ${who}`;
+    case "listing_auto_delisted": return `Listing "${t}" was automatically delisted after receiving 2 reports`;
     case "listing_restored": return `Listing "${t}" was restored by ${who}`;
     case "listing_takedown": return `Listing "${t}" was taken down by ${who}`;
     case "request_takedown": return `Request "${t}" was taken down by ${who}`;

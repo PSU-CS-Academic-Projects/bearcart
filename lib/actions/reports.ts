@@ -6,6 +6,7 @@ import {
   sendPostDelistedEmail,
 } from "@/lib/email";
 import { REPORT_DETAILS_MAX, type ReportTargetType } from "@/lib/report-constants";
+import { logActivity } from "@/lib/activity-log";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Report reasons / constants / target-type live in lib/report-constants.ts so
@@ -88,6 +89,18 @@ async function createReport(
   const ownerId: string | null = effects?.owner_id ?? null;
   const title: string = effects?.title ?? "";
   const label = targetType === "message" ? messageLabel || "a message" : title || `a ${targetType}`;
+
+  // Audit: record automatic delisting (triggered at the 2-report threshold).
+  if (didDelist && targetType === "listing") {
+    await logActivity({
+      type: "listing_auto_delisted",
+      actorId: user.id,
+      actorName: null,
+      targetType: "listing",
+      targetId,
+      targetTitle: title || null,
+    });
+  }
 
   // Emails — awaited so they actually send in serverless, but never block
   // report success on email failure.

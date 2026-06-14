@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Prohibit, ArrowCounterClockwise, Trash, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Trash, ShieldCheck } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -17,12 +17,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-  adminDelistListing,
   adminRestoreListing,
   adminTakedownListing,
 } from "@/lib/actions/admin";
 
-type Action = "delist" | "restore" | "takedown";
+type Action = "restore" | "takedown";
 
 export function ListingAdminControls({
   listingId,
@@ -40,10 +39,7 @@ export function ListingAdminControls({
     if (!confirm) return;
     setBusy(true);
     try {
-      if (confirm === "delist") {
-        await adminDelistListing(listingId);
-        toast.success("Listing delisted.");
-      } else if (confirm === "restore") {
+      if (confirm === "restore") {
         await adminRestoreListing(listingId);
         toast.success("Listing restored.");
       } else {
@@ -68,11 +64,7 @@ export function ListingAdminControls({
         Admin controls
       </p>
       <div className="flex flex-wrap gap-2">
-        {!isDelisted ? (
-          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirm("delist")}>
-            <Prohibit className="size-4" /> Delist
-          </Button>
-        ) : (
+        {isDelisted && (
           <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirm("restore")}>
             <ArrowCounterClockwise className="size-4" /> Restore
           </Button>
@@ -91,12 +83,10 @@ export function ListingAdminControls({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm === "delist" && "Delist this listing?"}
               {confirm === "restore" && "Restore this listing?"}
               {confirm === "takedown" && "Permanently take down this listing?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirm === "delist" && "It will be hidden from all users but kept on file. The seller is notified."}
               {confirm === "restore" && "It will become visible to everyone again. The seller is notified."}
               {confirm === "takedown" && "This permanently removes the listing for everyone, including the seller. This cannot be undone."}
             </AlertDialogDescription>
@@ -124,7 +114,6 @@ export function ListingAdminControls({
               disabled={busy || (confirm === "takedown" && !reason.trim())}
               className={confirm === "takedown" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
-              {confirm === "delist" && "Delist"}
               {confirm === "restore" && "Restore"}
               {confirm === "takedown" && "Take Down"}
             </AlertDialogAction>
