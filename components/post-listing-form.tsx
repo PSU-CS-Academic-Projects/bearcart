@@ -39,7 +39,7 @@ const categories = [
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "food", label: "Food" },
-  { value: "supplies", label: "Supplies" },
+  { value: "supplies", label: "School Supplies" },
   { value: "services", label: "Services" },
   { value: "others", label: "Others" },
 ];

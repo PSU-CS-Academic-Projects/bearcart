@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  MagnifyingGlassIcon,
-  TagIcon,
-  MapPinIcon,
-  ShieldCheckIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { HamburgerIcon, GraduationCapIcon } from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
   return (
@@ -88,18 +83,11 @@ export function HeroSection() {
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Clothing</span>
               </a>
               <a href="/listings?category=food" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
-                  <path d="M7 2v20" />
-                  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
-                </svg>
+                <HamburgerIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Food</span>
               </a>
               <a href="/listings?category=supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  <path d="m15 5 4 4" />
-                </svg>
+                <GraduationCapIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
               </a>
               <a href="/listings?category=services" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">

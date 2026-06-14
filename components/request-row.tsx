@@ -45,7 +45,7 @@ import {
   urgencyLabel,
   getRequestCoverImage,
 } from "@/lib/request-helpers";
-import { markRequestFulfilled, closeRequest } from "@/lib/actions/requests";
+import { markRequestFulfilled, closeRequest, deleteRequest } from "@/lib/actions/requests";
 import { reportRequest } from "@/lib/actions/reports";
 import {
   adminRestoreRequest,
@@ -121,7 +121,7 @@ export function RequestRow({
   const Icon = categoryIconFor(request.category);
   const isOwn = currentUserId === request.requester_id;
   const cover = getRequestCoverImage(request);
-  const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | "delete" | null>(null);
   const [acting, setActing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [adminConfirm, setAdminConfirm] = useState<"restore" | "takedown" | null>(null);
@@ -173,6 +173,9 @@ export function RequestRow({
       if (confirmAction === "fulfilled") {
         await markRequestFulfilled(request.id);
         toast.success("Request marked as fulfilled!");
+      } else if (confirmAction === "delete") {
+        await deleteRequest(request.id);
+        toast.success("Request deleted.");
       } else {
         await closeRequest(request.id);
         toast.success("Request closed.");
@@ -271,6 +274,10 @@ export function RequestRow({
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("closed"); }}>
                 <XCircle className="size-3 text-muted-foreground" />
                 Close
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmAction("delete"); }}>
+                <Trash className="size-3" />
+                Delete
               </Button>
             </div>
           ) : (
@@ -383,18 +390,24 @@ export function RequestRow({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmAction === "fulfilled" ? "Mark as fulfilled?" : "Close this request?"}
+              {confirmAction === "fulfilled" ? "Mark as fulfilled?" : confirmAction === "delete" ? "Delete this request?" : "Close this request?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction === "fulfilled"
                 ? "This marks the request as completed and removes it from the public list."
+                : confirmAction === "delete"
+                ? "Are you sure you want to delete this request? This cannot be undone."
                 : "This closes the request without marking it as fulfilled."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={acting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAction} disabled={acting}>
-              {confirmAction === "fulfilled" ? "Mark as Fulfilled" : "Close Request"}
+            <AlertDialogAction
+              onClick={handleConfirmAction}
+              disabled={acting}
+              className={confirmAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {confirmAction === "fulfilled" ? "Mark as Fulfilled" : confirmAction === "delete" ? "Delete" : "Close Request"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

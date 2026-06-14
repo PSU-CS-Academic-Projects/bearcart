@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Tag, ShoppingCart, BookmarkSimple, Storefront, Package,
-  MagnifyingGlass, User, Plus, PencilSimple, XCircle, Check,
+  MagnifyingGlass, User, Plus, PencilSimple, XCircle, Check, Trash,
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
 import { RequestRow } from "@/components/request-row";
@@ -24,6 +24,7 @@ import { removeSavedListing } from "@/lib/actions/saved";
 import {
   markRequestFulfilled,
   closeRequest,
+  deleteRequest,
   type RequestRow as RequestRowType,
 } from "@/lib/actions/requests";
 import { formatTimeAgo, formatCondition } from "@/lib/listing-helpers";
@@ -91,6 +92,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
     type: "fulfilled" | "closed";
   } | null>(null);
   const [removeSavedId, setRemoveSavedId] = useState<string | null>(null);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
   const ownUserId = props.variant === "own" ? (props as OwnProfileTabsProps).currentUserId : "";
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
@@ -137,6 +139,21 @@ export function ProfileTabs(props: ProfileTabsProps) {
       toast.error("Failed to remove saved listing");
     }
     setRemoveSavedId(null);
+  };
+
+  // ── Delete Request ────────────────────────────────────────────────────
+
+  const handleDeleteRequest = async () => {
+    if (!deleteRequestId) return;
+    const id = deleteRequestId;
+    try {
+      await deleteRequest(id);
+      setRequestItems((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Request deleted!");
+    } catch {
+      toast.error("Failed to delete request");
+    }
+    setDeleteRequestId(null);
   };
 
   // ── Request Status Action ─────────────────────────────────────────────
@@ -328,6 +345,15 @@ export function ProfileTabs(props: ProfileTabsProps) {
                               </Button>
                             </>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteRequestId(req.id)}
+                          >
+                            <Trash className="size-3.5" />
+                            Delete
+                          </Button>
                         </div>
                       }
                     />
@@ -423,6 +449,27 @@ export function ProfileTabs(props: ProfileTabsProps) {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleRemoveSaved}>Remove</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Request Confirmation */}
+        <AlertDialog open={!!deleteRequestId} onOpenChange={(o) => { if (!o) setDeleteRequestId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this request?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this request? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteRequest}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

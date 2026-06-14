@@ -327,10 +327,10 @@ export function PostRequestForm() {
                       onClick={() => setUrgency(u.value)}
                       disabled={submitting}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground transition-colors",
                         active
-                          ? "border-primary bg-primary/5 text-primary ring-1 ring-primary"
-                          : "border-border text-foreground hover:bg-accent/50",
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border hover:bg-accent/50",
                         submitting && "opacity-50"
                       )}
                     >
