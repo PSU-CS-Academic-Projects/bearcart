@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag } from "@phosphor-icons/react/dist/ssr";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,14 +53,12 @@ export function ProfileListingCard({
 }: ProfileListingCardProps) {
   return (
     <Link href={`/listings/${id}`} className="group block">
-      <article className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
+      <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center">
-              <ShoppingBag className="size-12 text-[oklch(0.75_0_0)]" />
-            </div>
+            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-6 opacity-40" />
           )}
 
           {/* Category badge */}

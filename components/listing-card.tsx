@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { User, ShoppingBag } from "@phosphor-icons/react/dist/ssr";
+import { User } from "@phosphor-icons/react/dist/ssr";
 import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ListingCardProps {
@@ -13,6 +13,23 @@ interface ListingCardProps {
   sellerAvatar: string;
   timePosted: string;
   imageUrl: string;
+}
+
+export function ListingCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm">
+      <div className="aspect-square animate-pulse bg-[oklch(0.93_0_0)]" />
+      <div className="p-3">
+        <div className="mb-1.5 h-5 w-1/3 animate-pulse rounded-sm bg-[oklch(0.93_0_0)]" />
+        <div className="mb-1 h-4 w-3/4 animate-pulse rounded-sm bg-[oklch(0.93_0_0)]" />
+        <div className="h-4 w-1/2 animate-pulse rounded-sm bg-[oklch(0.93_0_0)]" />
+        <div className="mt-2 flex items-center gap-1.5">
+          <div className="size-4 animate-pulse rounded-full bg-[oklch(0.93_0_0)]" />
+          <div className="h-3 w-28 animate-pulse rounded-sm bg-[oklch(0.93_0_0)]" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ListingCard({
@@ -33,14 +50,12 @@ export function ListingCard({
 
   return (
     <Link href={`/listings/${id}`} className="group block">
-      <article className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
+      <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center">
-              <ShoppingBag className="size-12 text-[oklch(0.75_0_0)]" />
-            </div>
+            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-6 opacity-40" />
           )}
           {/* Category badge */}
           <div className="absolute left-2 top-2">

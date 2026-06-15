@@ -231,7 +231,7 @@ export function RequestRow({
             />
           </button>
         ) : (
-          <Icon className="size-8 text-muted-foreground opacity-50 sm:size-10" />
+          <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-2 opacity-40" />
         )}
       </div>
 
@@ -494,7 +494,7 @@ export function RequestRowSkeleton() {
   return (
     <div className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
       <div className="size-16 shrink-0 animate-pulse rounded-md bg-muted sm:size-20" />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <div className="h-5 w-16 animate-pulse rounded bg-muted" />
           <div className="h-5 w-3/5 animate-pulse rounded bg-muted" />

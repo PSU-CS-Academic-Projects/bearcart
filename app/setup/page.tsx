@@ -123,9 +123,11 @@ export default function SetupPage() {
 
             {/* Logo */}
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
-              <Link href="/" className="flex items-center gap-2">
-                <Image src="/bearcart.svg" alt="BearCart" width={40} height={40} className="size-10" />
+              <Link href="/" className="flex items-center gap-3">
+                <Image src="/bearcart.svg" alt="BearCart" width={56} height={56} className="size-14" />
                 <span className="text-2xl font-bold text-foreground">BearCart</span>
+                <span className="h-8 w-px bg-border" />
+                <Image src="/palsu-logo.svg" alt="PalSU" width={64} height={64} className="size-16 opacity-80" />
               </Link>
               <h1 className="mt-2 text-xl font-bold text-foreground">
                 Welcome to BearCart, {firstName}!

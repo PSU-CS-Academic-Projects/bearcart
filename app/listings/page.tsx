@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { ListingCard } from "@/components/listing-card";
+import { ListingCard, ListingCardSkeleton } from "@/components/listing-card";
 import {
   ListingsFiltersSidebar,
   ListingsMobileFiltersSheet,
@@ -26,24 +26,6 @@ interface PageProps {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function ListingCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="aspect-square animate-pulse bg-muted" />
-      <div className="flex flex-col gap-1.5 p-3">
-        <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-        <div className="h-6 w-2/5 animate-pulse rounded bg-muted" />
-        <div className="mt-1.5 flex items-center gap-2 border-t pt-2">
-          <div className="size-5 animate-pulse rounded-full bg-muted" />
-          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ListingsGridSkeleton() {
   return (
