@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { jakarta } from "@/lib/fonts";
 import {
   EnvelopeIcon,
   MapPinIcon,
@@ -32,13 +33,13 @@ export function Footer() {
           <div className="lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center gap-2">
               <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} className="size-14" />
-              <span className="text-xl font-bold text-foreground">BearCart</span>
+              <span className={`${jakarta.className} text-xl font-bold text-foreground`}>BearCart</span>
             </Link>
             <p className="mb-4 text-sm text-muted-foreground">
               A campus marketplace for Palawan State University.
               Safely buy, sell, and trade with fellow students and faculty
               members.
-            </p>
+          </p>
             <div className="flex items-center gap-3">
               <a
                 href="#"

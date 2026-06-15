@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { jakarta } from "@/lib/fonts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,9 @@ import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import type { NotificationRow } from "@/lib/actions/notifications";
+
+
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -451,7 +455,9 @@ export function NavbarClient({
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} className="size-14" />
-          <span className="text-xl font-bold text-foreground">BearCart</span>
+          <span className={`${jakarta.className} text-xl font-bold tracking-tight`}>
+            BearCart
+          </span>
         </Link>
 
         {/* ── Desktop Search ────────────────────────────────────────── */}

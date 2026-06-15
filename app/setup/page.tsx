@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { jakarta } from "@/lib/fonts";
 import {
   Select,
   SelectContent,
@@ -127,14 +128,15 @@ export default function SetupPage() {
 
             {/* Logo */}
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
-              <Link href="/" className="flex w-full items-center justify-center gap-3">
+              <div className="flex w-full items-center justify-center gap-3">
                 <Image src="/bearcart.svg" alt="BearCart" width={48} height={48} className="size-12" />
-                <span className="text-2xl font-bold text-foreground">BearCart</span>
-                <span className="h-8 w-px bg-border" />
-                <Image src="/palsu-logo.svg" alt="PalSU" width={48} height={48} className="size-12 opacity-80" />
-              </Link>
+                <span className={`text-2xl font-bold text-foreground ${jakarta.className}`}>
+                  BearCart
+                </span>
+                <Image src="/palsu-logo.svg" alt="PalSU" width={56} height={56} className="size-14 opacity-80" />
+              </div>
               <h1 className="mt-2 text-xl font-bold text-foreground">
-                Welcome to BearCart, {firstName}!
+                Welcome to <span className={jakarta.className}>BearCart</span>, {firstName} !
               </h1>
               <p className="text-sm text-muted-foreground">
                 Just two quick steps before you start
