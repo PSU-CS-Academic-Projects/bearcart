@@ -35,7 +35,7 @@ export function Footer() {
               <span className="text-xl font-bold text-foreground">BearCart</span>
             </Link>
             <p className="mb-4 text-sm text-muted-foreground">
-              The official campus marketplace for Palawan State University.
+              A campus marketplace for Palawan State University.
               Safely buy, sell, and trade with fellow students and faculty
               members.
             </p>

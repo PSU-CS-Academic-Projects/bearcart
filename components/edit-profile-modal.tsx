@@ -78,8 +78,8 @@ export function EditProfileModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const meta = session?.user?.user_metadata;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const meta = user?.user_metadata;
       const url = (meta?.avatar_url ?? meta?.picture) as string | undefined;
       if (url) setGoogleAvatarUrl(url);
     });

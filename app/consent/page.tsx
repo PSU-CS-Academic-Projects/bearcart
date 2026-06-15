@@ -369,8 +369,8 @@ export default function ConsentPage() {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
         router.replace("/");
         return;
       }
@@ -378,7 +378,7 @@ export default function ConsentPage() {
       const { data } = await supabase
         .from("users")
         .select("college, terms_accepted")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
 
       if (!data?.college) {
@@ -399,8 +399,8 @@ export default function ConsentPage() {
     if (!agreed || !bothRead) return;
     setSaving(true);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { router.replace("/"); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.replace("/"); return; }
 
     const { error } = await supabase
       .from("users")
@@ -408,7 +408,7 @@ export default function ConsentPage() {
         terms_accepted: true,
         terms_accepted_at: new Date().toISOString(),
       })
-      .eq("id", session.user.id);
+      .eq("id", user.id);
 
     if (error) {
       console.error("Consent error:", error.message);

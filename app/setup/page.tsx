@@ -44,8 +44,8 @@ export default function SetupPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
         router.replace("/");
         return;
       }
@@ -53,7 +53,7 @@ export default function SetupPage() {
       const { data } = await supabase
         .from("users")
         .select("college, terms_accepted")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
 
       if (data?.college && data?.terms_accepted) {
@@ -66,7 +66,7 @@ export default function SetupPage() {
         return;
       }
 
-      setUser(session.user);
+      setUser(user);
       setLoading(false);
     });
   }, [router, returnTo]);

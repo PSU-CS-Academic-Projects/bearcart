@@ -385,6 +385,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
           </TabsContent>
 
           <TabsContent value="saved" className="mt-6">
+            {savedItems.length > 0 && (
+              <p className="mb-3 text-xs text-muted-foreground">Only you can see your saved items.</p>
+            )}
             {savedItems.length > 0 ? renderGrid(savedItems, "saved") : emptySaved}
           </TabsContent>
         </Tabs>

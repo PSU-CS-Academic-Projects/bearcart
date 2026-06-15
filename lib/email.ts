@@ -140,7 +140,7 @@ export async function sendWelcomeEmail({
   Welcome, ${safeName}! 👋
 </h1>
 <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BRAND.ink};">
-  You&rsquo;re now part of the official PSU marketplace.
+  You&rsquo;re now part of BearCart.
   Connect with classmates and faculty to buy, sell, and find what you need on campus.
 </p>
 
@@ -169,7 +169,7 @@ export async function sendWelcomeEmail({
   await transporter.sendMail({
     from: FROM,
     to: toEmail,
-    subject: `Welcome to BearCart, ${firstName}! 🎉`,
+    subject: `Welcome to BearCart, ${firstName} ! `,
     html: emailShell({
       body,
       preheader: `Welcome to BearCart — start browsing campus listings now.`,
