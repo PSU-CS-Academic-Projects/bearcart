@@ -20,7 +20,7 @@ export interface UserProfile {
 }
 
 export interface ProfileStats {
-  activeListings: number;
+  totalListed: number;
   totalSold: number;
   totalViews: number;
 }
@@ -76,11 +76,11 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     .is("deleted_at", null);
 
   const all = listings ?? [];
-  const activeListings = all.filter(l => l.status === "available").length;
+  const totalListed = all.filter(l => l.status === "available" || l.status === "sold").length;
   const totalSold = all.filter(l => l.status === "sold").length;
   const totalViews = all.reduce((sum, l) => sum + (l.views_count ?? 0), 0);
 
-  return { activeListings, totalSold, totalViews };
+  return { totalListed, totalSold, totalViews };
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────

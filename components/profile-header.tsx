@@ -45,7 +45,7 @@ export function ProfileHeader({
   const RoleIcon = profile.role === "faculty" ? Chalkboard : GraduationCap;
 
   const statItems = [
-    { label: "Active Listings", value: stats.activeListings, icon: Tag },
+    { label: "Items Listed", value: stats.totalListed, icon: Tag },
     { label: "Total Sold", value: stats.totalSold, icon: ShoppingCart },
     { label: "Total Views", value: stats.totalViews, icon: Eye },
   ];
