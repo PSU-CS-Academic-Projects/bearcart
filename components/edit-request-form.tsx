@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Footer } from "@/components/footer";
@@ -30,7 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  PaperPlaneTilt,
+  FloppyDisk,
   SpinnerGap,
   X,
   Check,
@@ -472,20 +473,30 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
 
             <div className="h-px bg-border" />
 
-            {/* Submit */}
-            <Button type="submit" size="lg" disabled={submitting} className="w-full">
-              {submitting ? (
-                <>
-                  <SpinnerGap className="size-4 animate-spin" />
-                  Saving changes...
-                </>
-              ) : (
-                <>
-                  <PaperPlaneTilt className="size-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
+            {/* Action Buttons */}
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <Link href="/requests">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={submitting}>
+                    <X className="size-4" />
+                    Cancel
+                  </Button>
+                </Link>
+                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+                  {submitting ? (
+                    <>
+                      <SpinnerGap className="size-4 animate-spin" />
+                      Saving changes...
+                    </>
+                  ) : (
+                    <>
+                      <FloppyDisk className="size-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </section>
           </form>
         </div>
       </main>
