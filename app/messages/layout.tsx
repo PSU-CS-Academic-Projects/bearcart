@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Messages — BearCart",
+  title: "Messages - BearCart",
   description: "Chat with buyers and sellers on BearCart, the campus marketplace for Palawan State University.",
 };
 

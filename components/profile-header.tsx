@@ -41,7 +41,7 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [editOpen, setEditOpen] = useState(false);
 
-  const roleLabel = profile.role === "faculty" ? "PSU Faculty" : "PSU Student";
+  const roleLabel = profile.role === "faculty" ? "Faculty" : "Student";
   const RoleIcon = profile.role === "faculty" ? Chalkboard : GraduationCap;
 
   const statItems = [

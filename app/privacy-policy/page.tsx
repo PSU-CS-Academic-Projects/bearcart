@@ -3,7 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
 export const metadata = {
-  title: "Privacy Policy — BearCart",
+  title: "Privacy Policy - BearCart",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

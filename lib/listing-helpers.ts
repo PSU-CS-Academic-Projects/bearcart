@@ -30,7 +30,7 @@ export function getCoverImage(listing: ListingWithImages): string {
 export function getSellerName(listing: ListingWithImages): string {
   const seller = listing.seller;
   if (!seller) return "Unknown seller";
-  return seller.full_name ?? "PSU Student";
+  return seller.full_name ?? "Student";
 }
 
 /** Format the condition value from the DB to a display-friendly label. */

@@ -47,7 +47,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
           <div className="min-w-0 flex-1">
             <h3 className="truncate font-semibold text-foreground">{displayName}</h3>
             <Badge variant="secondary" className="mt-1">
-              {requester.role === "student" ? "PSU Student" : "PSU Faculty"}
+              {requester.role === "student" ? "Student" : "Faculty"}
             </Badge>
           </div>
         </div>

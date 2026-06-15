@@ -15,8 +15,8 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const profile = await getPublicProfile(id);
-  if (!profile) return { title: "User Not Found — BearCart" };
-  return { title: `${profile.full_name} — BearCart` };
+  if (!profile) return { title: "User Not Found - BearCart" };
+  return { title: `${profile.full_name} - BearCart` };
 }
 
 export default async function PublicProfilePage({

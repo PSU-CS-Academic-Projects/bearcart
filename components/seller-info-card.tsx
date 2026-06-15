@@ -61,7 +61,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
               {displayName}
             </h3>
             <Badge variant="secondary" className="mt-1 px-2 py-0 text-xs">
-              {seller.role === "student" ? "PSU Student" : "PSU Faculty"}
+              {seller.role === "student" ? "Student" : "Faculty"}
             </Badge>
           </div>
         </div>

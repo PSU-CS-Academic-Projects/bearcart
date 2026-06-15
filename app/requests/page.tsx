@@ -139,7 +139,7 @@ async function RequestsList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Requests — BearCart",
+  title: "Requests - BearCart",
 };
 
 export default async function RequestsPage({ searchParams }: PageProps) {
@@ -162,7 +162,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               Requests
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Help PSU students and faculty find what they need
+              Help PalSU students and faculty find what they need
             </p>
           </div>
           {isLoggedIn && (

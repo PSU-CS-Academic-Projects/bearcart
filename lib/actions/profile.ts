@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
-import { uploadImage } from "./storage";
+import { uploadImage, deleteImage } from "./storage";
 import { moderateImageOrThrow } from "@/lib/moderation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -108,6 +108,42 @@ export async function updateProfile(updates: {
 
   const { error } = await supabase.from("users").update(dbUpdates).eq("id", user.id);
   if (error) throw new Error(`Failed to update profile: ${error.message}`);
+}
+
+// ─── REVERT AVATAR ───────────────────────────────────────────────────────────
+
+export async function revertAvatarToGoogle(): Promise<string> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const googleUrl = (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined;
+  if (!googleUrl) throw new Error("No Google account photo found.");
+
+  // Fetch the current avatar URL so we can clean up storage afterwards.
+  const { data: current } = await supabase
+    .from("users")
+    .select("avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  const { error } = await supabase
+    .from("users")
+    .update({ avatar_url: googleUrl })
+    .eq("id", user.id);
+  if (error) throw new Error(`Failed to revert avatar: ${error.message}`);
+
+  // Best-effort: delete the old custom upload from storage.
+  const oldUrl = current?.avatar_url;
+  if (oldUrl && oldUrl !== googleUrl) {
+    try {
+      await deleteImage("avatars", oldUrl);
+    } catch {
+      // Not a stored upload (e.g. already the Google URL) — ignore.
+    }
+  }
+
+  return googleUrl;
 }
 
 // ─── LEGACY COMPAT ────────────────────────────────────────────────────────────

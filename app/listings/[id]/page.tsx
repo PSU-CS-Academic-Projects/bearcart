@@ -319,7 +319,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       price={r.price as number}
                       category={r.category as string}
                       condition={formatCondition(r.condition as string)}
-                      sellerName={s?.full_name ?? "PSU Student"}
+                      sellerName={s?.full_name ?? "Student"}
                       sellerAvatar={s?.avatar_url ?? ""}
                       timePosted={formatTimeAgo(r.created_at as string)}
                       imageUrl={cover}

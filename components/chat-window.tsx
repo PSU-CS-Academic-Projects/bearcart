@@ -231,7 +231,7 @@ export function ChatWindow({
     if (!file) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setImageError("Only JPG, PNG, WEBP, or GIF images are allowed.");
+      setImageError("Only JPG, JPEG, PNG, WEBP, or GIF images are allowed.");
       e.target.value = "";
       return;
     }

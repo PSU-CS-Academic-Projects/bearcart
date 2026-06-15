@@ -66,7 +66,7 @@ async function uploadRequestImage(
   const supabase = await createClient();
 
   const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
-  if (!match) throw new Error("Invalid image format. Only JPG, PNG, and WEBP are allowed.");
+  if (!match) throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
 
   const mimeType = match[1];
   const extension = match[2] === "jpeg" ? "jpg" : match[2];

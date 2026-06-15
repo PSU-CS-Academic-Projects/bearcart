@@ -3,7 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
 export const metadata = {
-  title: "Terms of Service — BearCart",
+  title: "Terms of Service - BearCart",
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

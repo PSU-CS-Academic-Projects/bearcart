@@ -384,7 +384,7 @@ export async function uploadMessageImage(
   // Parse the base64 data URL — accept jpeg, png, webp, gif
   const match = base64Data.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/);
   if (!match) {
-    throw new Error("Invalid image format. Only JPG, PNG, WEBP, and GIF are allowed.");
+    throw new Error("Invalid image format. Only JPG, JPEG, PNG, WEBP, and GIF are allowed.");
   }
   const mimeType = match[1];
   const extension = match[2] === "jpeg" ? "jpg" : match[2];

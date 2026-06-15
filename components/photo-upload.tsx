@@ -72,14 +72,14 @@ export function PhotoUpload({
         // Extension check
         const ext = "." + (file.name.split(".").pop()?.toLowerCase() ?? "");
         if (!ALLOWED_EXTENSIONS.includes(ext)) {
-          errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
+          errors.push(`"${file.name}" — Only JPG, JPEG, PNG, and WEBP files are allowed`);
           continue;
         }
 
         // Magic byte check — catches files renamed with a wrong extension
         const actualType = await detectMimeFromBytes(file);
         if (!actualType || !ALLOWED_TYPES.includes(actualType)) {
-          errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
+          errors.push(`"${file.name}" — Only JPG, JPEG, PNG, and WEBP files are allowed`);
           continue;
         }
 
