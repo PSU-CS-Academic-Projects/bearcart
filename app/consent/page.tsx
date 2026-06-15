@@ -7,6 +7,7 @@ import Image from "next/image";
 import { X } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { OnboardingSteps } from "@/components/onboarding-steps";
 import { supabase } from "@/lib/supabase";
 
 // ─── Document content ────────────────────────────────────────────────────────
@@ -448,6 +449,9 @@ export default function ConsentPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 md:p-8">
         <div className="w-full max-w-md">
           <div className="rounded-2xl border bg-card p-6 shadow-sm md:p-10">
+
+            {/* Step Indicator */}
+            <OnboardingSteps active={2} />
 
             {/* Logo */}
             <div className="mb-6 flex flex-col items-center gap-2 text-center">

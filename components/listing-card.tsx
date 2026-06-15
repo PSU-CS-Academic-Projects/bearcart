@@ -55,7 +55,7 @@ export function ListingCard({
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
-            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-6 opacity-40" />
+            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}
           {/* Category badge */}
           <div className="absolute left-2 top-2">

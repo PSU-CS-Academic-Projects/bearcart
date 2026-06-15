@@ -231,7 +231,7 @@ export function RequestRow({
             />
           </button>
         ) : (
-          <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-2 opacity-40" />
+          <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
         )}
       </div>
 

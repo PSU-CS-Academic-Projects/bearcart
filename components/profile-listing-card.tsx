@@ -58,7 +58,7 @@ export function ProfileListingCard({
           {imageUrl ? (
             <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
           ) : (
-            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-6 opacity-40" />
+            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}
 
           {/* Category badge */}

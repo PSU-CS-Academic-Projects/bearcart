@@ -104,7 +104,7 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
   }
   return (
     <span className="relative inline-flex shrink-0 overflow-hidden rounded-md bg-muted" style={{ width: 44, height: 44 }}>
-      <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain p-2 opacity-40" />
+      <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
     </span>
   );
 }
