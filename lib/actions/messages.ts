@@ -9,6 +9,7 @@ import { moderateImageOrThrow } from "@/lib/moderation";
 export interface ConversationWithDetails {
   id: string;
   listing_id: string | null;
+  request_id: string | null;
   buyer_id: string;
   seller_id: string;
   last_message: string | null;
@@ -19,13 +20,22 @@ export interface ConversationWithDetails {
   archived_by_seller: boolean;
   listing: {
     id: string;
+    slug?: string;
     title: string;
     price: number;
     status: string;
     listing_images: { image_url: string; is_cover: boolean }[];
   } | null;
-  buyer: { id: string; full_name: string; avatar_url: string | null; role: string };
-  seller: { id: string; full_name: string; avatar_url: string | null; role: string };
+  request: {
+    id: string;
+    title: string;
+    budget_min: number | null;
+    budget_max: number | null;
+    status: string;
+    request_images: { image_url: string }[];
+  } | null;
+  buyer: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
+  seller: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
   unreadCount?: number;
 }
 
@@ -51,11 +61,12 @@ export async function getConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
-      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
-      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
     .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.false),and(seller_id.eq.${user.id},archived_by_seller.eq.false)`)
     .order("last_message_at", { ascending: false, nullsFirst: false });
@@ -92,11 +103,12 @@ export async function getConversationById(
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
-      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
-      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
     .eq("id", conversationId)
     .maybeSingle();
@@ -138,6 +150,40 @@ export async function getOrCreateConversation(listingId: string, sellerId: strin
   const { data: newConv, error } = await supabase
     .from("conversations")
     .insert({ listing_id: listingId, buyer_id: user.id, seller_id: sellerId })
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Failed to create conversation: ${error.message}`);
+  return newConv.id;
+}
+
+// ─── GET OR CREATE REQUEST CONVERSATION ───────────────────────────────────────
+
+/**
+ * Opens (or finds) a conversation about a REQUEST. The request poster
+ * (requester) is modelled as the "seller" — the owner of the post — and the
+ * person clicking "I Have This" is the "buyer", mirroring the listing flow.
+ */
+export async function getOrCreateRequestConversation(requestId: string, requesterId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  if (user.id === requesterId) throw new Error("Cannot message yourself");
+
+  // Check if conversation already exists for this request between these two users
+  const { data: existing } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("request_id", requestId)
+    .eq("buyer_id", user.id)
+    .eq("seller_id", requesterId)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  const { data: newConv, error } = await supabase
+    .from("conversations")
+    .insert({ request_id: requestId, buyer_id: user.id, seller_id: requesterId })
     .select("id")
     .single();
 
@@ -288,6 +334,7 @@ export async function sendMessage(
         .select(`
           buyer_id, seller_id, last_notified_at,
           listing:listings ( title, price ),
+          request:requests ( title, budget_min, budget_max ),
           buyer:users!conversations_buyer_id_fkey ( id, first_name, full_name, email ),
           seller:users!conversations_seller_id_fkey ( id, first_name, full_name, email )
         `)
@@ -314,6 +361,7 @@ export async function sendMessage(
         email: string | null;
       } | null;
       const listing = conv.listing as unknown as { title: string; price: number } | null;
+      const request = conv.request as unknown as { title: string; budget_min: number | null; budget_max: number | null } | null;
 
       if (!buyer || !seller) return;
 
@@ -330,14 +378,25 @@ export async function sendMessage(
         receiver.full_name?.trim()?.split(/\s+/)[0] ||
         "there";
 
+      // ── Resolve post context (listing or request) for the email ──────────
+      const contextType: "listing" | "request" = request && !listing ? "request" : "listing";
+      const contextTitle = listing?.title ?? request?.title ?? null;
+      // For requests, surface the budget (prefer max) as the price line.
+      const contextPrice = listing
+        ? listing.price
+        : request
+          ? (request.budget_max ?? request.budget_min ?? null)
+          : null;
+
       // ── Send the email ───────────────────────────────────────────────────
       await sendMessageNotificationEmail({
         toEmail: receiver.email,
         receiverFirstName: receiverFirst,
         senderFullName: senderFull,
         senderFirstName: senderFirst,
-        listingTitle: listing?.title ?? null,
-        listingPrice: listing?.price ?? null,
+        contextType,
+        listingTitle: contextTitle,
+        listingPrice: contextPrice,
         messagePreview,
         conversationId,
       });
@@ -499,11 +558,12 @@ export async function getArchivedConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
-      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
-      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
     .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.true),and(seller_id.eq.${user.id},archived_by_seller.eq.true)`)
     .order("last_message_at", { ascending: false, nullsFirst: false });

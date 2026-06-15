@@ -39,6 +39,14 @@ export interface Conversation {
     price: number;
     status: string;
   };
+  request?: {
+    id: string;
+    title: string;
+    thumbnail: string;
+    budgetMin: number | null;
+    budgetMax: number | null;
+    status: string;
+  };
   lastMessage: {
     text: string;
     timestamp: Date;
@@ -305,6 +313,28 @@ function ConversationItem({
               )}
               <span className="truncate text-xs text-muted-foreground">
                 {conversation.listing.title}
+              </span>
+            </div>
+          )}
+
+          {/* Request context */}
+          {conversation.request && (
+            <div className="mt-0.5 flex items-center gap-2">
+              {conversation.request.thumbnail ? (
+                <Image
+                  src={conversation.request.thumbnail}
+                  alt={conversation.request.title}
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 rounded object-cover"
+                />
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
+                  <ShoppingBag className="size-5 text-muted-foreground/60" />
+                </div>
+              )}
+              <span className="truncate text-xs text-muted-foreground">
+                <span className="font-medium">Request:</span> {conversation.request.title}
               </span>
             </div>
           )}

@@ -173,7 +173,9 @@ export function RequestRow({
       router.push("/auth/login?returnTo=/requests");
       return;
     }
-    router.push(`/profile/${request.requester_id}`);
+    // Open (or create) a conversation with the request poster, same as
+    // messaging a seller about a listing.
+    router.push(`/messages?request=${request.id}&requester=${request.requester_id}`);
   };
 
   const handleEdit = (e: React.MouseEvent) => {

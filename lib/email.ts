@@ -184,6 +184,7 @@ export async function sendMessageNotificationEmail({
   receiverFirstName,
   senderFullName,
   senderFirstName,
+  contextType = "listing",
   listingTitle,
   listingPrice,
   messagePreview,
@@ -193,6 +194,8 @@ export async function sendMessageNotificationEmail({
   receiverFirstName: string;
   senderFullName: string;
   senderFirstName: string;
+  /** Whether this conversation is about a listing or a request. */
+  contextType?: "listing" | "request";
   listingTitle: string | null;
   listingPrice: number | null;
   messagePreview: string;
@@ -202,17 +205,18 @@ export async function sendMessageNotificationEmail({
   const safeReceiver = escapeHtml(receiverFirstName);
   const safeSender = escapeHtml(senderFullName);
   const safeMessage = escapeHtml(truncate(messagePreview, 200));
-  const safeListingTitle = listingTitle ? escapeHtml(listingTitle) : null;
+  const safeContextTitle = listingTitle ? escapeHtml(listingTitle) : null;
+  const contextWord = contextType === "request" ? "request" : "listing";
 
-  const subject = safeListingTitle
+  const subject = safeContextTitle
     ? `${senderFirstName} sent you a message about ${listingTitle}`
     : `${senderFirstName} sent you a message on BearCart`;
 
-  const listingBlock = safeListingTitle
+  const listingBlock = safeContextTitle
     ? `
-<p style="margin:20px 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">About this listing:</p>
+<p style="margin:20px 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">About this ${contextWord}:</p>
 <div style="border:1px solid ${BRAND.border};border-radius:8px;padding:14px 16px;margin:0 0 20px;background-color:${BRAND.wash};">
-  <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};line-height:1.4;">${safeListingTitle}</p>
+  <p style="margin:0;font-size:15px;font-weight:600;color:${BRAND.ink};line-height:1.4;">${safeContextTitle}</p>
   ${
     listingPrice !== null
       ? `<p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BRAND.primary};">${formatPeso(listingPrice)}</p>`
@@ -227,7 +231,7 @@ export async function sendMessageNotificationEmail({
   const body = `
 <p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${safeReceiver},</p>
 <p style="margin:0 0 4px;font-size:17px;font-weight:600;color:${BRAND.ink};line-height:1.5;">
-  <span style="color:${BRAND.ink};">${safeSender}</span> ${safeListingTitle ? "has messaged you about:" : "has messaged you."}
+  <span style="color:${BRAND.ink};">${safeSender}</span> ${safeContextTitle ? "has messaged you about:" : "has messaged you."}
 </p>
 
 ${listingBlock}

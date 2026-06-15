@@ -77,6 +77,7 @@ interface ChatWindowProps {
   showBackButton?: boolean;
   sending?: boolean;
   onMarkAsSold?: () => void;
+  onMarkAsFulfilled?: () => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -146,6 +147,24 @@ function getListingStatusBadge(status: string) {
   }
 }
 
+function getRequestStatusBadge(status: string) {
+  switch (status) {
+    case "fulfilled":
+      return <Badge className="bg-emerald-100 text-emerald-800">Fulfilled</Badge>;
+    case "closed":
+      return <Badge variant="secondary">Closed</Badge>;
+    default:
+      return <Badge className="bg-primary/10 text-primary">Open</Badge>;
+  }
+}
+
+function formatBudgetRange(min: number | null, max: number | null): string | null {
+  if (min != null && max != null) return `${formatListingPrice(min)} – ${formatListingPrice(max)}`;
+  if (min != null) return `From ${formatListingPrice(min)}`;
+  if (max != null) return `Up to ${formatListingPrice(max)}`;
+  return null;
+}
+
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -167,6 +186,7 @@ export function ChatWindow({
   showBackButton = false,
   sending = false,
   onMarkAsSold,
+  onMarkAsFulfilled,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -276,8 +296,11 @@ export function ChatWindow({
   }
 
   const listing = conversation.listing;
+  const request = conversation.request;
   const isSeller = conversation.iAmSeller;
   const isListingGone = listing?.status === "deleted";
+  // For requests the poster (owner) is modelled as the "seller".
+  const isRequestOwner = conversation.iAmSeller;
 
   return (
     <div className="flex h-full flex-col">
@@ -389,6 +412,63 @@ export function ChatWindow({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Request Context Card ─────────────────────────────────── */}
+      {request && (
+        <div className="border-b">
+          <div className="bg-accent/50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              {request.thumbnail ? (
+                <button
+                  type="button"
+                  onClick={() => setLightboxUrl(request.thumbnail)}
+                  className="shrink-0 cursor-pointer"
+                  aria-label="View request image">
+                  <Image
+                    src={request.thumbnail}
+                    alt={request.title}
+                    width={56}
+                    height={56}
+                    unoptimized
+                    className="size-14 shrink-0 rounded-lg object-cover transition-opacity hover:opacity-80"
+                  />
+                </button>
+              ) : (
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <ShoppingBag className="size-6 text-muted-foreground/60" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Request
+                </p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {request.title}
+                </p>
+                {formatBudgetRange(request.budgetMin, request.budgetMax) && (
+                  <p className="text-sm font-semibold text-primary">
+                    {formatBudgetRange(request.budgetMin, request.budgetMax)}
+                  </p>
+                )}
+                <div className="mt-1">
+                  {getRequestStatusBadge(request.status)}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/requests">View Requests</Link>
+                </Button>
+                {isRequestOwner && request.status === "open" && onMarkAsFulfilled && (
+                  <Button variant="outline" size="sm" onClick={onMarkAsFulfilled}>
+                    <CheckCircle className="size-4" />
+                    Mark as Fulfilled
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
