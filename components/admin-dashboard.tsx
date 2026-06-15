@@ -939,7 +939,7 @@ function UserCard({
   return (
     <tr className="group border-t border-border first:border-t-0 hover:bg-primary/[0.04]">
       {/* User: avatar + name + status badges */}
-      <td className="px-3.5 py-3 align-middle">
+      <td className="px-3.5 py-3 align-middle h-[72px]">
         <div className="flex min-w-0 items-center gap-2.5">
           <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
           <div className="min-w-0">

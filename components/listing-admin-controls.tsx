@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowCounterClockwise, Trash, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Warning } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -58,26 +58,19 @@ export function ListingAdminControls({
   };
 
   return (
-    <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
-        <ShieldCheck className="size-4" />
-        Admin controls
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {isDelisted && (
-          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirm("restore")}>
-            <ArrowCounterClockwise className="size-4" /> Restore
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
-          onClick={() => setConfirm("takedown")}
-        >
-          <Trash className="size-4" /> Take down
+    <div className="flex flex-wrap items-center gap-3">
+      {isDelisted && (
+        <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirm("restore")}>
+          <ArrowCounterClockwise className="size-4" /> Restore
         </Button>
-      </div>
+      )}
+      <button
+        onClick={() => setConfirm("takedown")}
+        className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-primary"
+      >
+        <Warning className="size-3.5" />
+        Take down this listing as admin
+      </button>
 
       <AlertDialog open={!!confirm} onOpenChange={(o) => { if (!o) { setConfirm(null); setReason(""); } }}>
         <AlertDialogContent>

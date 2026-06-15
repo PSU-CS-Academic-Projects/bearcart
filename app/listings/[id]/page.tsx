@@ -270,7 +270,9 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 </div>
               )}
 
-              <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
+              {!isAdmin && (
+                <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
+              )}
             </div>
           </section>
 
