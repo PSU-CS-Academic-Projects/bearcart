@@ -70,8 +70,12 @@ export default function TermsOfServicePage() {
               </p>
               <Ul items={[
                 "Have a valid and active PalSU institutional Google account (@psu.palawan.edu.ph)",
+                "Be at least 18 years of age, or have the consent of a parent or guardian if younger",
                 "Agree to these Terms of Service and our Privacy Policy",
               ]} />
+              <p>
+                Users under 18 years of age must have the consent of a parent or guardian to use BearCart.
+              </p>
               <p>
                 BearCart reserves the right to suspend or terminate accounts of users who no longer meet these eligibility requirements.
               </p>
