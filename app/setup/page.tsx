@@ -11,17 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShoppingCart, GraduationCap, Chalkboard } from "@phosphor-icons/react";
+import Image from "next/image";
+import { GraduationCap, Chalkboard } from "@phosphor-icons/react";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 const COLLEGES = [
-  "Engineering",
-  "Education",
-  "Business",
-  "Arts and Sciences",
-  "Nursing",
-  "Agriculture",
+  "College of Architecture and Design",
+  "College of Arts and Humanities",
+  "College of Business and Accountancy",
+  "College of Criminal Justice Education",
+  "College of Engineering",
+  "College of Hospitality Management and Tourism",
+  "College of Nursing and Health Sciences",
+  "College of Sciences",
+  "College of Teacher Education",
+  "Junior High School (JHS)",
+  "Senior High School (SHS)",
   "Others",
 ];
 
@@ -118,7 +124,7 @@ export default function SetupPage() {
             {/* Logo */}
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
               <Link href="/" className="flex items-center gap-2">
-                <ShoppingCart className="size-10 text-primary" weight="fill" />
+                <Image src="/bearcart.svg" alt="BearCart" width={40} height={40} className="size-10" />
                 <span className="text-2xl font-bold text-foreground">BearCart</span>
               </Link>
               <h1 className="mt-2 text-xl font-bold text-foreground">

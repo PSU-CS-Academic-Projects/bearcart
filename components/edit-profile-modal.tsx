@@ -20,12 +20,17 @@ import { cn } from "@/lib/utils";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const COLLEGES = [
-  "Engineering",
-  "Education",
-  "Business",
-  "Arts and Sciences",
-  "Nursing",
-  "Agriculture",
+  "College of Architecture and Design",
+  "College of Arts and Humanities",
+  "College of Business and Accountancy",
+  "College of Criminal Justice Education",
+  "College of Engineering",
+  "College of Hospitality Management and Tourism",
+  "College of Nursing and Health Sciences",
+  "College of Sciences",
+  "College of Teacher Education",
+  "Junior High School (JHS)",
+  "Senior High School (SHS)",
   "Others",
 ];
 
