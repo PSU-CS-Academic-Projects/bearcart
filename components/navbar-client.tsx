@@ -450,7 +450,7 @@ export function NavbarClient({
 
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
+          <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} className="size-14" />
           <span className="text-xl font-bold text-foreground">BearCart</span>
         </Link>
 

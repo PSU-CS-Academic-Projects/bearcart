@@ -452,7 +452,7 @@ export default function ConsentPage() {
             {/* Logo */}
             <div className="mb-6 flex flex-col items-center gap-2 text-center">
               <Link href="/" className="flex items-center gap-2">
-                <Image src="/bearcart.svg" alt="BearCart" width={40} height={40} className="size-10" />
+                <Image src="/bearcart.svg" alt="BearCart" width={56} height={56} className="size-14" />
                 <span className="text-2xl font-bold text-foreground">BearCart</span>
               </Link>
               <h1 className="mt-2 text-xl font-bold text-foreground">Before you continue</h1>
