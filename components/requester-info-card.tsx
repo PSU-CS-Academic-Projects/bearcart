@@ -66,7 +66,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
         </div>
 
         <Button variant="outline" asChild className="w-full">
-          <Link href={`/profile/${requester.id}`}>View Profile</Link>
+          <Link href={`/profile/${requester.slug ?? requester.id}`}>View Profile</Link>
         </Button>
       </div>
     </Card>

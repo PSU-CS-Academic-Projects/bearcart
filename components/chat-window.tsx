@@ -291,7 +291,7 @@ export function ChatWindow({
         )}
 
         {/* Other user avatar */}
-        <Link href={`/profile/${conversation.otherUser.id}`} className="relative shrink-0">
+        <Link href={`/profile/${conversation.otherUser.slug ?? conversation.otherUser.id}`} className="relative shrink-0">
           <div className="relative size-10 overflow-hidden rounded-full bg-muted">
             {conversation.otherUser.avatar ? (
               <Image
@@ -319,7 +319,7 @@ export function ChatWindow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
-              href={`/profile/${conversation.otherUser.id}`}
+              href={`/profile/${conversation.otherUser.slug ?? conversation.otherUser.id}`}
               className="font-semibold text-foreground hover:underline"
             >
               {conversation.otherUser.name}
@@ -378,7 +378,7 @@ export function ChatWindow({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button asChild variant="ghost" size="sm">
-                    <Link href={`/listings/${listing.id}`}>View Listing</Link>
+                    <Link href={`/listings/${listing.slug ?? listing.id}`}>View Listing</Link>
                   </Button>
                   {isSeller && listing.status === "available" && onMarkAsSold && (
                     <Button variant="outline" size="sm" onClick={onMarkAsSold}>

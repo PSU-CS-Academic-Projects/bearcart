@@ -34,6 +34,7 @@ import { toast } from "sonner";
 
 interface ListingRow {
   id: string;
+  slug?: string;
   title: string;
   price: number;
   category: string;
@@ -211,6 +212,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <ProfileListingCard
           key={listing.id}
           id={listing.id}
+          slug={(listing as { slug?: string }).slug}
           title={listing.title}
           price={listing.price}
           category={listing.category}
@@ -219,7 +221,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           imageUrl={getCoverImage(listing)}
           variant={variant}
           isDelisted={listing.is_delisted}
-          onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
+          onEdit={variant === "active" ? () => router.push(`/listings/${(listing as { slug?: string }).slug ?? listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
           onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
           onRemoveSaved={variant === "saved" ? () => setRemoveSavedId(listing.id) : undefined}
@@ -513,6 +515,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
               <ProfileListingCard
                 key={listing.id}
                 id={listing.id}
+                slug={(listing as { slug?: string }).slug}
                 title={listing.title}
                 price={listing.price}
                 category={listing.category}
@@ -534,6 +537,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
               <ProfileListingCard
                 key={listing.id}
                 id={listing.id}
+                slug={(listing as { slug?: string }).slug}
                 title={listing.title}
                 price={listing.price}
                 category={listing.category}

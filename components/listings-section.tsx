@@ -56,6 +56,7 @@ export async function LandingListingsSection({ showHeader = true }: { showHeader
                 <ListingCard
                   key={listing.id}
                   id={listing.id}
+                  slug={listing.slug ?? listing.id}
                   title={listing.title}
                   price={listing.price}
                   category={listing.category}

@@ -25,6 +25,7 @@ export interface Conversation {
   iAmSeller: boolean;
   otherUser: {
     id: string;
+    slug?: string;
     name: string;
     avatar: string;
     role: "Student" | "Faculty";
@@ -32,6 +33,7 @@ export interface Conversation {
   };
   listing?: {
     id: string;
+    slug?: string;
     title: string;
     thumbnail: string;
     price: number;

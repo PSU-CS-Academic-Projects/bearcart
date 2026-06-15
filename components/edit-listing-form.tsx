@@ -79,6 +79,7 @@ interface ExistingImage {
 
 interface ListingData {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   price: number;
@@ -258,7 +259,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
       });
 
       toast.success("Listing updated successfully");
-      router.push(`/listings/${listing.id}`);
+      router.push(`/listings/${listing.slug ?? listing.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update listing";
       toast.error(message);
@@ -484,7 +485,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
             <Breadcrumb
               items={[
                 { label: "Listings", href: "/listings" },
-                { label: listing.title, href: `/listings/${listing.id}` },
+                { label: listing.title, href: `/listings/${listing.slug ?? listing.id}` },
                 { label: "Edit" },
               ]}
             />
@@ -526,7 +527,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
             {/* Action Buttons */}
             <section className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <Link href={`/listings/${listing.id}`}>
+                <Link href={`/listings/${listing.slug ?? listing.id}`}>
                   <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={submitting}>
                     <XIcon className="size-4" />
                     Cancel

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -18,7 +18,7 @@ import {
   PencilSimple,
   MapPin,
 } from "@phosphor-icons/react/dist/ssr";
-import { getListingById, getRelatedListings, getPostModerationState } from "@/lib/actions/listings";
+import { getListingBySlug, getListingById, getRelatedListings, getPostModerationState } from "@/lib/actions/listings";
 import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { isListingSaved } from "@/lib/actions/saved";
 import { createClient } from "@/lib/supabase-server";
@@ -30,8 +30,10 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 // ─── Condition Badge Colors ───────────────────────────────────────────────────
@@ -54,15 +56,20 @@ function formatCasualCondition(condition: string) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ListingDetailPage({ params }: PageProps) {
-  const { id } = await params;
+  const { slug } = await params;
 
-  // Fetch listing data
-  const listing = await getListingById(id);
+  // UUID backward-compat: if old link used a raw UUID, redirect to the slug URL
+  let listing = UUID_RE.test(slug) ? await getListingById(slug) : null;
+  if (listing) redirect(`/listings/${listing.slug}`);
+
+  // Canonical slug lookup
+  listing = await getListingBySlug(slug);
   const isAdmin = await isCurrentUserAdmin();
 
   // RLS hides delisted listings from non-owners/non-admins → null. Distinguish
   // a genuinely-missing listing from a delisted one so we can show the right message.
   if (!listing) {
+    const id = slug; // mod state accepts either UUID or slug value; if not found by slug treat as unknown
     const mod = await getPostModerationState("listing", id);
     if (mod.exists && mod.is_delisted && !mod.is_removed) {
       return (
@@ -97,11 +104,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
 
   // Check if user has saved this listing
-  const saved = user ? await isListingSaved(id) : false;
+  const saved = user ? await isListingSaved(listing.id) : false;
 
   // Fetch related listings from same seller
   const related = listing.seller
-    ? await getRelatedListings(id, listing.seller.id)
+    ? await getRelatedListings(listing.id, listing.seller.id)
     : [];
 
   // Build photo array sorted by order
@@ -249,6 +256,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
               {!isUnavailable && (
                 <ListingActions
                   listingId={listing.id}
+                  listingSlug={listing.slug}
                   sellerId={listing.seller_id}
                   currentUserId={user?.id ?? null}
                   initialSaved={saved}
@@ -315,6 +323,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     <ListingCard
                       key={r.id as string}
                       id={r.id as string}
+                      slug={r.slug as string | undefined}
                       title={r.title as string}
                       price={r.price as number}
                       category={r.category as string}

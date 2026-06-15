@@ -58,11 +58,11 @@ function mapConversation(
 ): Conversation {
   const isCurrentBuyer = conv.buyer_id === currentUserId;
   const otherUser = isCurrentBuyer
-    ? (conv.seller as { id: string; full_name: string; avatar_url: string | null; role: string })
-    : (conv.buyer as { id: string; full_name: string; avatar_url: string | null; role: string });
+    ? (conv.seller as { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string })
+    : (conv.buyer as { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string });
 
   const listing = conv.listing as {
-    id: string; title: string; price: number; status: string;
+    id: string; slug?: string; title: string; price: number; status: string;
     listing_images: { image_url: string; is_cover: boolean }[];
   } | null;
 
@@ -74,13 +74,14 @@ function mapConversation(
     iAmSeller: !isCurrentBuyer,
     otherUser: {
       id: otherUser.id,
+      slug: otherUser.slug,
       name: otherUser.full_name,
       avatar: otherUser.avatar_url ?? "",
       role: otherUser.role === "faculty" ? "Faculty" : "Student",
       isOnline: false,
     },
     listing: listing
-      ? { id: listing.id, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
+      ? { id: listing.id, slug: listing.slug, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
       : undefined,
     lastMessage: buildPreview(
       conv.last_message,

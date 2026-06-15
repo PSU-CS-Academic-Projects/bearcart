@@ -8,6 +8,7 @@ import { moderateImageOrThrow } from "@/lib/moderation";
 
 export interface UserProfile {
   id: string;
+  slug: string;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
@@ -34,7 +35,7 @@ export async function getOwnProfile(): Promise<UserProfile | null> {
 
   const { data } = await supabase
     .from("users")
-    .select("id, full_name, first_name, last_name, email, avatar_url, role, college, bio, created_at")
+    .select("id, slug, full_name, first_name, last_name, email, avatar_url, role, college, bio, created_at")
     .eq("id", user.id)
     .single();
 
@@ -53,12 +54,29 @@ export async function getPublicProfile(userId: string): Promise<UserProfile | nu
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, full_name, first_name, last_name, email, avatar_url, role, college, bio, created_at, deleted_at")
+    .select("id, slug, full_name, first_name, last_name, email, avatar_url, role, college, bio, created_at, deleted_at")
     .eq("id", userId)
     .maybeSingle();
 
   if (error || !data) return null;
   // User is soft-deleted
+  if (data.deleted_at) return null;
+
+  return data as UserProfile;
+}
+
+// ─── READ (public profile by slug — canonical) ───────────────────────────────
+
+export async function getPublicProfileBySlug(slug: string): Promise<UserProfile | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, slug, full_name, first_name, last_name, email, avatar_url, role, college, bio, created_at, deleted_at")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error || !data) return null;
   if (data.deleted_at) return null;
 
   return data as UserProfile;

@@ -20,6 +20,7 @@ import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ProfileListingCardProps {
   id: string;
+  slug?: string;
   title: string;
   price: number;
   category: string;
@@ -37,6 +38,7 @@ interface ProfileListingCardProps {
 
 export function ProfileListingCard({
   id,
+  slug,
   title,
   price,
   category,
@@ -52,7 +54,7 @@ export function ProfileListingCard({
   onRemoveSaved,
 }: ProfileListingCardProps) {
   return (
-    <Link href={`/listings/${id}`} className="group block">
+    <Link href={`/listings/${slug ?? id}`} className="group block">
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (

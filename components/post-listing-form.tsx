@@ -243,7 +243,7 @@ export function PostListingForm() {
         photos: formData.photos,
       });
       toast.success("Listing posted successfully!");
-      router.push(`/listings/${result.id}`);
+      router.push(`/listings/${result.slug ?? result.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post listing";
       // Check if it's a partial failure (listing created but images failed)

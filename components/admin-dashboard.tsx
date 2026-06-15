@@ -420,7 +420,7 @@ export function AdminDashboard({
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
-                            href={`/listings/${post.id}`}
+                            href={`/listings/${post.slug ?? post.id}`}
                             className="text-sm font-semibold text-foreground hover:underline"
                           >
                             {post.title}
@@ -944,7 +944,7 @@ function UserCard({
           <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
+              <Link href={`/profile/${user.slug ?? user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
                 {user.full_name}
               </Link>
               {BAN_BADGE[user.ban_type] && (

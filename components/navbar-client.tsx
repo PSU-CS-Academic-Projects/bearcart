@@ -47,6 +47,7 @@ type SearchMode = "items" | "people";
 
 interface PersonResult {
   id: string;
+  slug?: string;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
@@ -89,7 +90,7 @@ function PeopleDropdownContent({
       {results.map((person) => (
         <Link
           key={person.id}
-          href={`/profile/${person.id}`}
+          href={`/profile/${person.slug ?? person.id}`}
           onClick={onSelect}
           className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent"
         >
@@ -295,7 +296,7 @@ export function NavbarClient({
     const timer = setTimeout(async () => {
       const { data: users } = await supabase
         .from("users")
-        .select("id, full_name, first_name, last_name, avatar_url")
+        .select("id, slug, full_name, first_name, last_name, avatar_url")
         .ilike("full_name", `%${peopleQuery}%`)
         .is("deleted_at", null)
         .limit(6);

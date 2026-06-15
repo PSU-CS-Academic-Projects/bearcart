@@ -38,6 +38,7 @@ export interface ListingFilters {
 
 export interface ListingWithImages {
   id: string;
+  slug: string;
   seller_id: string;
   title: string;
   description: string | null;
@@ -52,7 +53,7 @@ export interface ListingWithImages {
   created_at: string;
   updated_at: string;
   listing_images: { id: string; image_url: string; is_cover: boolean; order: number }[];
-  seller: { id: string; full_name: string; avatar_url: string | null; role: string; college: string | null; created_at: string };
+  seller: { id: string; slug: string; full_name: string; avatar_url: string | null; role: string; college: string | null; created_at: string };
 }
 
 export interface PostModerationState {
@@ -102,10 +103,21 @@ export async function createListing(input: CreateListingInput) {
   ]);
   await moderateImagesOrThrow(input.photos);
 
-  // 1. Insert the listing row
+  // 1. Generate the listng ID + slug up front so the slug is set on insert
+  //    (the slug column is NOT NULL).
+  const listingId = crypto.randomUUID();
+  const baseSlug =
+    input.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-+/g, "-") || "listing";
+  const slug = `${baseSlug}-${listingId.slice(0, 6)}`;
+
   const { data: listing, error: listingError } = await supabase
     .from("listings")
     .insert({
+      id: listingId,
       seller_id: user.id,
       title: input.title,
       description: input.description,
@@ -113,6 +125,7 @@ export async function createListing(input: CreateListingInput) {
       is_negotiable: input.is_negotiable,
       category: input.category,
       condition: input.condition,
+      slug,
     })
     .select("id")
     .single();
@@ -140,7 +153,7 @@ export async function createListing(input: CreateListingInput) {
     console.error("Failed to insert listing_images:", imagesError.message);
   }
 
-  return { id: listing.id };
+  return { id: listing.id, slug };
 }
 
 // ─── READ (list) ──────────────────────────────────────────────────────────────
@@ -176,10 +189,10 @@ export async function getListings(filters: ListingFilters = {}) {
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
     `,
       { count: "exact" }
     )
@@ -242,7 +255,37 @@ export async function getListings(filters: ListingFilters = {}) {
   };
 }
 
-// ─── READ (single) ───────────────────────────────────────────────────────────
+// ─── READ (single by slug — canonical) ───────────────────────────────────────
+
+export async function getListingBySlug(slug: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("listings")
+    .select(
+      `
+      id, slug, seller_id, title, description, price, is_negotiable,
+      category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
+      listing_images ( id, image_url, is_cover, order ),
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
+    `
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`Listing fetch error: ${error.message}`);
+  if (!data) return null;
+
+  supabase
+    .from("listings")
+    .update({ views_count: (data.views_count ?? 0) + 1 })
+    .eq("id", data.id)
+    .then();
+
+  return data as unknown as ListingWithImages;
+}
+
+// ─── READ (single by ID — kept for edit page & internal use) ─────────────────
 
 export async function getListingById(id: string) {
   const supabase = await createClient();
@@ -251,10 +294,10 @@ export async function getListingById(id: string) {
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
     `
     )
     .eq("id", id)
@@ -295,7 +338,7 @@ export async function getListingsBySeller(sellerId: string, status?: string) {
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order )
     `
@@ -548,9 +591,9 @@ export async function getRelatedListings(listingId: string, sellerId: string, li
     .from("listings")
     .select(
       `
-      id, title, price, category, condition, created_at,
+      id, slug, title, price, category, condition, created_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url )
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url )
     `
     )
     .eq("seller_id", sellerId)

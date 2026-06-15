@@ -4,17 +4,21 @@ import { Footer } from "@/components/footer";
 import { ProfileHeader } from "@/components/profile-header";
 import { ProfileTabs } from "@/components/profile-tabs";
 import { createClient } from "@/lib/supabase-server";
-import { getPublicProfile, getProfileStats } from "@/lib/actions/profile";
+import { getPublicProfile, getPublicProfileBySlug, getProfileStats } from "@/lib/actions/profile";
 import { getListingsBySeller } from "@/lib/actions/listings";
 import { getRequestsByRequester } from "@/lib/actions/requests";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
-  const profile = await getPublicProfile(id);
+  const { slug } = await params;
+  const profile = UUID_RE.test(slug)
+    ? await getPublicProfile(slug)
+    : await getPublicProfileBySlug(slug);
   if (!profile) return { title: "User Not Found - BearCart" };
   return { title: `${profile.full_name} - BearCart` };
 }
@@ -22,28 +26,35 @@ export async function generateMetadata({
 export default async function PublicProfilePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
 
   // ── Auth gate — require PSU login (RA 10173 privacy protection) ────────
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?returnTo=/profile/${id}`);
+  if (!user) redirect(`/auth/login?returnTo=/profile/${slug}`);
+
+  // UUID backward-compat: look up profile by ID, then redirect to slug URL
+  if (UUID_RE.test(slug)) {
+    const p = await getPublicProfile(slug);
+    if (p) redirect(`/profile/${p.slug}`);
+    notFound();
+  }
+
+  // ── Fetch profile by slug ──────────────────────────────────────────────
+  const profile = await getPublicProfileBySlug(slug);
+  if (!profile) notFound();
 
   // ── If viewing own profile, redirect to /profile ────────────────────────
-  if (user.id === id) redirect("/profile");
-
-  // ── Fetch profile ──────────────────────────────────────────────────────
-  const profile = await getPublicProfile(id);
-  if (!profile) notFound();
+  if (user.id === profile.id) redirect("/profile");
 
   // ── Fetch data ─────────────────────────────────────────────────────────
   const [stats, activeListings, soldListings, requests] = await Promise.all([
-    getProfileStats(id),
-    getListingsBySeller(id, "available"),
-    getListingsBySeller(id, "sold"),
-    getRequestsByRequester(id, "open"),
+    getProfileStats(profile.id),
+    getListingsBySeller(profile.id, "available"),
+    getListingsBySeller(profile.id, "sold"),
+    getRequestsByRequester(profile.id, "open"),
   ]);
 
   // ── Render ─────────────────────────────────────────────────────────────

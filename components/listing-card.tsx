@@ -5,6 +5,7 @@ import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ListingCardProps {
   id: string;
+  slug?: string;
   title: string;
   price: number;
   category: string;
@@ -34,6 +35,7 @@ export function ListingCardSkeleton() {
 
 export function ListingCard({
   id,
+  slug,
   title,
   price,
   category,
@@ -49,7 +51,7 @@ export function ListingCard({
     : parts[0];
 
   return (
-    <Link href={`/listings/${id}`} className="group block">
+    <Link href={`/listings/${slug ?? id}`} className="group block">
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (

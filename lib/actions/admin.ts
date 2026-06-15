@@ -73,6 +73,7 @@ export interface ReportInfo {
 
 export interface ReportedPost {
   id: string;
+  slug?: string;
   title: string;
   ownerId: string;
   ownerName: string | null;
@@ -101,6 +102,7 @@ export interface ReportedMessage {
 
 export interface AdminUserRow {
   id: string;
+  slug?: string;
   full_name: string;
   email: string;
   avatar_url: string | null;
@@ -266,18 +268,18 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 50);
 
-  // Resolve which listing/request targets still exist → only link to live items.
+  // Resolve which listing/request/user targets still exist → only link to live items, using slugs.
   const listingIds = [...new Set(top.filter((i) => i.targetKind === "listing" && i.targetId).map((i) => i.targetId as string))];
-  const requestIds = [...new Set(top.filter((i) => i.targetKind === "request" && i.targetId).map((i) => i.targetId as string))];
-  const aliveListings = new Set<string>();
-  const aliveRequests = new Set<string>();
+  const userIds = [...new Set(top.filter((i) => i.targetKind === "user" && i.targetId).map((i) => i.targetId as string))];
+  const listingSlugMap = new Map<string, string>();
+  const userSlugMap = new Map<string, string>();
   if (listingIds.length) {
-    const { data } = await supabase.from("listings").select("id").in("id", listingIds).is("deleted_at", null);
-    for (const r of data ?? []) aliveListings.add(r.id);
+    const { data } = await supabase.from("listings").select("id, slug").in("id", listingIds).is("deleted_at", null);
+    for (const r of data ?? []) listingSlugMap.set(r.id, r.slug ?? r.id);
   }
-  if (requestIds.length) {
-    const { data } = await supabase.from("requests").select("id").in("id", requestIds).is("deleted_at", null);
-    for (const r of data ?? []) aliveRequests.add(r.id);
+  if (userIds.length) {
+    const { data } = await supabase.from("users").select("id, slug").in("id", userIds).is("deleted_at", null);
+    for (const r of data ?? []) userSlugMap.set(r.id, r.slug ?? r.id);
   }
 
   return top.map((i) => {
@@ -285,11 +287,11 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     let jumpToReported = false;
     if (i.targetKind === "report") {
       jumpToReported = true;
-    } else if (i.targetKind === "user" && i.targetId) {
-      href = `/profile/${i.targetId}`;
-    } else if (i.targetKind === "listing" && i.targetId && aliveListings.has(i.targetId)) {
-      href = `/listings/${i.targetId}`;
-    } else if (i.targetKind === "request" && i.targetId && aliveRequests.has(i.targetId)) {
+    } else if (i.targetKind === "user" && i.targetId && userSlugMap.has(i.targetId)) {
+      href = `/profile/${userSlugMap.get(i.targetId)}`;
+    } else if (i.targetKind === "listing" && i.targetId && listingSlugMap.has(i.targetId)) {
+      href = `/listings/${listingSlugMap.get(i.targetId)}`;
+    } else if (i.targetKind === "request" && i.targetId) {
       href = `/requests`;
     }
     return { type: i.type, description: i.description, timestamp: i.timestamp, href, jumpToReported };
@@ -380,7 +382,7 @@ async function buildReportedPosts(
 
   const { data: posts } = await supabase
     .from(table)
-    .select(`id, title, ${ownerCol}, is_delisted, deleted_at, ${ownerFk}, ${imageSel}`)
+    .select(`id, slug, title, ${ownerCol}, is_delisted, deleted_at, ${ownerFk}, ${imageSel}`)
     .in("id", ids);
 
   const byId = new Map((posts ?? []).map((p) => [p.id as string, p]));
@@ -405,6 +407,7 @@ async function buildReportedPosts(
 
     return {
       id,
+      slug: (post?.slug as string | undefined),
       title: (post?.title as string) ?? "(deleted)",
       ownerId: (post?.[ownerCol] as string) ?? "",
       ownerName: owner?.full_name ?? null,
@@ -662,7 +665,7 @@ export async function searchAdminUsers(query: string): Promise<AdminUserRow[]> {
   const { supabase } = await requireAdmin();
   let q = supabase
     .from("users")
-    .select("id, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
+    .select("id, slug, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
     .is("deleted_at", null)
     .order("full_name", { ascending: true })
     .limit(200);

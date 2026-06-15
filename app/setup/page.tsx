@@ -35,6 +35,45 @@ const COLLEGES = [
 
 type Role = "student" | "faculty";
 
+// Build a URL-safe user slug matching the DB trigger logic:
+//   first_last (lowercased, underscore separated); on collision append 6 id chars.
+function slugifyPart(raw: string): string {
+  return raw
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+}
+
+async function buildUserSlug(user: User, fullName: string): Promise<string> {
+  const first = (user.user_metadata?.given_name as string | undefined)?.trim();
+  const last = (user.user_metadata?.family_name as string | undefined)?.trim();
+
+  let base = "";
+  if (first && last) {
+    base = `${slugifyPart(first)}_${slugifyPart(last)}`;
+  } else if (fullName?.trim()) {
+    const parts = fullName.trim().split(/\s+/);
+    base =
+      parts.length >= 2
+        ? `${slugifyPart(parts[0])}_${slugifyPart(parts[parts.length - 1])}`
+        : slugifyPart(fullName);
+  }
+
+  if (!base || /^_+$/.test(base)) base = `user_${user.id.slice(0, 6)}`;
+
+  // Collision check
+  const { data: clash } = await supabase
+    .from("users")
+    .select("id")
+    .eq("slug", base)
+    .neq("id", user.id)
+    .maybeSingle();
+
+  return clash ? `${base}_${user.id.slice(0, 6)}` : base;
+}
+
 export default function SetupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,12 +130,30 @@ export default function SetupPage() {
       user.email ??
       "";
 
+    // Ensure the user row has a slug. The DB trigger normally sets it, but if
+    // this upsert ends up INSERTING a fresh row the NOT-NULL slug column would
+    // be violatedd so generate one here when the row has none yet.
+    const { data: existing } = await supabase
+      .from("users")
+      .select("slug")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const upsertData: Record<string, unknown> = {
+      id: user.id,
+      full_name: fullName,
+      email: user.email,
+      role,
+      college,
+    };
+
+    if (!existing?.slug) {
+      upsertData.slug = await buildUserSlug(user, fullName);
+    }
+
     const { error } = await supabase
       .from("users")
-      .upsert(
-        { id: user.id, full_name: fullName, email: user.email, role, college },
-        { onConflict: "id" }
-      );
+      .upsert(upsertData, { onConflict: "id" });
 
     if (error) {
       console.error("Setup error:", error.message);

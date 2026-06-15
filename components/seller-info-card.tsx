@@ -13,6 +13,7 @@ import { formatTimeAgo } from "@/lib/listing-helpers";
 interface SellerInfoCardProps {
   seller: {
     id: string;
+    slug?: string;
     full_name: string | null;
     first_name?: string | null;
     last_name?: string | null;
@@ -82,7 +83,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
 
         {/* View Profile Button */}
         <Button variant="outline" asChild className="h-8 w-full text-xs">
-          <Link href={`/profile/${seller.id}`}>View Profile</Link>
+          <Link href={`/profile/${seller.slug ?? seller.id}`}>View Profile</Link>
         </Button>
       </div>
     </Card>

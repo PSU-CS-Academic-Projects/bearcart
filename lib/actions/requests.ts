@@ -44,6 +44,7 @@ export interface RequestRow {
   request_images: RequestImageRow[];
   requester: {
     id: string;
+    slug?: string;
     full_name: string | null;
     first_name: string | null;
     last_name: string | null;
@@ -136,7 +137,7 @@ export async function getRequests(filters: RequestFilters = {}) {
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `,
       { count: "exact" }
@@ -196,7 +197,7 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("status", "open")
@@ -220,7 +221,7 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("id", id)
@@ -250,7 +251,7 @@ export async function getSimilarRequests(
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .ilike("category", category)
@@ -288,7 +289,7 @@ export async function getRequestsByRequester(
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("requester_id", requesterId)
