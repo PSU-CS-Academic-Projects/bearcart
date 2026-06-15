@@ -14,7 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  BookIcon,
+  HandbagIcon,
   DesktopIcon,
   TShirtIcon,
   HamburgerIcon,
@@ -30,7 +30,7 @@ import {
 } from "@/lib/currency";
 
 const CATEGORIES = [
-  { name: "Books", icon: BookIcon },
+  { name: "Accessories", icon: HandbagIcon },
   { name: "Electronics", icon: DesktopIcon },
   { name: "Clothing", icon: TShirtIcon },
   { name: "Food", icon: HamburgerIcon },

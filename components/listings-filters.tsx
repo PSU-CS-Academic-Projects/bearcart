@@ -15,7 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
+  Handbag,
   Desktop,
   TShirt,
   Hamburger,
@@ -37,7 +37,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Books", icon: Book },
+  { name: "Accessories", icon: Handbag },
   { name: "Electronics", icon: Desktop },
   { name: "Clothing", icon: TShirt },
   { name: "Food", icon: Hamburger },

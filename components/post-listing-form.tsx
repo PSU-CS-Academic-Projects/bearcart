@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const categories = [
-  { value: "books", label: "Books" },
+  { value: "accessories", label: "Accessories" },
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "food", label: "Food" },

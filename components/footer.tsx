@@ -16,7 +16,7 @@ const quickLinks = [
 ];
 
 const categories = [
-  { name: "Books", href: "/listings?category=Books" },
+  { name: "Accessories", href: "/listings?category=Accessories" },
   { name: "Electronics", href: "/listings?category=Electronics" },
   { name: "Clothing", href: "/listings?category=Clothing" },
   { name: "Food", href: "/listings?category=Food" },

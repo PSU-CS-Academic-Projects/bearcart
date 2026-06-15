@@ -54,7 +54,7 @@ import {
 } from "@/lib/currency";
 
 const CATEGORIES = [
-  "Books",
+  "Accessories",
   "Electronics",
   "Clothing",
   "Food",

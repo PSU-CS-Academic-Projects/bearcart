@@ -30,7 +30,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { value: "Books", label: "Books" },
+  { value: "Accessories", label: "Accessories" },
   { value: "Electronics", label: "Electronics" },
   { value: "Clothing", label: "Clothing" },
   { value: "Food", label: "Food" },

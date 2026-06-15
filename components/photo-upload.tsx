@@ -216,7 +216,7 @@ export function PhotoUpload({
           Drag photos here or click to upload
         </p>
         <p className="text-xs text-muted-foreground">
-          Accepts JPG, PNG, WEBP. Max 5 MB per photo.
+          Accepts JPG, JPEG, PNG, WEBP. Max 5 MB per photo.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           {photos.length} / {maxPhotos} photos uploaded

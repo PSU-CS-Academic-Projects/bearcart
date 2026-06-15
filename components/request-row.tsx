@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  Book,
+  Handbag,
   Desktop,
   TShirt,
   Hamburger,
@@ -62,8 +62,9 @@ import { toast } from "sonner";
 // ─── Category Icon Lookup ─────────────────────────────────────────────────────
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Books: Book,
+  Accessories: Handbag,
   Electronics: Desktop,
+
   Clothing: TShirt,
   Food: Hamburger,
   "School Supplies": GraduationCap,
