@@ -154,7 +154,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
               <div className="space-y-2.5">
                 <div className="space-y-1">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-primary/80">
-                    PSU campus listing
+                    campus listing
                   </p>
                   <h1 className="text-balance text-xl font-semibold leading-[1.18] tracking-[-0.015em] text-foreground sm:text-2xl">
                     {displayTitle}
@@ -207,7 +207,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="size-3.5" />
-                    Posted {formatTimeAgo(listing.created_at)}
+                    Posted {new Date(listing.created_at).toLocaleString("en-Ph", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </span>
 
                   <span className="flex items-center gap-1">
@@ -223,7 +227,11 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     ) > 60000 && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <PencilSimple className="size-3" />
-                        Updated {formatTimeAgo(listing.updated_at)}
+                        Updated {new Date(listing.updated_at).toLocaleString("en-Ph", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                       </span>
                     )}
                 </div>

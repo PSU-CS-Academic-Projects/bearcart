@@ -504,7 +504,12 @@ export function PostListingForm() {
       <main className="flex-1">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
-            <Breadcrumb items={[{ label: "Post a Listing" }]} />
+            <Breadcrumb
+              items={[
+                { label: "Listings", href: "/listings" },
+                { label: "New" },
+              ]}
+            />
             <h1 className="mt-4 text-2xl font-bold text-foreground">Post a Listing</h1>
             <p className="text-muted-foreground">Fill in the details of your item</p>
           </div>
