@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -51,6 +51,7 @@ import {
 } from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -190,9 +191,37 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // ── Change tracking ──────────────────────────────────────────────────────
+  // Snapshot of the values loaded from the DB, captured once on mount.
+  const [original] = useState(() => ({
+    title: listing.title,
+    category: listing.category.toLowerCase(),
+    condition: conditionDbToUi[listing.condition] ?? listing.condition,
+    price: formatCurrencyInput(listing.price.toString()),
+    negotiable: listing.is_negotiable,
+    description: listing.description,
+    photos: listing.images.map((img) => img.url),
+  }));
+
+  const photosChanged =
+    photos.length !== original.photos.length ||
+    photos.some((p, i) => p !== original.photos[i]);
+  const hasChanges =
+    formData.title !== original.title ||
+    formData.category !== original.category ||
+    formData.condition !== original.condition ||
+    formData.price !== original.price ||
+    formData.negotiable !== original.negotiable ||
+    formData.description !== original.description ||
+    photosChanged;
+
+  // "No changes to save yet." hint shown when Save is pressed with no changes.
+  const { showNoChanges, flashNoChanges, hideNoChanges } = useNoChangesHint();
+
   // ── Field Updaters ─────────────────────────────────────────────────────
 
   const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+    hideNoChanges();
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -202,6 +231,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   // ── Photo handlers ─────────────────────────────────────────────────────
 
   const handlePhotosChange = (newPhotos: string[]) => {
+    hideNoChanges();
     // Detect removed photos by comparing with current photos
     const removed = photos.filter((p) => !newPhotos.includes(p));
     for (const removedUrl of removed) {
@@ -237,6 +267,12 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   // ── Submit ─────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
+    if (submitting) return;
+    if (!hasChanges) {
+      flashNoChanges();
+      return;
+    }
+    hideNoChanges();
     if (!validateAll()) return;
 
     setSubmitting(true);
@@ -531,7 +567,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="w-full sm:w-auto"
+                  className={cn("w-full sm:w-auto",
+                    !hasChanges && "cursor-not-allowed opacity-50",
+                    submitting && "cursor-wait"
+                  )}
                 >
                   {submitting ? (
                     <>
@@ -546,6 +585,11 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                   )}
                 </Button>
               </div>
+              {showNoChanges && (
+                <p className="text-xs text-destructive text-right">
+                  No changes to save yet.
+                </p>
+              )}
             </section>
 
           </form>

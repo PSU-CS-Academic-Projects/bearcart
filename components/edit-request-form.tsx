@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +52,7 @@ import {
   parseCurrencyInput,
   shouldBlockCurrencyKey,
 } from "@/lib/currency";
+import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
 
 const CATEGORIES = [
   "Accessories",
@@ -136,6 +137,44 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // ── Change tracking ──────────────────────────────────────────────────────
+  // Snapshot of the values loaded from the DB, captured once on mount.
+  const [original] = useState(() => ({
+    title: request.title,
+    category: request.category,
+    description: request.description ?? "",
+    budget:
+      request.budget_min !== null && request.budget_min > 0
+        ? formatCurrencyInput(String(request.budget_min))
+        : "",
+    negotiable: request.is_negotiable ?? false,
+    urgency: request.urgency,
+    photos: initialExisting.map((img) => img.url),
+  }));
+
+  const photosChanged =
+    photos.length !== original.photos.length ||
+    photos.some((p, i) => p !== original.photos[i]);
+  const hasChanges =
+    title !== original.title ||
+    category !== original.category ||
+    description !== original.description ||
+    budget !== original.budget ||
+    negotiable !== original.negotiable ||
+    urgency !== original.urgency ||
+    photosChanged;
+
+  // "No changes to save yet." hint shown when Save is pressed with no changes.
+  const { showNoChanges, flashNoChanges, hideNoChanges } = useNoChangesHint();
+
+  // Hide the hint as soon as the user edits any field (skips the initial mount).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    hideNoChanges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, category, description, budget, negotiable, urgency, photos]);
+
   const totalPhotos = photos.length;
 
   const handlePhotosChange = (updated: string[]) => {
@@ -164,6 +203,12 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+    if (!hasChanges) {
+      flashNoChanges();
+      return;
+    }
+    hideNoChanges();
     if (!validate()) return;
     setSubmitting(true);
     try {
@@ -460,7 +505,13 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                     Cancel
                   </Button>
                 </Link>
-                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+                <Button 
+                  type="submit"
+                  disabled={submitting} 
+                  className={cn("w-full sm:w-auto",
+                    !hasChanges && "cursor-not-allowed opacity-50",
+                    submitting && "cursor-wait")}
+                  >
                   {submitting ? (
                     <>
                       <SpinnerGap className="size-4 animate-spin" />
@@ -474,6 +525,11 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                   )}
                 </Button>
               </div>
+              {showNoChanges && (
+                <p className="text-xs text-destructive text-right">
+                  No changes to save yet.
+                </p>
+              )}
             </section>
           </form>
         </div>

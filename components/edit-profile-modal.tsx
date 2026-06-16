@@ -21,6 +21,7 @@ import { updateProfile, revertAvatarToGoogle } from "@/lib/actions/profile";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,24 @@ export function EditProfileModal({
     });
   }, []);
 
+  // ── Change tracking ──────────────────────────────────────────────────────
+  // Selecting a new avatar, or editing bio/college, counts as a change.
+  const hasChanges =
+    bio !== profile.bio ||
+    college !== profile.college ||
+    !!avatarBase64;
+
+  // "No changes to save yet." hint shown when Save is pressed with no changes.
+  const { showNoChanges, flashNoChanges, hideNoChanges } = useNoChangesHint();
+
+  // Hide the hint as soon as the user edits anything (skips the initial mount).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    hideNoChanges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bio, college, avatarBase64]);
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,6 +133,12 @@ export function EditProfileModal({
   };
 
   const handleSave = async () => {
+    if (saving) return;
+    if (!hasChanges) {
+      flashNoChanges();
+      return;
+    }
+    hideNoChanges();
     setSaving(true);
     try {
       await updateProfile({
@@ -282,7 +307,13 @@ export function EditProfileModal({
           >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button 
+            onClick={handleSave}
+            disabled={saving}
+            className={cn(!hasChanges && "cursor-not-allowed opacity-50",
+              saving && "cursor-wait"
+            )}
+            >
             {saving ? (
               <>
                 <SpinnerGap className="size-4 animate-spin" />
@@ -293,6 +324,11 @@ export function EditProfileModal({
             )}
           </Button>
         </DialogFooter>
+        {showNoChanges && (
+          <p className="text-xs text-destructive text-right">
+            No changes to save yet.
+          </p>
+        )}
       </DialogContent>
 
       <AlertDialog open={revertConfirmOpen} onOpenChange={setRevertConfirmOpen}>
