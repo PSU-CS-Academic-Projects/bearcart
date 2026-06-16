@@ -23,7 +23,9 @@ export function formatTimeAgo(dateString: string): string {
 /** Get the cover image URL from a listing's images array. */
 export function getCoverImage(listing: ListingWithImages): string {
   const cover = listing.listing_images?.find((img) => img.is_cover);
-  return cover?.image_url ?? listing.listing_images?.[0]?.image_url ?? "";
+  if (cover) return cover.image_url;
+  const sorted = [...(listing.listing_images ?? [])].sort((a, b) => a.order - b.order);
+  return sorted[0]?.image_url ?? "";
 }
 
 /** Build the seller display name from the joined user record. */

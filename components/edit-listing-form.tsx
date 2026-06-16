@@ -241,10 +241,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
 
     setSubmitting(true);
     try {
-      // Separate existing URLs from new base64 photos
-      const existingPhotos = photos.filter((p) => p.startsWith("http"));
-      const newPhotos = photos.filter((p) => p.startsWith("data:"));
-
       await updateListing({
         listingId: listing.id,
         title: formData.title.trim(),
@@ -253,9 +249,8 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
-        existingPhotos,
+        orderedPhotos: photos,
         removedImageIds,
-        newPhotos,
       });
 
       toast.success("Listing updated successfully");

@@ -114,9 +114,15 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     .sort((a, b) => a.order - b.order)
     .map((img) => ({ id: img.id, url: img.image_url }));
 
-  const [existing, setExisting] = useState<ExistingImage[]>(initialExisting);
+  // photos = full ordered list (existing http URLs + new base64 data URLs)
+  const [photos, setPhotos] = useState<string[]>(initialExisting.map((img) => img.url));
   const [removedIds, setRemovedIds] = useState<string[]>([]);
-  const [newPhotos, setNewPhotos] = useState<string[]>([]);
+  // url → id map for existing images, so removals can be reported by id
+  const [imageIdMap] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    initialExisting.forEach((img) => { map[img.url] = img.id; });
+    return map;
+  });
 
   const [title, setTitle] = useState(request.title);
   const [category, setCategory] = useState(request.category);
@@ -130,12 +136,16 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const totalPhotos = existing.length + newPhotos.length;
-  const remainingSlots = Math.max(0, MAX_PHOTOS - existing.length);
+  const totalPhotos = photos.length;
 
-  const removeExisting = (id: string) => {
-    setExisting((prev) => prev.filter((p) => p.id !== id));
-    setRemovedIds((prev) => [...prev, id]);
+  const handlePhotosChange = (updated: string[]) => {
+    // Existing photos dropped from the list get reported for deletion by id.
+    const removed = photos.filter((p) => p.startsWith("http") && !updated.includes(p));
+    removed.forEach((url) => {
+      const id = imageIdMap[url];
+      if (id) setRemovedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    });
+    setPhotos(updated);
   };
 
   const validate = useCallback((): boolean => {
@@ -167,9 +177,8 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
         budget_max: null,
         is_negotiable: negotiable,
         urgency,
-        existingPhotos: existing.map((p) => p.url),
+        orderedPhotos: photos,
         removedImageIds: removedIds,
-        newPhotos,
       });
       toast.success("Request updated!");
       router.push("/requests");
@@ -286,43 +295,12 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 </p>
               </div>
 
-              {existing.length > 0 && (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                  {existing.map((img) => (
-                    <div
-                      key={img.id}
-                      className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
-                    >
-                      <Image
-                        src={img.url}
-                        alt="Existing"
-                        fill
-                        unoptimized
-                        className="object-cover"
-                        sizes="120px"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeExisting(img.id)}
-                        disabled={submitting}
-                        className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-foreground group-hover:opacity-100"
-                        aria-label="Remove photo"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {remainingSlots > 0 && (
-                <PhotoUpload
-                  photos={newPhotos}
-                  onPhotosChange={setNewPhotos}
-                  maxPhotos={remainingSlots}
-                  disabled={submitting}
-                />
-              )}
+              <PhotoUpload
+                photos={photos}
+                onPhotosChange={handlePhotosChange}
+                maxPhotos={MAX_PHOTOS}
+                disabled={submitting}
+              />
             </section>
 
             <div className="h-px bg-border" />

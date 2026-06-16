@@ -443,12 +443,13 @@ export interface UpdateListingInput {
   is_negotiable: boolean;
   category: string;
   condition: "new" | "like_new" | "good" | "fair" | "poor";
-  /** Existing image URLs to keep (in the new order) */
-  existingPhotos: string[];
+  /**
+   * Full photo list in final display order. Existing photos are http(s) URLs,
+   * newly added photos are base64 data URLs. Position 0 becomes the cover.
+   */
+  orderedPhotos: string[];
   /** Image IDs that were removed by the user */
   removedImageIds: string[];
-  /** New base64-encoded images to upload */
-  newPhotos: string[];
 }
 
 export async function updateListing(input: UpdateListingInput) {
@@ -473,12 +474,14 @@ export async function updateListing(input: UpdateListingInput) {
   if (input.price < 1) throw new Error("Price must be at least ₱1");
   if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
 
+  const newPhotos = input.orderedPhotos.filter((p) => p.startsWith("data:"));
+
   // 0. Content moderation — text plus any newly added images.
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
   ]);
-  await moderateImagesOrThrow(input.newPhotos);
+  await moderateImagesOrThrow(newPhotos);
 
   // 1. Update listing fields
   const { error: updateError } = await supabase
@@ -523,31 +526,46 @@ export async function updateListing(input: UpdateListingInput) {
       .in("id", input.removedImageIds);
   }
 
-  // 3. Upload new photos
-  const newImageRows: { listing_id: string; image_url: string; is_cover: boolean; order: number }[] = [];
-  const startOrder = input.existingPhotos.length;
-
-  for (let i = 0; i < input.newPhotos.length; i++) {
-    try {
-      const imageUrl = await uploadImage("listing-images", input.newPhotos[i], `${user.id}/${input.listingId}`);
-      newImageRows.push({
-        listing_id: input.listingId,
-        image_url: imageUrl,
-        is_cover: false, // Will be updated in step 4
-        order: startOrder + i,
-      });
-    } catch (err) {
-      console.error(`Failed to upload new photo ${i}:`, err);
+  // 3. Upload new photos, mapping each base64 entry to its uploaded URL while
+  //    preserving the caller's interleaved display order.
+  const resolvedUrls: string[] = [];
+  for (const photo of input.orderedPhotos) {
+    if (photo.startsWith("data:")) {
+      try {
+        const imageUrl = await uploadImage("listing-images", photo, `${user.id}/${input.listingId}`);
+        resolvedUrls.push(imageUrl);
+      } catch (err) {
+        console.error("Failed to upload new photo:", err);
+      }
+    } else {
+      resolvedUrls.push(photo);
     }
   }
+
+  // Insert rows for the freshly uploaded images (existing rows are reordered below).
+  const { data: existingRows } = await supabase
+    .from("listing_images")
+    .select("id, image_url")
+    .eq("listing_id", input.listingId);
+  const existingUrls = new Set((existingRows ?? []).map((r) => r.image_url));
+
+  const newImageRows = resolvedUrls
+    .map((url, index) => ({ url, index }))
+    .filter(({ url }) => !existingUrls.has(url))
+    .map(({ url, index }) => ({
+      listing_id: input.listingId,
+      image_url: url,
+      is_cover: index === 0,
+      order: index,
+    }));
 
   if (newImageRows.length > 0) {
     await supabase.from("listing_images").insert(newImageRows);
   }
 
-  // 4. Update order and is_cover for all remaining images
-  // existingPhotos are URLs in their new order position
-  // We need to find image IDs by URL and update their order
+  // 4. Update order + is_cover for ALL images from their position in the final
+  //    ordered list. Position 0 is the cover; anything not in the list (should
+  //    not happen) sinks to the end and loses cover status.
   const { data: allImages } = await supabase
     .from("listing_images")
     .select("id, image_url")
@@ -555,18 +573,11 @@ export async function updateListing(input: UpdateListingInput) {
 
   if (allImages) {
     const updatePromises = allImages.map((img) => {
-      // Find position: check existing photos first, then new uploads
-      let order = input.existingPhotos.indexOf(img.image_url);
-      if (order === -1) {
-        // Might be a newly uploaded image
-        const newIdx = newImageRows.findIndex((r) => r.image_url === img.image_url);
-        if (newIdx !== -1) order = startOrder + newIdx;
-      }
-      if (order === -1) order = 999; // Fallback
-
+      const order = resolvedUrls.indexOf(img.image_url);
+      const finalOrder = order === -1 ? 999 : order;
       return supabase
         .from("listing_images")
-        .update({ order, is_cover: order === 0 })
+        .update({ order: finalOrder, is_cover: finalOrder === 0 })
         .eq("id", img.id);
     });
 
