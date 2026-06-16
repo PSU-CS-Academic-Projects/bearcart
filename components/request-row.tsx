@@ -132,7 +132,7 @@ export function RequestRow({
   const [adminConfirm, setAdminConfirm] = useState<"restore" | "takedown" | null>(null);
   const [takedownReason, setTakedownReason] = useState("");
 
-  const canReport = !!currentUserId && !isOwn;
+  const canReport = !!currentUserId && !isOwn && !isAdmin; // && !request.is_delisted, test first
   const showMenu = canReport || isAdmin;
 
   // Close lightbox on Escape key
