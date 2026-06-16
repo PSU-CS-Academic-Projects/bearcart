@@ -17,6 +17,8 @@ import {
   XCircle,
   CaretDown,
   X,
+  CaretLeft,
+  CaretRight,
   Flag,
   Prohibit,
   ArrowCounterClockwise,
@@ -48,7 +50,7 @@ import {
   formatBudget,
   hasPositiveBudget,
   urgencyLabel,
-  getRequestCoverImage,
+  getRequestImageUrls,
 } from "@/lib/request-helpers";
 import { markRequestFulfilled, closeRequest, deleteRequest } from "@/lib/actions/requests";
 import { reportRequest } from "@/lib/actions/reports";
@@ -121,11 +123,14 @@ export function RequestRow({
   const router = useRouter();
   const Icon = categoryIconFor(request.category);
   const isOwn = currentUserId === request.requester_id;
-  const cover = getRequestCoverImage(request);
+  const images = getRequestImageUrls(request);
+  const cover = images[0] ?? "";
+  const hasMultiple = images.length > 1;
   const hasDescription = !!(request.description?.trim());
 
   const [expanded, setExpanded] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
   const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | "delete" | null>(null);
   const [acting, setActing] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -135,15 +140,28 @@ export function RequestRow({
   const canReport = !!currentUserId && !isOwn && !isAdmin; // && !request.is_delisted, test first
   const showMenu = canReport || isAdmin;
 
-  // Close lightbox on Escape key
+  const showPrevImage = () =>
+    setActiveImage((i) => (i - 1 + images.length) % images.length);
+  const showNextImage = () =>
+    setActiveImage((i) => (i + 1) % images.length);
+
+  const openLightbox = () => {
+    setActiveImage(0);
+    setLightboxOpen(true);
+  };
+
+  // Lightbox keyboard controls: Escape closes, ←/→ navigate between images.
   useEffect(() => {
     if (!lightboxOpen) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setLightboxOpen(false);
+      else if (e.key === "ArrowLeft") showPrevImage();
+      else if (e.key === "ArrowRight") showNextImage();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, images.length]);
 
   const runAdminAction = async () => {
     if (!adminConfirm) return;
@@ -219,8 +237,12 @@ export function RequestRow({
         {cover ? (
           <button
             type="button"
-            aria-label={`View image for ${request.title}`}
-            onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }}
+            aria-label={
+              hasMultiple
+                ? `View ${images.length} images for ${request.title}`
+                : `View image for ${request.title}`
+            }
+            onClick={(e) => { e.stopPropagation(); openLightbox(); }}
             className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Image
@@ -231,6 +253,11 @@ export function RequestRow({
               className="object-cover transition-transform hover:scale-105"
               sizes="(max-width: 640px) 64px, 80px"
             />
+            {hasMultiple && (
+              <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                +{images.length - 1}
+              </span>
+            )}
           </button>
         ) : (
           <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
@@ -461,29 +488,83 @@ export function RequestRow({
       </AlertDialog>
 
       {/* Image lightbox */}
-      {lightboxOpen && cover && (
+      {lightboxOpen && images.length > 0 && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
           onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
         >
+          {/* Close */}
           <button
             type="button"
             aria-label="Close image"
             onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
-            className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="absolute right-4 top-4 z-10 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <X className="size-5" />
           </button>
+
+          {/* Prev */}
+          {hasMultiple && (
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
+              className="absolute left-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-4"
+            >
+              <CaretLeft className="size-6" />
+            </button>
+          )}
+
+          {/* Image */}
           <div
-            className="relative max-h-[90vh] max-w-[90vw]"
+            className="relative flex max-h-[90vh] max-w-[90vw] items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={cover}
-              alt={request.title}
+              src={images[activeImage]}
+              alt={`${request.title} — image ${activeImage + 1} of ${images.length}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             />
           </div>
+
+          {/* Next */}
+          {hasMultiple && (
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={(e) => { e.stopPropagation(); showNextImage(); }}
+              className="absolute right-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-4"
+            >
+              <CaretRight className="size-6" />
+            </button>
+          )}
+
+          {/* Dots + counter */}
+          {hasMultiple && (
+            <div
+              className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Go to image ${i + 1}`}
+                    aria-current={i === activeImage}
+                    onClick={(e) => { e.stopPropagation(); setActiveImage(i); }}
+                    className={cn(
+                      "size-2 rounded-full transition-colors",
+                      i === activeImage ? "bg-white" : "bg-white/40 hover:bg-white/60"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-medium tabular-nums text-white/90">
+                {activeImage + 1} / {images.length}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

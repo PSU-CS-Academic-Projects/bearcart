@@ -73,7 +73,9 @@ type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
 
 function getCoverImage(listing: ListingRow): string {
   const cover = listing.listing_images?.find((img) => img.is_cover);
-  return cover?.image_url ?? listing.listing_images?.[0]?.image_url ?? "";
+  if (cover) return cover.image_url;
+  const sorted = [...(listing.listing_images ?? [])].sort((a, b) => a.order - b.order);
+  return sorted[0]?.image_url ?? "";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

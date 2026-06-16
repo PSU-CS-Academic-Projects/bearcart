@@ -317,7 +317,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     | undefined;
                   const cover =
                     imgs?.find((i) => i.is_cover)?.image_url ??
-                    imgs?.[0]?.image_url ??
+                    [...(imgs ?? [])].sort((a, b) => a.order - b.order)[0]?.image_url ??
                     "";
                   return (
                     <ListingCard

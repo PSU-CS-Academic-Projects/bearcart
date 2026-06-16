@@ -24,7 +24,7 @@ export interface ConversationWithDetails {
     title: string;
     price: number;
     status: string;
-    listing_images: { image_url: string; is_cover: boolean }[];
+    listing_images: { image_url: string; is_cover: boolean; order: number }[];
   } | null;
   request: {
     id: string;
@@ -32,7 +32,7 @@ export interface ConversationWithDetails {
     budget_min: number | null;
     budget_max: number | null;
     status: string;
-    request_images: { image_url: string }[];
+    request_images: { image_url: string; order: number }[];
   } | null;
   buyer: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
   seller: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
@@ -63,8 +63,8 @@ export async function getConversations() {
     .select(`
       id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
-      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
       buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
       seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
@@ -105,8 +105,8 @@ export async function getConversationById(
     .select(`
       id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
-      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
       buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
       seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
@@ -560,8 +560,8 @@ export async function getArchivedConversations() {
     .select(`
       id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover ) ),
-      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url ) ),
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
       buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
       seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)

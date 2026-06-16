@@ -74,17 +74,19 @@ function mapConversation(
 
   const listing = conv.listing as {
     id: string; slug?: string; title: string; price: number; status: string;
-    listing_images: { image_url: string; is_cover: boolean }[];
+    listing_images: { image_url: string; is_cover: boolean; order: number }[];
   } | null;
 
   const request = conv.request as {
     id: string; title: string; budget_min: number | null; budget_max: number | null; status: string;
-    request_images: { image_url: string }[];
+    request_images: { image_url: string; order: number }[];
   } | null;
 
+  const sortedListingImages = [...(listing?.listing_images ?? [])].sort((a, b) => a.order - b.order);
   const coverImg = listing?.listing_images?.find((i) => i.is_cover)?.image_url
-    ?? listing?.listing_images?.[0]?.image_url ?? "";
-  const requestCover = request?.request_images?.[0]?.image_url ?? "";
+    ?? sortedListingImages[0]?.image_url ?? "";
+  const requestCover = [...(request?.request_images ?? [])]
+    .sort((a, b) => a.order - b.order)[0]?.image_url ?? "";
 
   return {
     id: conv.id,

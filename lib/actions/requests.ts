@@ -426,12 +426,13 @@ export interface UpdateRequestInput {
   budget_max: number | null;
   is_negotiable: boolean;
   urgency: RequestUrgency;
-  /** Existing image URLs to keep (in new order) */
-  existingPhotos: string[];
+  /**
+   * Full photo list in final display order. Existing photos are http(s) URLs,
+   * newly added photos are base64 data URLs. Position 0 becomes the cover.
+   */
+  orderedPhotos: string[];
   /** Image IDs that were removed by the user */
   removedImageIds: string[];
-  /** New base64-encoded images to upload */
-  newPhotos: string[];
 }
 
 export async function updateRequest(input: UpdateRequestInput): Promise<{ id: string }> {
@@ -470,12 +471,14 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
     throw new Error("Maximum budget cannot exceed ₱999,999");
   }
 
+  const newPhotos = input.orderedPhotos.filter((p) => p.startsWith("data:"));
+
   // 0. Content moderation — text plus any newly added images.
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
   ]);
-  await moderateImagesOrThrow(input.newPhotos);
+  await moderateImagesOrThrow(newPhotos);
 
   // 1. Update fields
   const { error: updateError } = await supabase
@@ -509,22 +512,42 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
     await supabase.from("request_images").delete().in("id", input.removedImageIds);
   }
 
-  // 3. Upload new photos
-  const newRows: { request_id: string; image_url: string; order: number }[] = [];
-  const startOrder = input.existingPhotos.length;
-  for (let i = 0; i < input.newPhotos.length; i++) {
-    try {
-      const url = await uploadRequestImage(user.id, input.requestId, input.newPhotos[i]);
-      newRows.push({ request_id: input.requestId, image_url: url, order: startOrder + i });
-    } catch (err) {
-      console.error(`Failed to upload new photo ${i}:`, err);
+  // 3. Upload new photos, mapping each base64 entry to its uploaded URL while
+  //    preserving the caller's interleaved display order.
+  const resolvedUrls: string[] = [];
+  for (const photo of input.orderedPhotos) {
+    if (photo.startsWith("data:")) {
+      try {
+        const url = await uploadRequestImage(user.id, input.requestId, photo);
+        resolvedUrls.push(url);
+      } catch (err) {
+        console.error("Failed to upload new photo:", err);
+      }
+    } else {
+      resolvedUrls.push(photo);
     }
   }
+
+  // Insert rows for the freshly uploaded images (existing rows are reordered below).
+  const { data: existingRows } = await supabase
+    .from("request_images")
+    .select("id, image_url")
+    .eq("request_id", input.requestId);
+  const existingUrls = new Set((existingRows ?? []).map((r) => r.image_url));
+
+  const newRows = resolvedUrls
+    .filter((url) => !existingUrls.has(url))
+    .map((url) => ({
+      request_id: input.requestId,
+      image_url: url,
+      order: resolvedUrls.indexOf(url),
+    }));
   if (newRows.length > 0) {
     await supabase.from("request_images").insert(newRows);
   }
 
-  // 4. Reorder existing images
+  // 4. Reorder ALL images from their position in the final ordered list.
+  //    Requests have no is_cover column — cover is simply the lowest order.
   const { data: allImages } = await supabase
     .from("request_images")
     .select("id, image_url")
@@ -532,13 +555,11 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
 
   if (allImages) {
     const updates = allImages.map((img) => {
-      let order = input.existingPhotos.indexOf(img.image_url);
-      if (order === -1) {
-        const newIdx = newRows.findIndex((r) => r.image_url === img.image_url);
-        if (newIdx !== -1) order = startOrder + newIdx;
-      }
-      if (order === -1) order = 999;
-      return supabase.from("request_images").update({ order }).eq("id", img.id);
+      const order = resolvedUrls.indexOf(img.image_url);
+      return supabase
+        .from("request_images")
+        .update({ order: order === -1 ? 999 : order })
+        .eq("id", img.id);
     });
     await Promise.all(updates);
   }

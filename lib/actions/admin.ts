@@ -346,8 +346,8 @@ async function buildReportedPosts(
     : "requester:users!requests_requester_id_fkey(full_name)";
   const ownerCol = targetType === "listing" ? "seller_id" : "requester_id";
   const imageSel = targetType === "listing"
-    ? "listing_images(image_url, is_cover)"
-    : "request_images(image_url)";
+    ? "listing_images(image_url, is_cover, \"order\")"
+    : "request_images(image_url, \"order\")";
 
   // The moderation queue must surface two kinds of items:
   //   1. Anything with an open (unresolved) report — the report needs review.
@@ -402,8 +402,9 @@ async function buildReportedPosts(
     // A manually-delisted post with no reports shows an empty report list.
     const postReports = allReps.filter((r) => r.target_id === id);
     const owner = post?.[targetType === "listing" ? "seller" : "requester"] as { full_name?: string } | null;
-    const images = (post?.[targetType === "listing" ? "listing_images" : "request_images"] ?? []) as { image_url: string; is_cover?: boolean }[];
-    const thumb = images.find((i) => i.is_cover)?.image_url ?? images[0]?.image_url ?? null;
+    const images = (post?.[targetType === "listing" ? "listing_images" : "request_images"] ?? []) as { image_url: string; is_cover?: boolean; order?: number }[];
+    const sortedImages = [...images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const thumb = images.find((i) => i.is_cover)?.image_url ?? sortedImages[0]?.image_url ?? null;
 
     return {
       id,
