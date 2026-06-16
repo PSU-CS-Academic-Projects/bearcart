@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 import { logActivity, type ActivityLogType } from "@/lib/activity-log";
+import { processToWebp } from "@/lib/image-processing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,8 +71,6 @@ async function uploadRequestImage(
   const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
   if (!match) throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
 
-  const mimeType = match[1];
-  const extension = match[2] === "jpeg" ? "jpg" : match[2];
   const rawBase64 = match[3];
 
   const binaryString = atob(rawBase64);
@@ -83,12 +82,15 @@ async function uploadRequestImage(
     throw new Error("Image is larger than the 5MB limit.");
   }
 
+  // Flatten transparency → white and convert to WebP before storing.
+  const processed = await processToWebp(bytes, { quality: 85 });
+
   const fileId = crypto.randomUUID();
-  const filePath = `${requesterId}/${requestId}/${fileId}.${extension}`;
+  const filePath = `${requesterId}/${requestId}/${fileId}.webp`;
 
   const { error } = await supabase.storage
     .from("request_images")
-    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
+    .upload(filePath, processed, { contentType: "image/webp", upsert: false });
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
   const { data: urlData } = supabase.storage.from("request_images").getPublicUrl(filePath);

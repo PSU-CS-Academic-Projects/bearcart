@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { sendMessageNotificationEmail } from "@/lib/email";
 import { moderateImageOrThrow } from "@/lib/moderation";
+import { processToWebp } from "@/lib/image-processing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -440,13 +441,11 @@ export async function uploadMessageImage(
   // Moderate before uploading — throws if flagged
   await moderateImageOrThrow(base64Data);
 
-  // Parse the base64 data URL — accept jpeg, png, webp, gif
-  const match = base64Data.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/);
+  // Parse the base64 data URL — accept jpeg, png, webp
+  const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
   if (!match) {
-    throw new Error("Invalid image format. Only JPG, JPEG, PNG, WEBP, and GIF are allowed.");
+    throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
   }
-  const mimeType = match[1];
-  const extension = match[2] === "jpeg" ? "jpg" : match[2];
   const rawBase64 = match[3];
 
   const binaryString = atob(rawBase64);
@@ -459,14 +458,16 @@ export async function uploadMessageImage(
     throw new Error("Image is larger than the 5MB limit.");
   }
 
-  // Path: message-images/<conversation_id>/<message_uuid>/<filename>
+  // Flatten transparency → white and convert to WebP before storing.
+  const processed = await processToWebp(bytes, { quality: 85 });
+
+  // Path: message-images/<conversation_id>/<message_uuid>/image.webp
   const messageUuid = crypto.randomUUID();
-  const filename = `image.${extension}`;
-  const filePath = `${conversationId}/${messageUuid}/${filename}`;
+  const filePath = `${conversationId}/${messageUuid}/image.webp`;
 
   const { error } = await supabase.storage
     .from("message-images")
-    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
+    .upload(filePath, processed, { contentType: "image/webp", upsert: false });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 

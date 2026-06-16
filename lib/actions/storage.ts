@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
-import sharp from "sharp";
+import { processToWebp } from "@/lib/image-processing";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -12,24 +12,6 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
-
-const MIME_TO_SHARP_FORMAT: Record<string, keyof sharp.FormatEnum> = {
-  "image/jpeg": "jpeg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
-
-const OUTPUT_MIME: Record<string, string> = {
-  "image/jpeg": "image/jpeg",
-  "image/png":  "image/png",
-  "image/webp": "image/webp",
-};
-
-const OUTPUT_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,9 +23,10 @@ function base64ToBuffer(base64Data: string): Buffer {
 }
 
 /**
- * Validates the real MIME type from magic bytes, then re-encodes through Sharp
- * to strip any embedded metadata / polyglot payload.
- * Returns { bytes, mimeType, extension } for the sanitised image.
+ * Validates the real MIME type from magic bytes, then runs the image through
+ * Sharp: flattens transparency onto white and re-encodes to WebP (which also
+ * strips any embedded metadata / polyglot payload).
+ * Returns { bytes, mimeType, extension } for the processed image.
  */
 async function validateAndSanitize(
   base64Data: string
@@ -58,25 +41,10 @@ async function validateAndSanitize(
     );
   }
 
-  // ── Sharp re-encode (strips metadata, polyglots, embedded payloads) ──
-  const format = MIME_TO_SHARP_FORMAT[detected.mime];
-  let pipeline = sharp(raw);
+  // ── Flatten transparency → white, re-encode to WebP ──────────────────
+  const bytes = await processToWebp(raw, { quality: 85 });
 
-  if (format === "jpeg") {
-    pipeline = pipeline.jpeg({ quality: 85 });
-  } else if (format === "png") {
-    pipeline = pipeline.png({ compressionLevel: 8 });
-  } else if (format === "webp") {
-    pipeline = pipeline.webp({ quality: 85 });
-  }
-
-  const sanitised = await pipeline.toBuffer();
-
-  return {
-    bytes: sanitised,
-    mimeType: OUTPUT_MIME[detected.mime],
-    extension: OUTPUT_EXT[detected.mime],
-  };
+  return { bytes, mimeType: "image/webp", extension: "webp" };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

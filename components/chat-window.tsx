@@ -82,7 +82,7 @@ interface ChatWindowProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export function ChatWindow({
     if (!file) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setImageError("Only JPG, JPEG, PNG, WEBP, or GIF images are allowed.");
+      setImageError("Only JPG, JPEG, PNG, or WEBP images are allowed.");
       e.target.value = "";
       return;
     }
