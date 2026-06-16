@@ -30,6 +30,7 @@ export interface RequestImageRow {
 
 export interface RequestRow {
   id: string;
+  slug: string;
   requester_id: string;
   title: string;
   description: string | null;
@@ -133,7 +134,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     .from("requests")
     .select(
       `
-      id, requester_id, title, description, category,
+      id, slug, requester_id, title, description, category,
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
@@ -193,7 +194,7 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
+      id, slug, requester_id, title, description, category,
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
@@ -217,7 +218,7 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
+      id, slug, requester_id, title, description, category,
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
@@ -236,6 +237,26 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
   return data as unknown as RequestRow;
 }
 
+export async function getRequestBySlug(slug: string): Promise<RequestRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("requests")
+    .select(`
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
+      request_images ( id, image_url, "order" ),
+      requester:users!requests_requester_id_fkey (
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
+      )
+    `)
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as unknown as RequestRow;
+}
+
 // ─── READ (similar — same category, exclude current) ─────────────────────────
 
 export async function getSimilarRequests(
@@ -247,7 +268,7 @@ export async function getSimilarRequests(
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
+      id, slug, requester_id, title, description, category,
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
@@ -285,7 +306,7 @@ export async function getRequestsByRequester(
   let query = supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
+      id, slug, requester_id, title, description, category,
       budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
@@ -321,7 +342,7 @@ export interface CreateRequestInput {
   photos: string[];
 }
 
-export async function createRequest(input: CreateRequestInput): Promise<{ id: string }> {
+export async function createRequest(input: CreateRequestInput): Promise<{ id: string; slug: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -371,7 +392,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
       is_negotiable: input.is_negotiable,
       urgency: input.urgency,
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (insertErr) throw new Error(`Failed to create request: ${insertErr.message}`);
@@ -391,7 +412,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
     await supabase.from("request_images").insert(imageRows);
   }
 
-  return { id: request.id };
+  return { id: request.id, slug: request.slug as string };
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────

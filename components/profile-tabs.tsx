@@ -327,7 +327,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1.5"
-                                onClick={() => router.push(`/requests/${req.id}/edit`)}
+                                onClick={() => router.push(`/requests/${req.slug ?? req.id}/edit`)}
                               >
                                 <PencilSimple className="size-3.5" />
                                 Edit

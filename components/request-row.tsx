@@ -180,7 +180,7 @@ export function RequestRow({
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/requests/${request.id}/edit`);
+    router.push(`/requests/${request.slug}/edit`);
   };
 
   const handleConfirmAction = async () => {
