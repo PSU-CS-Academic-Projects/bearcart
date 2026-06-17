@@ -5,6 +5,7 @@ import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 import { logActivity, type ActivityLogType } from "@/lib/activity-log";
 import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,9 @@ async function uploadRequestImage(
   base64Data: string
 ): Promise<string> {
   const supabase = await createClient();
+
+  // Rate limit: 10 image uploads per minute per ID.
+  await enforceRateLimit("imageUpload", `user:${requesterId}`);
 
   const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
   if (!match) throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
@@ -131,6 +135,12 @@ export async function getRequests(filters: RequestFilters = {}) {
       : filters.urgency
         ? filters.urgency.split(",").map((u) => u.trim()).filter(Boolean)
         : [];
+
+  // Rate limit text searches (30/min per IP). Plain browsing/pagination is not
+  // limited — only an actual search query counts.
+  if (search && search.trim()) {
+    await enforceRateLimit("search", `ip:${await getClientIp()}`);
+  }
 
   let query = supabase
     .from("requests")
@@ -348,6 +358,9 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Rate limit: 5 new requests per minute per ID.
+  await enforceRateLimit("postRequest", `user:${user.id}`);
 
   const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
   if (banRow?.ban_type === "post" || banRow?.ban_type === "full") {

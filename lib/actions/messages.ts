@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { sendMessageNotificationEmail } from "@/lib/email";
 import { moderateImageOrThrow } from "@/lib/moderation";
 import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -247,6 +248,9 @@ export async function sendMessage(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  // Rate limit: 20 messages per minute per user.
+  await enforceRateLimit("messages", `user:${user.id}`);
+
   const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
   if (banRow?.ban_type === "chat" || banRow?.ban_type === "full") {
     throw new Error("Your account is banned from sending messages.");
@@ -437,6 +441,9 @@ export async function uploadMessageImage(
   if (conv.buyer_id !== user.id && conv.seller_id !== user.id) {
     throw new Error("Not a participant of this conversation");
   }
+
+  // Rate limit: 10 image uploads per minute per user.
+  await enforceRateLimit("imageUpload", `user:${user.id}`);
 
   // Moderate before uploading — throws if flagged
   await moderateImageOrThrow(base64Data);

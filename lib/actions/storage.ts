@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,9 @@ export async function uploadImage(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Rate limit: 10 image uploads per minute per ID.
+  await enforceRateLimit("imageUpload", `user:${user.id}`);
 
   const { bytes, mimeType, extension } = await validateAndSanitize(base64Data);
 

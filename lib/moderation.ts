@@ -20,6 +20,7 @@
 
 import leoProfanity from "leo-profanity";
 import { FILIPINO_PROFANITY, WHITELISTED_WORDS } from "@/lib/moderation-constants";
+import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Initialise leo-profanity once (module-level, runs on first import) ───────
 
@@ -28,6 +29,7 @@ leoProfanity.add(FILIPINO_PROFANITY);
 leoProfanity.addWhitelist(WHITELISTED_WORDS);
 
 // ─── Text moderation (leo-profanity → OpenAI Moderation API) ─────────────────
+// research if IP or ID is better for this
 
 export interface TextField {
   /** Human-readable field name shown in the error, e.g. "title". */
@@ -68,6 +70,9 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   }
 
   console.log("[moderation] leo-profanity passed — calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
+
+  // Rate limit omni-moderation calls (10/min per client).
+  await enforceRateLimit("moderation", `ip:${await getClientIp()}`);
 
   let res: Response;
   try {
@@ -116,9 +121,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   console.log("[moderation] all fields passed — content allowed");
 }
 
-// ─── Image moderation (OpenAI omni-moderation-latest) ────────────────────────
-// omni-moderation supports image_url inputs directly — pass the full data URL.
-
+// ─── Image moderation (omni-moderation-latest) ────────────────────────
 /** Throws if a single base64 image is flagged by OpenAI omni-moderation. */
 export async function moderateImageOrThrow(base64Data: string): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -131,6 +134,9 @@ export async function moderateImageOrThrow(base64Data: string): Promise<void> {
   const dataUrl = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
 
   console.log("[moderation] calling OpenAI omni-moderation-latest for image");
+
+  // Rate limit omni-moderation calls (10/min per client).
+  await enforceRateLimit("moderation", `ip:${await getClientIp()}`);
 
   let res: Response;
   try {

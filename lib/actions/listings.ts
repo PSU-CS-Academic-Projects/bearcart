@@ -5,6 +5,7 @@ import { uploadImage, deleteImage } from "./storage";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 import { logActivity } from "@/lib/activity-log";
+import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,9 @@ export async function createListing(input: CreateListingInput) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Rate limit: 5 new listings per minute per ID.
+  await enforceRateLimit("postListing", `user:${user.id}`);
 
   if (input.photos.length === 0) throw new Error("At least one photo is required");
   if (input.price < 1) throw new Error("Price must be at least ₱1");
@@ -184,6 +188,12 @@ export async function getListings(filters: ListingFilters = {}) {
       : filters.condition
         ? filters.condition.split(",").map((c) => c.trim()).filter(Boolean)
         : [];
+
+  // Rate limit text searches (30/min per IP). Plain browsing/pagination is not
+  // limited — only an actual search query counts.
+  if (search && search.trim()) {
+    await enforceRateLimit("search", `ip:${await getClientIp()}`);
+  }
 
   let query = supabase
     .from("listings")
