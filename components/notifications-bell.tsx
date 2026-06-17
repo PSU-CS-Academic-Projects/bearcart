@@ -25,6 +25,7 @@ import {
   getRecentNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  markAllNotificationsSeen,
   deleteNotification,
   deleteReadNotifications,
   type NotificationRow,
@@ -167,15 +168,26 @@ export function NotificationsBell({
 }: NotificationsBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+
+  const [unseenCount, setUnseenCount] = useState(initialUnreadCount);
   const [notifications, setNotifications] =
     useState<NotificationRow[]>(initialNotifications);
+
+  // Clear the badge the moment the dropdown opens, and persist it.
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next && unseenCount > 0) {
+      setUnseenCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, seen: true })));
+      markAllNotificationsSeen().catch(() => {});
+    }
+  };
 
   // ── Refresh helper ────────────────────────────────────────────────────
   const refresh = useCallback(async () => {
     const fresh = await getRecentNotifications(10);
     setNotifications(fresh);
-    setUnreadCount(fresh.filter((n) => !n.is_read).length);
+    setUnseenCount(fresh.filter((n) => !n.seen).length);
   }, []);
 
   // ── Realtime subscription ─────────────────────────────────────────────
@@ -195,7 +207,8 @@ export function NotificationsBell({
         (payload) => {
           const newNotif = payload.new as NotificationRow;
           setNotifications((prev) => [newNotif, ...prev].slice(0, 10));
-          setUnreadCount((prev) => prev + 1);
+          // A fresh notification is unseen → badge re-appears.
+          setUnseenCount((prev) => prev + 1);
         }
       )
       .on(
@@ -224,7 +237,6 @@ export function NotificationsBell({
       setNotifications((prev) =>
         prev.map((p) => (p.id === n.id ? { ...p, is_read: true } : p))
       );
-      setUnreadCount((c) => Math.max(0, c - 1));
       markNotificationRead(n.id).catch(() => {});
     }
     router.push(getNotificationHref(n));
@@ -234,8 +246,9 @@ export function NotificationsBell({
   const handleDelete = (id: string) => {
     const target = notifications.find((n) => n.id === id);
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    if (target && !target.is_read) {
-      setUnreadCount((c) => Math.max(0, c - 1));
+    // Removing an unseen notification shrinks the badge count.
+    if (target && !target.seen) {
+      setUnseenCount((c) => Math.max(0, c - 1));
     }
     deleteNotification(id).catch(() => {
       // Re-insert on failure
@@ -246,7 +259,6 @@ export function NotificationsBell({
   // ── Mark all as read ──────────────────────────────────────────────────
   const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
     await markAllNotificationsRead();
   };
 
@@ -257,19 +269,20 @@ export function NotificationsBell({
   };
 
   const hasRead = notifications.some((n) => n.is_read);
+  const hasUnread = notifications.some((n) => !n.is_read);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           className="relative flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+          aria-label={`Notifications${unseenCount > 0 ? ` (${unseenCount} unseen)` : ""}`}
         >
           <Bell className="size-5 text-foreground" />
-          {unreadCount > 0 && (
+          {unseenCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-[18px] text-white">
-              {formatBadgeCount(unreadCount)}
+              {formatBadgeCount(unseenCount)}
             </span>
           )}
         </button>
@@ -293,7 +306,7 @@ export function NotificationsBell({
                 Clear read
               </button>
             )}
-            {unreadCount > 0 && (
+            {hasUnread && (
               <button
                 type="button"
                 onClick={handleMarkAllRead}

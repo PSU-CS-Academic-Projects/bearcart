@@ -353,7 +353,7 @@ export function NavbarClient({
             .from("notifications")
             .select("id", { count: "exact", head: true })
             .eq("user_id", userId)
-            .eq("is_read", false);
+            .eq("seen", false);
           setNotifCount(count ?? 0);
         })
       .subscribe();

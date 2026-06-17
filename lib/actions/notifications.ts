@@ -27,6 +27,7 @@ export interface NotificationRow {
   title: string;
   body: string;
   is_read: boolean;
+  seen: boolean;
   read_at: string | null;
   reference_id: string | null;
   reference_table: string | null;
@@ -116,6 +117,36 @@ export async function getUnreadNotificationCount(): Promise<number> {
     .eq("is_read", false);
 
   return count ?? 0;
+}
+
+// "Unseen" = notifications that arrived since the user last opened the panel.
+
+export async function getUnseenNotificationCount(): Promise<number> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("seen", false);
+
+  return count ?? 0;
+}
+
+// ─── MARK ALL AS SEEN (clears the badge; does NOT mark read) ──────────────────
+
+export async function markAllNotificationsSeen(): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  await supabase
+    .from("notifications")
+    .update({ seen: true })
+    .eq("user_id", user.id)
+    .eq("seen", false);
 }
 
 // ─── MARK SINGLE AS READ ──────────────────────────────────────────────────────

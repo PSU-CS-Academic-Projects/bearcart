@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { getUnreadMessageCount } from "@/lib/actions/messages";
 import {
   getRecentNotifications,
-  getUnreadNotificationCount,
+  getUnseenNotificationCount,
   type NotificationRow,
 } from "@/lib/actions/notifications";
 import { NavbarClient } from "@/components/navbar-client";
@@ -44,13 +44,13 @@ export async function Navbar() {
     }
 
     // Fetch initial counts and notifications in parallel
-    const [unreadMsgs, unreadNotifs, recentNotifs] = await Promise.all([
+    const [unreadMsgs, unseenNotifs, recentNotifs] = await Promise.all([
       getUnreadMessageCount(),
-      getUnreadNotificationCount(),
+      getUnseenNotificationCount(),
       getRecentNotifications(10),
     ]);
     initialUnreadCount = unreadMsgs;
-    initialNotificationCount = unreadNotifs;
+    initialNotificationCount = unseenNotifs;
     initialNotifications = recentNotifs;
   }
 
