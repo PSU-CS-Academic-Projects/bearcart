@@ -28,6 +28,12 @@ leoProfanity.loadDictionary("en");
 leoProfanity.add(FILIPINO_PROFANITY);
 leoProfanity.addWhitelist(WHITELISTED_WORDS);
 
+// Debug logging only in dev. Prints user submitted content
+const isDev = process.env.NODE_ENV !== "production";
+function debug(...args: unknown[]): void {
+  if (isDev) console.log(...args);
+}
+
 // ─── Text moderation (leo-profanity → OpenAI Moderation API) ─────────────────
 // research if IP or ID is better for this
 
@@ -43,11 +49,11 @@ interface OpenAIModerationResponse {
 
 /** Throws if any provided text field is flagged as inappropriate. */
 export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
-  console.log("[moderation] moderateTextOrThrow called — fields:", fields.map((f) => `${f.label}="${f.value}"`));
+  debug("[moderation] moderateTextOrThrow called — fields:", fields.map((f) => `${f.label}="${f.value}"`));
 
   const inputs = fields.filter((f) => f.value && f.value.trim().length > 0);
   if (inputs.length === 0) {
-    console.log("[moderation] all fields empty — skipping");
+    debug("[moderation] all fields empty — skipping");
     return;
   }
 
@@ -62,14 +68,14 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   // and never hit the OpenAI API.
   for (const field of inputs) {
     if (leoProfanity.check(field.value)) {
-      console.log(`[moderation] leo-profanity flagged field "${field.label}"`);
+      debug(`[moderation] leo-profanity flagged field "${field.label}"`);
       throw new Error(
         `Your ${field.label} appears to contain inappropriate content. Please revise it and try again.`
       );
     }
   }
 
-  console.log("[moderation] leo-profanity passed — calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
+  debug("[moderation] leo-profanity passed — calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
 
   // Rate limit omni-moderation calls (10/min per client).
   await enforceRateLimit("moderation", `ip:${await getClientIp()}`);
@@ -94,18 +100,17 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "(unreadable)");
-    console.error(`[moderation] OpenAI returned ${res.status} — allowing content. Body: ${body}`);
+    console.error(`[moderation] OpenAI returned ${res.status} — allowing content (fail open).`);
     return; // fail open on API error
   }
 
   const data = (await res.json()) as OpenAIModerationResponse;
-  console.log("[moderation] OpenAI response:", JSON.stringify(data));
+  debug("[moderation] OpenAI response:", JSON.stringify(data));
 
   // results align by index with inputs
   for (let i = 0; i < data.results.length; i++) {
     const result = data.results[i];
-    console.log(`[moderation] result[${i}] (${inputs[i]?.label}): flagged=${result?.flagged}`);
+    debug(`[moderation] result[${i}] (${inputs[i]?.label}): flagged=${result?.flagged}`);
     if (result?.flagged) {
       const categories = Object.entries(result.categories)
         .filter(([, on]) => on)
@@ -118,7 +123,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
       );
     }
   }
-  console.log("[moderation] all fields passed — content allowed");
+  debug("[moderation] all fields passed — content allowed");
 }
 
 // ─── Image moderation (omni-moderation-latest) ────────────────────────
@@ -133,7 +138,7 @@ export async function moderateImageOrThrow(base64Data: string): Promise<void> {
   // Ensure the value is a proper data URL (omni-moderation requires it)
   const dataUrl = base64Data.startsWith("data:") ? base64Data : `data:image/jpeg;base64,${base64Data}`;
 
-  console.log("[moderation] calling OpenAI omni-moderation-latest for image");
+  debug("[moderation] calling OpenAI omni-moderation-latest for image");
 
   // Rate limit omni-moderation calls (10/min per client).
   await enforceRateLimit("moderation", `ip:${await getClientIp()}`);
@@ -157,14 +162,13 @@ export async function moderateImageOrThrow(base64Data: string): Promise<void> {
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => "(unreadable)");
-    console.error(`[moderation] OpenAI image moderation returned ${res.status} — allowing image. Body: ${body}`);
+    console.error(`[moderation] OpenAI image moderation returned ${res.status} — allowing image (fail open).`);
     return; // fail open
   }
 
   const data = (await res.json()) as OpenAIModerationResponse;
   const result = data.results?.[0];
-  console.log("[moderation] image moderation result: flagged=", result?.flagged);
+  debug("[moderation] image moderation result: flagged=", result?.flagged);
 
   if (result?.flagged) {
     const categories = Object.entries(result.categories)
