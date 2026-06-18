@@ -81,7 +81,7 @@ function emailShell({ body, preheader }: LayoutSection): string {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 28px;background-color:${BRAND.wash};border-top:1px solid ${BRAND.border};text-align:center;">
-              <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">BearCart · PSU Exclusive</p>
+              <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">BearCart · PalSU Exclusive</p>
               <p style="margin:0;font-size:11px;color:${BRAND.muted};line-height:1.6;">
                 This is an automated email - please do not reply.<br />
                 &copy; ${new Date().getFullYear()} BearCart - Palawan State University Marketplace
@@ -140,18 +140,18 @@ export async function sendWelcomeEmail({
 
   const body = `
 <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${BRAND.ink};line-height:1.3;">
-  Welcome, ${safeName}! 👋
+  Welcome, ${safeName}! 
 </h1>
 <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:${BRAND.ink};">
   You&rsquo;re now part of BearCart.
-  Connect with classmates and faculty to buy, sell, and find what you need on campus.
+  Connect with students and faculty to buy, sell, and find what you need on campus.
 </p>
 
 <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:${BRAND.ink};">Here&rsquo;s what you can do:</p>
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 28px;">
   <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Post items you want to sell</td></tr>
   <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Browse listings from fellow Bearcats</td></tr>
-  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Message sellers directly</td></tr>
+  <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Message posters directly</td></tr>
   <tr><td style="padding:6px 0;font-size:14px;color:${BRAND.ink};">✅ &nbsp; Post what you&rsquo;re looking for</td></tr>
 </table>
 
@@ -162,9 +162,9 @@ export async function sendWelcomeEmail({
 <div style="border:1px solid ${BRAND.border};border-radius:8px;padding:16px 18px;background-color:${BRAND.wash};">
   <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">Quick reminders:</p>
   <p style="margin:0;font-size:13px;line-height:1.7;color:${BRAND.muted};">
-    → Meetups happen on PSU campus only<br />
-    → Cash on meetup - no shipping<br />
-    → Be respectful 🙏
+    → Keep transactions honest and safe<br />
+    → Your reports help keep our community trustworthy<br />
+    → Be respectful to fellow students and faculty
   </p>
 </div>
 `;

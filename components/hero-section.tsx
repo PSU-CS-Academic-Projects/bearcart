@@ -13,7 +13,7 @@ export function HeroSection() {
               The campus marketplace for PalSU Bearcats.
             </h1>
             <p className="text-base text-gray-500 mb-8 leading-relaxed max-w-md">
-              Buy and sell within the PalSU community — meet safely on campus, no shipping, no hassle. Need something? Post a request and let your fellow Bearcats find it.
+              Buy and sell within the PalSU community - meet safely on campus, no shipping, no hassle. Need something? Post a request and let your fellow Bearcats find it.
             </p>
             <div className="flex flex-wrap gap-3 mb-7">
               <a

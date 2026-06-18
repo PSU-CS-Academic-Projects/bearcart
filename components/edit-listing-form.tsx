@@ -350,7 +350,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         <Label htmlFor="edit-title">Title <span className="text-destructive">*</span></Label>
         <Input
           id="edit-title"
-          placeholder="e.g. Calculus Textbook 10th Edition"
+          placeholder="e.g. Scientific Calculator"
           value={formData.title}
           onChange={(e) => updateField("title", e.target.value)}
           maxLength={TITLE_MAX}
@@ -426,7 +426,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         <Label htmlFor="edit-description">Description <span className="text-destructive">*</span></Label>
         <Textarea
           id="edit-description"
-          placeholder="Describe your item..."
+          placeholder="Describe your listing..."
           value={formData.description}
           onChange={(e) => updateField("description", e.target.value)}
           maxLength={DESC_MAX}

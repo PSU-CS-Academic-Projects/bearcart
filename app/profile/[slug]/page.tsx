@@ -31,7 +31,7 @@ export default async function PublicProfilePage({
 }) {
   const { slug } = await params;
 
-  // ── Auth gate — require PSU login (RA 10173 privacy protection) ────────
+  // ── Auth gate — requires login, privacy for users ────────
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/auth/login?returnTo=/profile/${slug}`);

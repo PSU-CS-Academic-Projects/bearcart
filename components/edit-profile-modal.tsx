@@ -245,7 +245,7 @@ export function EditProfileModal({
             <Label>Name</Label>
             <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
             <p className="text-xs text-muted-foreground">
-              Your name is pulled from your PSU Google account and cannot be changed here.
+              Your name is pulled from your PalSU Google account and cannot be changed here.
             </p>
           </div>
 

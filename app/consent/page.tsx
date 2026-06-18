@@ -172,7 +172,7 @@ As this is currently a student project, a formal Data Protection Officer (DPO) h
 
 We collect only the minimum personal data necessary to operate the marketplace. This includes:
 
-3.1 Data Collected Automatically from Your PSU Google Account
+3.1 Data Collected Automatically from Your PalSU Google Account
 
 • Full name
 • PalSU institutional email address (@psu.palawan.edu.ph)

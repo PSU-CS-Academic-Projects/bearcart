@@ -371,7 +371,7 @@ export function AdminDashboard({
             {/* Reports over time — last 7 days */}
             <div>
               <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Reports — Last 7 Days
+                Reports - Last 7 Days
               </p>
               <ReportsChart data={reportsPerDay} />
             </div>
@@ -616,7 +616,7 @@ export function AdminDashboard({
               <input
                 value={userQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Filter users by name or account ID…"
+                placeholder="Search users by name or account ID…"
                 className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
               {searching && <span className="text-xs text-muted-foreground">…</span>}
@@ -687,7 +687,7 @@ export function AdminDashboard({
             <div className="space-y-2">
               <Label>Ban type</Label>
               <RadioGroup value={banType} onValueChange={(v) => setBanType(v as Exclude<BanType, "none">)} className="space-y-1.5">
-                {([["post", "Post ban — cannot post listings or requests"], ["chat", "Chat ban — cannot send messages"], ["full", "Full ban — both post and chat"]] as const).map(([v, label]) => (
+                {([["post", "Post ban - cannot post listings or requests"], ["chat", "Chat ban - cannot send messages"], ["full", "Full ban - both post and chat"]] as const).map(([v, label]) => (
                   <div key={v} className="flex items-center gap-2">
                     <RadioGroupItem value={v} id={`ban-${v}`} />
                     <Label htmlFor={`ban-${v}`} className="font-normal">{label}</Label>
@@ -785,7 +785,7 @@ function dialogDescription(p: Pending | null): string {
     case "ban": return "The user can still browse and log in, but is blocked from the selected actions. They are notified.";
     case "unban": return "The user regains full access.";
     case "promote": return "This grants the user full admin access to this dashboard and all moderation tools.";
-    case "demote-self": return "You will lose admin access immediately. Only you can do this to your own account — admins cannot demote other admins.";
+    case "demote-self": return "You will lose admin access immediately. Only you can do this to your own account - admins cannot demote other admins.";
     case "msg-dismiss": return "The report will be cleared. The message stays in the conversation.";
     case "msg-delete": return "The message will be soft-deleted and replaced with a deleted placeholder. The report is marked as actioned.";
   }

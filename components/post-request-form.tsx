@@ -206,7 +206,7 @@ export function PostRequestForm() {
               </Label>
               <Input
                 id="req-title"
-                placeholder="e.g. Calculus Textbook 10th Edition by James Stewart"
+                placeholder="e.g. Looking for a used calculator"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={TITLE_MAX}
@@ -252,7 +252,7 @@ export function PostRequestForm() {
               <Label htmlFor="req-desc">Add more details (optional)</Label>
               <Textarea
                 id="req-desc"
-                placeholder="Describe exactly what you need — edition, color, size, condition you'll accept, etc."
+                placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={DESC_MAX}

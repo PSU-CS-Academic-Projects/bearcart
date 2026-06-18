@@ -80,7 +80,7 @@ export default function PrivacyPolicyPage() {
 
             <Section title="3. What Personal Data We Collect">
               <p>We collect only the minimum personal data necessary to operate the marketplace. This includes:</p>
-              <Sub title="3.1 Data Collected Automatically from Your PSU Google Account">
+              <Sub title="3.1 Data Collected Automatically from Your PalSU Google Account">
                 <Ul items={[
                   "Full name",
                   "PalSU institutional email address (@psu.palawan.edu.ph)",

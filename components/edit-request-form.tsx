@@ -402,6 +402,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
               <Label htmlFor="edit-req-desc">Add more details (optional)</Label>
               <Textarea
                 id="edit-req-desc"
+                placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={DESC_MAX}
