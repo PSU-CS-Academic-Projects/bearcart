@@ -101,7 +101,7 @@ export function ProfileListingCard({
                     <DotsThreeVertical className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-40">
                   {onEdit && (
                     <DropdownMenuItem onClick={onEdit}>
                       <PencilSimple className="size-4" />

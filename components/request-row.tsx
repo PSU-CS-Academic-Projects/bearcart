@@ -358,17 +358,17 @@ export function RequestRow({
 
           {showMenu && (
             <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     aria-label="More options"
-                    className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
+                    className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <DotsThreeIcon className="size-4" weight="bold" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuContent align="end" side="right" className="w-44 z-40" >
                   {canReport && (
                     <DropdownMenuItem onClick={() => setReportOpen(true)}>
                       <FlagIcon className="size-4" />

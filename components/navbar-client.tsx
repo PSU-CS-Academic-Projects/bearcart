@@ -197,7 +197,7 @@ function AvatarImage({ user }: { user: NavbarUser }) {
 
 function ProfileDropdown({ user }: { user: NavbarUser }) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
