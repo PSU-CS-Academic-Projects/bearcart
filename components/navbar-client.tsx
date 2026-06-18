@@ -207,7 +207,7 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DropdownMenuLabel className="flex flex-col gap-0.5 pb-2">
           <span className="text-sm font-semibold leading-tight">{user.full_name}</span>
           <span className="text-xs font-normal text-muted-foreground">{user.email}</span>

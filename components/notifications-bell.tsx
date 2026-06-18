@@ -270,7 +270,7 @@ export function NotificationsBell({
 
   const hasRead = notifications.some((n) => n.is_read);
   const hasUnread = notifications.some((n) => !n.is_read);
-
+  
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
@@ -292,6 +292,7 @@ export function NotificationsBell({
         align="end"
         sideOffset={8}
         className="w-80 p-0 sm:w-96"
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
