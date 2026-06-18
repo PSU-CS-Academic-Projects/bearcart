@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
-  PencilSimple, GraduationCap, Chalkboard, Tag,
+  PencilSimple, StudentIcon, ChalkboardTeacherIcon, Tag,
   ShoppingCart, Eye,
 } from "@phosphor-icons/react";
 import { EditProfileModal } from "@/components/edit-profile-modal";
@@ -43,7 +43,7 @@ export function ProfileHeader({
   const [editOpen, setEditOpen] = useState(false);
 
   const roleLabel = profile.role === "faculty" ? "Faculty" : "Student";
-  const RoleIcon = profile.role === "faculty" ? Chalkboard : GraduationCap;
+  const RoleIcon = profile.role === "faculty" ? ChalkboardTeacherIcon : StudentIcon;
 
   const statItems = [
     { label: "Items Listed", value: stats.totalListed, icon: Tag },

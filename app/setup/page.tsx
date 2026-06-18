@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Image from "next/image";
-import { GraduationCap, Chalkboard } from "@phosphor-icons/react";
+import { StudentIcon, ChalkboardTeacherIcon } from "@phosphor-icons/react";
 import { OnboardingSteps } from "@/components/onboarding-steps";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -216,7 +216,7 @@ export default function SetupPage() {
                       : "border-border bg-background hover:border-primary/40 hover:bg-accent",
                   ].join(" ")}
                 >
-                  <GraduationCap
+                  <StudentIcon
                     className={[
                       "size-10",
                       role === "student" ? "text-primary" : "text-muted-foreground",
@@ -242,7 +242,7 @@ export default function SetupPage() {
                       : "border-border bg-background hover:border-primary/40 hover:bg-accent",
                   ].join(" ")}
                 >
-                  <Chalkboard
+                  <ChalkboardTeacherIcon
                     className={[
                       "size-10",
                       role === "faculty" ? "text-primary" : "text-muted-foreground",

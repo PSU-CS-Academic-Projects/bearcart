@@ -15,16 +15,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Handbag,
-  Desktop,
-  TShirt,
-  Hamburger,
-  GraduationCap,
-  Wrench,
-  DotsThree,
-  Faders,
-  Trash,
-  X,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
+  TrashIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import {
   formatCurrencyInput,
@@ -36,13 +36,13 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Accessories", icon: Handbag },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "School Supplies", icon: GraduationCap },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+  { name: "Accessories", icon: HandbagIcon },
+  { name: "Electronics", icon: LaptopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: BackpackIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
 const URGENCIES = [
@@ -191,7 +191,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => set({ search: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -202,7 +202,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => removeCategory(cat)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
@@ -213,7 +213,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => removeUrgency(u)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
@@ -224,7 +224,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -387,7 +387,7 @@ function FiltersContent() {
       {/* Clear */}
       {hasActiveFilters && (
         <Button variant="outline" className="mt-2" onClick={clearAll}>
-          <Trash className="size-4" />
+          <TrashIcon className="size-4" />
           Clear All Filters
         </Button>
       )}
@@ -406,7 +406,7 @@ export function RequestsFiltersSidebar({ className }: RequestsFiltersProps) {
     <aside className={className}>
       <div className="sticky top-24 rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -422,14 +422,14 @@ export function RequestsMobileFiltersSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

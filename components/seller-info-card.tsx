@@ -5,9 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toStorageUrl } from "@/lib/storage-url";
 import {
-  Calendar,
-  GraduationCap,
-  User,
+  CalendarIcon,
+  StudentIcon,
+  UserIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 
@@ -54,7 +54,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
               />
             ) : (
               <span className="text-sm font-semibold text-muted-foreground">
-                {initials || <User className="size-5" />}
+                {initials || <UserIcon className="size-5" />}
               </span>
             )}
           </div>
@@ -72,12 +72,12 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
         <div className="space-y-1.5 border-y py-2.5">
           {seller.college && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <GraduationCap className="size-3.5 shrink-0 text-primary" />
+              <StudentIcon className="size-3.5 shrink-0 text-primary" />
               <span className="truncate">{seller.college}</span>
             </div>
           )}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Calendar className="size-3.5 shrink-0 text-primary" />
+            <CalendarIcon className="size-3.5 shrink-0 text-primary" />
             <span>Member since {formatTimeAgo(seller.created_at)}</span>
           </div>
         </div>

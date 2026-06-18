@@ -648,7 +648,7 @@ export function NavbarClient({
                   <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-3">
                     <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
                       {user.avatar_url ? (
-                        <Image src={toStorageUrl(user.avatar_url)} alt={user.full_name} fill unoptimized className="object-cover ring-2 ring-primary/30" />
+                        <Image src={toStorageUrl(user.avatar_url)} alt={user.full_name} fill unoptimized sizes="40px" className="object-cover ring-2 ring-primary/30" />
                       ) : (
                         <span className="flex size-full items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
                           {getInitials(user)}

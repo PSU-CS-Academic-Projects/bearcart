@@ -73,7 +73,7 @@ export function ListingCard({
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[oklch(0.5_0_0)]">
             <div className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[oklch(0.92_0_0)]">
               {sellerAvatar ? (
-                <Image src={toStorageUrl(sellerAvatar)} alt={displayName} fill unoptimized className="object-cover" />
+                <Image src={toStorageUrl(sellerAvatar)} alt={displayName} fill unoptimized sizes="16px" className="object-cover" />
               ) : (
                 <User className="size-full p-0.5" />
               )}

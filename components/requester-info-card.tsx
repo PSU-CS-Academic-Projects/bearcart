@@ -5,9 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toStorageUrl } from "@/lib/storage-url";
 import {
-  Calendar,
-  GraduationCap,
-  User,
+  CalendarIcon,
+  StudentIcon,
+  UserIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import { getRequesterFullName } from "@/lib/request-helpers";
@@ -41,7 +41,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
               />
             ) : (
               <span className="text-lg font-semibold text-muted-foreground">
-                {initials || <User className="size-6" />}
+                {initials || <UserIcon className="size-6" />}
               </span>
             )}
           </div>
@@ -56,12 +56,12 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
         <div className="space-y-2 border-y py-4">
           {requester.college && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <GraduationCap className="size-4 shrink-0 text-primary" />
+              <StudentIcon className="size-4 shrink-0 text-primary" />
               <span className="truncate">{requester.college}</span>
             </div>
           )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="size-4 shrink-0 text-primary" />
+            <CalendarIcon className="size-4 shrink-0 text-primary" />
             <span>Member since {formatTimeAgo(requester.created_at)}</span>
           </div>
         </div>

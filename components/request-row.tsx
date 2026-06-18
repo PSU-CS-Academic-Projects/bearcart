@@ -4,24 +4,24 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  Handbag,
-  Desktop,
-  TShirt,
-  Hamburger,
-  GraduationCap,
-  Wrench,
-  DotsThree,
-  Package,
-  PencilSimple,
-  Check,
-  XCircle,
-  CaretDown,
-  X,
-  CaretLeft,
-  CaretRight,
-  Flag,
-  Prohibit,
-  ArrowCounterClockwise,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  PackageIcon,
+  PencilSimpleIcon,
+  CheckIcon,
+  XCircleIcon,
+  CaretDownIcon,
+  XIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  FlagIcon,
+  ProhibitIcon,
+  ArrowCounterClockwiseIcon,
   Trash,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -61,18 +61,19 @@ import {
 } from "@/lib/actions/admin";
 import type { RequestRow as RequestRowType, RequestUrgency } from "@/lib/actions/requests";
 import { toast } from "sonner";
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr";
 
 // ─── Category Icon Lookup ─────────────────────────────────────────────────────
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Accessories: Handbag,
-  Electronics: Desktop,
+  Accessories: HandbagIcon,
+  Electronics: LaptopIcon,
 
-  Clothing: TShirt,
-  Food: Hamburger,
-  "School Supplies": GraduationCap,
-  Services: Wrench,
-  Others: DotsThree,
+  Clothing: TShirtIcon,
+  Food: HamburgerIcon,
+  "School Supplies": BackpackIcon,
+  Services: WrenchIcon,
+  Others: DotsThreeIcon,
 };
 
 function categoryIconFor(category: string): React.ComponentType<{ className?: string }> {
@@ -80,7 +81,7 @@ function categoryIconFor(category: string): React.ComponentType<{ className?: st
   const found = Object.entries(CATEGORY_ICONS).find(
     ([k]) => k.toLowerCase() === category.toLowerCase()
   );
-  return found ? found[1] : Package;
+  return found ? found[1] : PackageIcon;
 }
 
 // ─── Urgency Badge ────────────────────────────────────────────────────────────
@@ -280,13 +281,13 @@ export function RequestRow({
             </h3>
             {request.is_delisted && (
               <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-                <Prohibit className="size-3" />
+                <ProhibitIcon className="size-3" />
                 Delisted
               </span>
             )}
           </div>
           {hasDescription && (
-            <CaretDown
+            <CaretDownIcon
               className={cn(
                 "size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
                 expanded && "rotate-180"
@@ -327,19 +328,19 @@ export function RequestRow({
           ) : variant === "owner" || isOwn ? (
             <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={handleEdit}>
-                <PencilSimple className="size-3" />
+                <PencilSimpleIcon className="size-3" />
                 Edit
               </Button>
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("fulfilled"); }}>
-                <Check className="size-3 text-primary" />
+                <CheckIcon className="size-3 text-primary" />
                 Fulfilled
               </Button>
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("closed"); }}>
-                <XCircle className="size-3 text-muted-foreground" />
+                <XCircleIcon className="size-3 text-muted-foreground" />
                 Close
               </Button>
               <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmAction("delete"); }}>
-                <Trash className="size-3" />
+                <TrashIcon className="size-3" />
                 Delete
               </Button>
             </div>
@@ -364,19 +365,19 @@ export function RequestRow({
                     aria-label="More options"
                     className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
                   >
-                    <DotsThree className="size-4" weight="bold" />
+                    <DotsThreeIcon className="size-4" weight="bold" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   {canReport && (
                     <DropdownMenuItem onClick={() => setReportOpen(true)}>
-                      <Flag className="size-4" />
+                      <FlagIcon className="size-4" />
                       Report request
                     </DropdownMenuItem>
                   )}
                   {isAdmin && request.is_delisted && (
                     <DropdownMenuItem onClick={() => setAdminConfirm("restore")}>
-                      <ArrowCounterClockwise className="size-4" />
+                      <ArrowCounterClockwiseIcon className="size-4" />
                       Restore (admin)
                     </DropdownMenuItem>
                   )}
@@ -385,7 +386,7 @@ export function RequestRow({
                       className="text-destructive focus:text-destructive"
                       onClick={() => setAdminConfirm("takedown")}
                     >
-                      <Trash className="size-4" />
+                      <TrashIcon className="size-4" />
                       Take down (admin)
                     </DropdownMenuItem>
                   )}
@@ -504,7 +505,7 @@ export function RequestRow({
             onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
             className="absolute right-4 top-4 z-10 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
-            <X className="size-5" />
+            <XIcon className="size-5" />
           </button>
 
           {/* Prev */}
@@ -515,7 +516,7 @@ export function RequestRow({
               onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
               className="absolute left-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-4"
             >
-              <CaretLeft className="size-6" />
+              <CaretLeftIcon className="size-6" />
             </button>
           )}
 
@@ -539,7 +540,7 @@ export function RequestRow({
               onClick={(e) => { e.stopPropagation(); showNextImage(); }}
               className="absolute right-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-4"
             >
-              <CaretRight className="size-6" />
+              <CaretRightIcon className="size-6" />
             </button>
           )}
 

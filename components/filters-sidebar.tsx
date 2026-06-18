@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/sheet";
 import {
   HandbagIcon,
-  DesktopIcon,
+  LaptopIcon,
   TShirtIcon,
   HamburgerIcon,
-  GraduationCapIcon,
+  BackpackIcon,
   WrenchIcon,
   DotsThreeIcon,
   FadersIcon,
@@ -31,10 +31,10 @@ import {
 
 const CATEGORIES = [
   { name: "Accessories", icon: HandbagIcon },
-  { name: "Electronics", icon: DesktopIcon },
+  { name: "Electronics", icon: LaptopIcon },
   { name: "Clothing", icon: TShirtIcon },
   { name: "Food", icon: HamburgerIcon },
-  { name: "School Supplies", icon: GraduationCapIcon },
+  { name: "School Supplies", icon: BackpackIcon },
   { name: "Services", icon: WrenchIcon },
   { name: "Others", icon: DotsThreeIcon },
 ];

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HamburgerIcon, GraduationCapIcon } from "@phosphor-icons/react/dist/ssr";
+import { HamburgerIcon, BackpackIcon } from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
   return (
@@ -85,7 +85,7 @@ export function HeroSection() {
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Food</span>
               </a>
               <a href="/listings?category=supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <GraduationCapIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
+                <BackpackIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
               </a>
               <a href="/listings?category=services" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
