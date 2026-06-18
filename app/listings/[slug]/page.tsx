@@ -8,6 +8,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { ListingActions } from "@/components/listing-actions";
 import { ReportListingModal } from "@/components/report-listing-modal";
 import { ListingAdminControls } from "@/components/listing-admin-controls";
+import { ListingOwnerControls } from "@/components/listing-owner-controls";
 import { ListingCard } from "@/components/listing-card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -264,30 +265,44 @@ export default async function ListingDetailPage({ params }: PageProps) {
 
               {seller && <SellerInfoCard seller={seller} />}
 
-              {/* Admin delisted indicator + controls */}
-              {isAdmin && (
-                <>
-                  {listing.is_delisted && (
-                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs font-medium text-destructive">
-                      <Warning className="size-4 shrink-0" />
-                      This listing is currently delisted (hidden from regular users).
-                    </div>
-                  )}
-                  <ListingAdminControls listingId={listing.id} isDelisted={listing.is_delisted} />
-                </>
-              )}
+              {(() => {
+                const isOwner = !!user && user.id === listing.seller_id;
+                return (
+                  <>
+                    {/* Owner (including an admin viewing their own listing) sees a
+                        self-removal control instead of the admin take-down. */}
+                    {isOwner && (
+                      <>
+                        {listing.is_delisted && (
+                          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs font-medium text-amber-700">
+                            <Warning className="size-4 shrink-0" />
+                            This listing has been delisted by an admin and is hidden from other users.
+                          </div>
+                        )}
+                        <ListingOwnerControls listingId={listing.id} />
+                      </>
+                    )}
 
-              {/* Owner sees their own delisted listing flagged here too */}
-              {!isAdmin && listing.is_delisted && user?.id === listing.seller_id && (
-                <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs font-medium text-amber-700">
-                  <Warning className="size-4 shrink-0" />
-                  This listing has been delisted by an admin and is hidden from other users.
-                </div>
-              )}
+                    {/* Admin take-down only applies to listings the admin does NOT own. */}
+                    {isAdmin && !isOwner && (
+                      <>
+                        {listing.is_delisted && (
+                          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs font-medium text-destructive">
+                            <Warning className="size-4 shrink-0" />
+                            This listing is currently delisted (hidden from regular users).
+                          </div>
+                        )}
+                        <ListingAdminControls listingId={listing.id} isDelisted={listing.is_delisted} />
+                      </>
+                    )}
 
-              {!isAdmin && (
-                <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
-              )}
+                    {/* Regular (non-owner, non-admin) viewers can report. */}
+                    {!isAdmin && !isOwner && (
+                      <ReportListingModal listingId={listing.id} posterId={listing.seller_id} />
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </section>
 

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-server";
 import { getPublicProfile, getPublicProfileBySlug, getProfileStats } from "@/lib/actions/profile";
 import { getListingsBySeller } from "@/lib/actions/listings";
 import { getRequestsByRequester } from "@/lib/actions/requests";
+import { isCurrentUserAdmin } from "@/lib/actions/admin";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -50,11 +51,12 @@ export default async function PublicProfilePage({
   if (user.id === profile.id) redirect("/profile");
 
   // ── Fetch data ─────────────────────────────────────────────────────────
-  const [stats, activeListings, soldListings, requests] = await Promise.all([
+  const [stats, activeListings, soldListings, requests, isAdmin] = await Promise.all([
     getProfileStats(profile.id),
     getListingsBySeller(profile.id, "available"),
     getListingsBySeller(profile.id, "sold"),
     getRequestsByRequester(profile.id, "open"),
+    isCurrentUserAdmin(),
   ]);
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ export default async function PublicProfilePage({
             soldListings={soldListings}
             requests={requests}
             currentUserId={user.id}
+            isAdmin={isAdmin}
           />
         </div>
       </main>
