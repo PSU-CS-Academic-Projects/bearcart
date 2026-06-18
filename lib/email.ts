@@ -28,6 +28,9 @@ const BRAND = {
   bg: "#ffffff",
   wash: "#f9f7f3",
   font: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  // Brand wordmark font — matches the navbar (Plus Jakarta Sans), with system fallback
+  // for email clients that won't load the web font.
+  brandFont: "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 } as const;
 
 // ─── Shared Layout ───────────────────────────────────────────────────────────
@@ -60,7 +63,7 @@ function emailShell({ body, preheader }: LayoutSection): string {
                 <tr>
                   <td valign="middle" style="vertical-align:middle;">
                     <img src="${LOGO_URL}" alt="BearCart" width="36" height="36" style="display:inline-block;vertical-align:middle;border:0;" />
-                    <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:20px;font-weight:700;color:${BRAND.primary};letter-spacing:-0.3px;">BearCart</span>
+                    <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-family:${BRAND.brandFont};font-size:20px;font-weight:800;color:${BRAND.ink};letter-spacing:-0.5px;">BearCart</span>
                     <span style="display:block;margin-left:46px;margin-top:2px;font-size:12px;color:${BRAND.muted};font-weight:500;">PalSU Marketplace</span>
                   </td>
                 </tr>

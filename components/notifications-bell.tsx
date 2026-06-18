@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,10 +19,8 @@ import {
   ArrowCounterClockwise,
   Warning,
 } from "@phosphor-icons/react";
-import { supabase } from "@/lib/supabase";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
-  getRecentNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   markAllNotificationsSeen,
@@ -156,22 +154,25 @@ function NotificationItem({
 // ─── Main Bell Component ──────────────────────────────────────────────────────
 
 interface NotificationsBellProps {
-  userId: string;
-  initialUnreadCount: number;
-  initialNotifications: NotificationRow[];
+  /** Shared notification list, owned by NavbarClient (single realtime channel). */
+  notifications: NotificationRow[];
+  setNotifications: Dispatch<SetStateAction<NotificationRow[]>>;
+  /** Shared unseen badge count, owned by NavbarClient. */
+  unseenCount: number;
+  setUnseenCount: Dispatch<SetStateAction<number>>;
+  /** Re-fetch the list + exact unseen count from the server. */
+  refresh: () => Promise<void>;
 }
 
 export function NotificationsBell({
-  userId,
-  initialUnreadCount,
-  initialNotifications,
+  notifications,
+  setNotifications,
+  unseenCount,
+  setUnseenCount,
+  refresh,
 }: NotificationsBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  const [unseenCount, setUnseenCount] = useState(initialUnreadCount);
-  const [notifications, setNotifications] =
-    useState<NotificationRow[]>(initialNotifications);
 
   // Clear the badge the moment the dropdown opens, and persist it.
   const handleOpenChange = (next: boolean) => {
@@ -182,53 +183,6 @@ export function NotificationsBell({
       markAllNotificationsSeen().catch(() => {});
     }
   };
-
-  // ── Refresh helper ────────────────────────────────────────────────────
-  const refresh = useCallback(async () => {
-    const fresh = await getRecentNotifications(10);
-    setNotifications(fresh);
-    setUnseenCount(fresh.filter((n) => !n.seen).length);
-  }, []);
-
-  // ── Realtime subscription ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!userId) return;
-
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as NotificationRow;
-          setNotifications((prev) => [newNotif, ...prev].slice(0, 10));
-          // A fresh notification is unseen → badge re-appears.
-          setUnseenCount((prev) => prev + 1);
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId, refresh]);
 
   // ── Item click ────────────────────────────────────────────────────────
   const handleItemClick = async (n: NotificationRow) => {

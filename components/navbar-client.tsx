@@ -36,7 +36,7 @@ import { signInWithGoogle, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
-import type { NotificationRow } from "@/lib/actions/notifications";
+import { getRecentNotifications, getUnseenNotificationCount, type NotificationRow } from "@/lib/actions/notifications";
 import { toStorageUrl } from "@/lib/storage-url";
 
 
@@ -280,7 +280,12 @@ export function NavbarClient({
   // ── Other state ────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [notifCount, setNotifCount] = useState(initialNotificationCount);
+  // Notification realtime state lives here as the single source of truth and is
+  // shared with <NotificationsBell> via props. This lets the whole navbar use
+  // ONE realtime channel instead of the bell and the navbar each opening their
+  // own subscription to the notifications table.
+  const [notifications, setNotifications] = useState<NotificationRow[]>(initialNotifications);
+  const [unseenCount, setUnseenCount] = useState(initialNotificationCount);
 
   const desktopSearchRef = useRef<HTMLDivElement>(null);
 
@@ -340,26 +345,7 @@ export function NavbarClient({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  // ── Realtime: notifications ────────────────────────────────────────────
   const userId = user?.id;
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`navbar-notifications:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        () => setNotifCount((c) => c + 1))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        async () => {
-          const { count } = await supabase
-            .from("notifications")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .eq("seen", false);
-          setNotifCount(count ?? 0);
-        })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
 
   // ── Recompute unread conversation count ─────────────────────────────────
   // Counts distinct conversations with at least one unread message from the other person,
@@ -381,11 +367,35 @@ export function NavbarClient({
     } catch { /* non-critical */ }
   }, []);
 
-  // ── Realtime: messages ─────────────────────────────────────────────────
+  //  Refresh the shared notification list + exact unseen count 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const [fresh, count] = await Promise.all([
+        getRecentNotifications(10),
+        getUnseenNotificationCount(),
+      ]);
+      setNotifications(fresh);
+      setUnseenCount(count);
+    } catch { /* non-critical */ }
+  }, []);
+
+  //  Realtime: ONE channel for both notifications and messages 
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`navbar-messages:${userId}`)
+      .channel(`navbar-realtime:${userId}`)
+      // ── Notifications ──
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const newNotif = payload.new as NotificationRow;
+          setNotifications((prev) =>
+            prev.some((n) => n.id === newNotif.id) ? prev : [newNotif, ...prev].slice(0, 10)
+          );
+          setUnseenCount((c) => c + 1);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => { refreshNotifications(); })
+      // ── Messages ──
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
         async (payload) => {
           const msg = payload.new as { sender_id: string; is_read: boolean; conversation_id: string };
@@ -407,7 +417,7 @@ export function NavbarClient({
         () => refetchUnreadCount(userId))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [userId, refetchUnreadCount]);
+  }, [userId, refetchUnreadCount, refreshNotifications]);
 
   useEffect(() => {
     if (!userId) return;
@@ -525,9 +535,11 @@ export function NavbarClient({
               </Button>
               <MessagesIcon count={unreadCount} />
               <NotificationsBell
-                userId={user.id}
-                initialUnreadCount={initialNotificationCount}
-                initialNotifications={initialNotifications}
+                notifications={notifications}
+                setNotifications={setNotifications}
+                unseenCount={unseenCount}
+                setUnseenCount={setUnseenCount}
+                refresh={refreshNotifications}
               />
               <ProfileDropdown user={user} />
             </>
@@ -686,9 +698,9 @@ export function NavbarClient({
                       <Bell className="size-4" />
                       Notifications
                     </span>
-                    {notifCount > 0 && (
+                    {unseenCount > 0 && (
                       <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
-                        {formatUnreadCount(notifCount)}
+                        {formatUnreadCount(unseenCount)}
                       </span>
                     )}
                   </Link>
