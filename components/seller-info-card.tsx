@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   Calendar,
   GraduationCap,
@@ -45,7 +46,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
           <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
             {seller.avatar_url ? (
               <Image
-                src={seller.avatar_url}
+                src={toStorageUrl(seller.avatar_url)}
                 alt={displayName}
                 fill
                 unoptimized

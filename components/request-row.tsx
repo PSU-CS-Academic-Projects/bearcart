@@ -52,6 +52,7 @@ import {
   urgencyLabel,
   getRequestImageUrls,
 } from "@/lib/request-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 import { markRequestFulfilled, closeRequest, deleteRequest } from "@/lib/actions/requests";
 import { reportRequest } from "@/lib/actions/reports";
 import {
@@ -138,7 +139,10 @@ export function RequestRow({
   const [takedownReason, setTakedownReason] = useState("");
 
   const canReport = !!currentUserId && !isOwn && !isAdmin; // && !request.is_delisted, test first
-  const showMenu = canReport || isAdmin;
+  // Admin take-down only applies to other people's requests. Restore stays
+  // available for any delisted request (incl. an admin's own auto-delisted one).
+  const canTakedown = isAdmin && !isOwn;
+  const showMenu = canReport || (isAdmin && (request.is_delisted || !isOwn));
 
   const showPrevImage = () =>
     setActiveImage((i) => (i - 1 + images.length) % images.length);
@@ -246,7 +250,7 @@ export function RequestRow({
             className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <Image
-              src={cover}
+              src={toStorageUrl(cover)}
               alt={request.title}
               fill
               unoptimized
@@ -376,7 +380,7 @@ export function RequestRow({
                       Restore (admin)
                     </DropdownMenuItem>
                   )}
-                  {isAdmin && (
+                  {canTakedown && (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => setAdminConfirm("takedown")}
@@ -521,7 +525,7 @@ export function RequestRow({
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={images[activeImage]}
+              src={toStorageUrl(images[activeImage])}
               alt={`${request.title} — image ${activeImage + 1} of ${images.length}`}
               className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             />

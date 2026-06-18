@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { reportMessage } from "@/lib/actions/reports";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +40,6 @@ import {
   ChatCircleDots,
   SpinnerGap,
   WarningCircle,
-  ShoppingBag,
   DotsThree,
   ProhibitInset,
   Flag,
@@ -318,7 +318,7 @@ export function ChatWindow({
           <div className="relative size-10 overflow-hidden rounded-full bg-muted">
             {conversation.otherUser.avatar ? (
               <Image
-                src={conversation.otherUser.avatar}
+                src={toStorageUrl(conversation.otherUser.avatar)}
                 alt={conversation.otherUser.name}
                 fill
                 className="object-cover"
@@ -375,7 +375,7 @@ export function ChatWindow({
                     className="shrink-0 cursor-pointer"
                     aria-label="View listing image">
                     <Image
-                      src={listing.thumbnail}
+                      src={toStorageUrl(listing.thumbnail)}
                       alt={listing.title}
                       width={56}
                       height={56}
@@ -385,7 +385,7 @@ export function ChatWindow({
                   </button>
                 ) : (
                   <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <ShoppingBag className="size-6 text-muted-foreground/60" />
+                    <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -428,7 +428,7 @@ export function ChatWindow({
                   className="shrink-0 cursor-pointer"
                   aria-label="View request image">
                   <Image
-                    src={request.thumbnail}
+                    src={toStorageUrl(request.thumbnail)}
                     alt={request.title}
                     width={56}
                     height={56}
@@ -438,7 +438,7 @@ export function ChatWindow({
                 </button>
               ) : (
                 <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <ShoppingBag className="size-6 text-muted-foreground/60" />
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                 </div>
               )}
               <div className="min-w-0 flex-1">
@@ -584,7 +584,7 @@ export function ChatWindow({
                                 ) : (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
-                                    src={message.imageUrl ?? ""}
+                                    src={toStorageUrl(message.imageUrl ?? "")}
                                     alt="Sent image"
                                     className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
                                     loading="lazy"
@@ -671,7 +671,7 @@ export function ChatWindow({
             <div className="relative inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={pendingImage.dataUrl}
+                src={toStorageUrl(pendingImage.dataUrl)}
                 alt="Pending attachment"
                 className="h-24 w-24 rounded-lg border object-cover"
               />
@@ -758,7 +758,7 @@ export function ChatWindow({
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxUrl}
+            src={toStorageUrl(lightboxUrl)}
             alt="Full size"
             className="max-h-full max-w-full object-contain"
             onClick={(e) => e.stopPropagation()}

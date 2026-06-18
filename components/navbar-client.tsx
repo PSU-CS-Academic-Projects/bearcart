@@ -37,6 +37,7 @@ import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import type { NotificationRow } from "@/lib/actions/notifications";
+import { toStorageUrl } from "@/lib/storage-url";
 
 
 
@@ -97,7 +98,7 @@ function PeopleDropdownContent({
           <div className="flex items-center gap-3">
             {person.avatar_url ? (
               <Image
-                src={person.avatar_url}
+                src={toStorageUrl(person.avatar_url)}
                 alt={person.full_name}
                 width={32}
                 height={32}
@@ -176,7 +177,7 @@ function AvatarImage({ user }: { user: NavbarUser }) {
   if (user.avatar_url) {
     return (
       <Image
-        src={user.avatar_url}
+        src={toStorageUrl(user.avatar_url)}
         alt={user.full_name}
         width={32}
         height={32}
@@ -647,7 +648,7 @@ export function NavbarClient({
                   <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-3">
                     <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
                       {user.avatar_url ? (
-                        <Image src={user.avatar_url} alt={user.full_name} fill unoptimized className="object-cover ring-2 ring-primary/30" />
+                        <Image src={toStorageUrl(user.avatar_url)} alt={user.full_name} fill unoptimized className="object-cover ring-2 ring-primary/30" />
                       ) : (
                         <span className="flex size-full items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
                           {getInitials(user)}

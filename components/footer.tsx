@@ -22,6 +22,8 @@ const categories = [
   { name: "Clothing", href: "/listings?category=Clothing" },
   { name: "Food", href: "/listings?category=Food" },
   { name: "Services", href: "/listings?category=Services" },
+  { name: "School Supplies", href: "/listings?category=School%20Supplies" },
+  { name: "Others", href: "/listings?category=Others" },
 ];
 
 export function Footer() {

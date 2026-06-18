@@ -1,12 +1,12 @@
 /**
- * Content moderation helpers. Server-only — imported exclusively by "use server"
+ * Content moderation helpers. Server-only - imported exclusively by "use server"
  * action modules, so the API keys below never reach the client bundle.
  *
  * - Text  → leo-profanity (sync, no API key) → OpenAI omni-moderation-latest
  * - Image → OpenAI omni-moderation-latest (image_url input with data URL)
  *
  * Behaviour:
- * - leo-profanity runs first and throws immediately on a match — OpenAI is
+ * - leo-profanity runs first and throws immediately on a match - OpenAI is
  *   never called when local profanity detection fires.
  * - A genuinely flagged item throws an Error with a user-facing message. The
  *   server actions let this bubble up to the form, which shows it as a toast.
@@ -15,7 +15,7 @@
  *   Real flagged content always fails closed.
  */
 
-// (no "server-only" import — keep this module dependency-free; it is only ever
+// (no "server-only" import - keep this module dependency-free; it is only ever
 //  imported by server action files.)
 
 import leoProfanity from "leo-profanity";
@@ -49,17 +49,17 @@ interface OpenAIModerationResponse {
 
 /** Throws if any provided text field is flagged as inappropriate. */
 export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
-  debug("[moderation] moderateTextOrThrow called — fields:", fields.map((f) => `${f.label}="${f.value}"`));
+  debug("[moderation] moderateTextOrThrow called - fields:", fields.map((f) => `${f.label}="${f.value}"`));
 
   const inputs = fields.filter((f) => f.value && f.value.trim().length > 0);
   if (inputs.length === 0) {
-    debug("[moderation] all fields empty — skipping");
+    debug("[moderation] all fields empty - skipping");
     return;
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("[moderation] OPENAI_API_KEY not set — skipping text moderation");
+    console.warn("[moderation] OPENAI_API_KEY not set - skipping text moderation");
     return; // fail open
   }
 
@@ -75,7 +75,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
     }
   }
 
-  debug("[moderation] leo-profanity passed — calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
+  debug("[moderation] leo-profanity passed - calling OpenAI omni-moderation-latest with", inputs.length, "input(s)");
 
   // Rate limit omni-moderation calls (10/min per client).
   await enforceRateLimit("moderation", `ip:${await getClientIp()}`);
@@ -95,12 +95,12 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
       }),
     });
   } catch (err) {
-    console.error("[moderation] OpenAI request failed — allowing content:", err);
+    console.error("[moderation] OpenAI request failed - allowing content:", err);
     return; // fail open on network error
   }
 
   if (!res.ok) {
-    console.error(`[moderation] OpenAI returned ${res.status} — allowing content (fail open).`);
+    console.error(`[moderation] OpenAI returned ${res.status} - allowing content (fail open).`);
     return; // fail open on API error
   }
 
@@ -123,7 +123,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
       );
     }
   }
-  debug("[moderation] all fields passed — content allowed");
+  debug("[moderation] all fields passed - content allowed");
 }
 
 // ─── Image moderation (omni-moderation-latest) ────────────────────────
@@ -131,7 +131,7 @@ export async function moderateTextOrThrow(fields: TextField[]): Promise<void> {
 export async function moderateImageOrThrow(base64Data: string): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("[moderation] OPENAI_API_KEY not set — skipping image moderation");
+    console.warn("[moderation] OPENAI_API_KEY not set - skipping image moderation");
     return; // fail open
   }
 
@@ -157,12 +157,12 @@ export async function moderateImageOrThrow(base64Data: string): Promise<void> {
       }),
     });
   } catch (err) {
-    console.error("[moderation] OpenAI image moderation request failed — allowing image:", err);
+    console.error("[moderation] OpenAI image moderation request failed - allowing image:", err);
     return; // fail open
   }
 
   if (!res.ok) {
-    console.error(`[moderation] OpenAI image moderation returned ${res.status} — allowing image (fail open).`);
+    console.error(`[moderation] OpenAI image moderation returned ${res.status} - allowing image (fail open).`);
     return; // fail open
   }
 

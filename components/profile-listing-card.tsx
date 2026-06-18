@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +59,7 @@ export function ProfileListingCard({
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
+            <Image src={toStorageUrl(imageUrl)} alt={title} fill unoptimized className="object-cover" />
           ) : (
             <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}

@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   Flag, Package, Prohibit, ArrowCounterClockwise, Trash,
   Warning, ShieldCheck,
@@ -61,7 +62,7 @@ function MiniAvatar({ src, name, size = 28 }: { src: string | null; name: string
   if (src) {
     return (
       <Image
-        src={src}
+        src={toStorageUrl(src)}
         alt={name ?? ""}
         width={size}
         height={size}
@@ -92,7 +93,7 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
         aria-label={`View image for ${title}`}
       >
         <Image
-          src={src}
+          src={toStorageUrl(src)}
           alt={title}
           width={44}
           height={44}
@@ -226,7 +227,7 @@ export function AdminDashboard({
     <div className="mx-auto max-w-5xl px-4 py-6">
       <p className="mb-1 text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-primary">Moderation</p>
       <h1 className="mb-1 flex items-center gap-2 text-2xl font-bold tracking-[-0.02em] text-foreground">
-        <ShieldCheck className="size-6 text-primary" /> Admin control desk
+        Admin control desk
       </h1>
       <p className="mb-5 text-sm text-muted-foreground">Moderate content and manage users.</p>
 
@@ -406,7 +407,7 @@ export function AdminDashboard({
           {/* Listings queue */}
           {reportedTab === "listings" && (
             reportedListings.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {/* Column header */}
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
@@ -477,7 +478,7 @@ export function AdminDashboard({
           {/* Requests queue */}
           {reportedTab === "requests" && (
             reportedRequests.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Item</span>
@@ -545,7 +546,7 @@ export function AdminDashboard({
           {/* Messages queue */}
           {reportedTab === "messages" && (
             reportedMessages.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Message</span>
@@ -630,7 +631,7 @@ export function AdminDashboard({
                     <thead>
                       <tr className="border-b border-border text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                         <th className="px-3.5 py-2 text-left font-medium">User</th>
-                        <th className="hidden w-[26%] px-3.5 py-2 text-left font-medium sm:table-cell">Account</th>
+                        <th className="hidden w-[18%] px-3.5 py-2 text-left font-medium sm:table-cell">Account</th>
                         <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Role</th>
                         <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Standing</th>
                         <th className="w-[150px] px-3.5 py-2 text-right font-medium sm:w-[210px]">Actions</th>
@@ -745,7 +746,7 @@ export function AdminDashboard({
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxSrc}
+            src={toStorageUrl(lightboxSrc)}
             alt="Full size preview"
             className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -939,7 +940,7 @@ function UserCard({
   return (
     <tr className="group border-t border-border first:border-t-0 hover:bg-primary/[0.04]">
       {/* User: avatar + name + status badges */}
-      <td className="px-3.5 py-3 align-middle h-[72px]">
+      <td className="px-3.5 py-3 align-middle">
         <div className="flex min-w-0 items-center gap-2.5">
           <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
           <div className="min-w-0">
@@ -983,7 +984,7 @@ function UserCard({
 
       {/* Actions — fixed-width column so Protected rows never collapse it */}
       <td className="px-3.5 py-3 text-right align-middle">
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="inline-flex min-h-[72px] flex-wrap items-center justify-end gap-1.5">
           {isSelf ? (
             user.is_admin && (
               <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-destructive hover:bg-destructive/10"

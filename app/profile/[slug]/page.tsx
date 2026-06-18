@@ -74,6 +74,7 @@ export default async function PublicProfilePage({
             activeListings={activeListings}
             soldListings={soldListings}
             requests={requests}
+            currentUserId={user.id}
           />
         </div>
       </main>

@@ -3,7 +3,6 @@
 import {
   ChatCircle,
   MagnifyingGlass,
-  ShoppingBag,
   DotsThreeVertical,
   Archive,
   ArrowCounterClockwise,
@@ -17,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+import { toStorageUrl } from "@/lib/storage-url";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -268,7 +268,7 @@ function ConversationItem({
           <div className="relative size-12 overflow-hidden rounded-full bg-muted">
             {conversation.otherUser.avatar ? (
               <Image
-                src={conversation.otherUser.avatar}
+                src={toStorageUrl(conversation.otherUser.avatar)}
                 alt={conversation.otherUser.name}
                 fill
                 unoptimized
@@ -300,7 +300,7 @@ function ConversationItem({
             <div className="mt-0.5 flex items-center gap-2">
               {conversation.listing.thumbnail ? (
                 <Image
-                  src={conversation.listing.thumbnail}
+                  src={toStorageUrl(conversation.listing.thumbnail)}
                   alt={conversation.listing.title}
                   width={40}
                   height={40}
@@ -308,7 +308,7 @@ function ConversationItem({
                 />
               ) : (
                 <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                  <ShoppingBag className="size-5 text-muted-foreground/60" />
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                 </div>
               )}
               <span className="truncate text-xs text-muted-foreground">
@@ -322,7 +322,7 @@ function ConversationItem({
             <div className="mt-0.5 flex items-center gap-2">
               {conversation.request.thumbnail ? (
                 <Image
-                  src={conversation.request.thumbnail}
+                  src={toStorageUrl(conversation.request.thumbnail)}
                   alt={conversation.request.title}
                   width={40}
                   height={40}
@@ -330,7 +330,7 @@ function ConversationItem({
                 />
               ) : (
                 <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                  <ShoppingBag className="size-5 text-muted-foreground/60" />
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                 </div>
               )}
               <span className="truncate text-xs text-muted-foreground">

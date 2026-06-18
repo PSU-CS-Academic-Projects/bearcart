@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   Calendar,
   GraduationCap,
@@ -32,7 +33,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
           <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
             {requester.avatar_url ? (
               <Image
-                src={requester.avatar_url}
+                src={toStorageUrl(requester.avatar_url)}
                 alt={displayName}
                 fill
                 unoptimized

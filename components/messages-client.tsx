@@ -19,6 +19,7 @@ import {
   type MessageRow,
 } from "@/lib/actions/messages";
 import { supabase } from "@/lib/supabase";
+import { toStorageUrl } from "@/lib/storage-url";
 import { updateListingStatus } from "@/lib/actions/listings";
 import { markRequestFulfilled } from "@/lib/actions/requests";
 import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
@@ -83,10 +84,13 @@ function mapConversation(
   } | null;
 
   const sortedListingImages = [...(listing?.listing_images ?? [])].sort((a, b) => a.order - b.order);
-  const coverImg = listing?.listing_images?.find((i) => i.is_cover)?.image_url
-    ?? sortedListingImages[0]?.image_url ?? "";
-  const requestCover = [...(request?.request_images ?? [])]
-    .sort((a, b) => a.order - b.order)[0]?.image_url ?? "";
+  const coverImg = toStorageUrl(
+    listing?.listing_images?.find((i) => i.is_cover)?.image_url
+      ?? sortedListingImages[0]?.image_url ?? ""
+  );
+  const requestCover = toStorageUrl(
+    [...(request?.request_images ?? [])].sort((a, b) => a.order - b.order)[0]?.image_url ?? ""
+  );
 
   return {
     id: conv.id,

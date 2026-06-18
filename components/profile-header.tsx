@@ -10,6 +10,7 @@ import {
   ShoppingCart, Eye,
 } from "@phosphor-icons/react";
 import { EditProfileModal } from "@/components/edit-profile-modal";
+import { toStorageUrl } from "@/lib/storage-url";
 import type { UserProfile, ProfileStats } from "@/lib/actions/profile";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 
@@ -68,7 +69,7 @@ export function ProfileHeader({
             <div className="relative size-28 overflow-hidden rounded-full border-4 border-background bg-muted sm:size-36">
               {profile.avatar_url ? (
                 <Image
-                  src={profile.avatar_url}
+                  src={toStorageUrl(profile.avatar_url)}
                   alt={profile.full_name}
                   fill
                   unoptimized

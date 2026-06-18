@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FiltersSidebar, MobileFiltersSheet } from "@/components/filters-sidebar";
 import { getListings } from "@/lib/actions/listings";
 import { formatTimeAgo, getCoverImage, getSellerName, formatCondition } from "@/lib/listing-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 import { Storefront, Plus } from "@phosphor-icons/react/dist/ssr";
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -122,9 +123,9 @@ export async function ListingsSection() {
                       category={listing.category}
                       condition={formatCondition(listing.condition)}
                       sellerName={getSellerName(listing)}
-                      sellerAvatar={listing.seller?.avatar_url ?? ""}
+                      sellerAvatar={toStorageUrl(listing.seller?.avatar_url ?? "")}
                       timePosted={formatTimeAgo(listing.created_at)}
-                      imageUrl={getCoverImage(listing)}
+                      imageUrl={toStorageUrl(getCoverImage(listing))}
                     />
                   ))}
                 </div>

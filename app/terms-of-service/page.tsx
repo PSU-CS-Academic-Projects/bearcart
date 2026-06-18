@@ -48,7 +48,7 @@ export default function TermsOfServicePage() {
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Terms of Service</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              BearCart — PalSU Campus Marketplace
+              BearCart - PalSU Campus Marketplace
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Effective Date: June 2026</p>
           </div>
@@ -232,8 +232,8 @@ export default function TermsOfServicePage() {
                 These Terms of Service are governed by and construed in accordance with the laws of the Republic of the Philippines, including but not limited to:
               </p>
               <Ul items={[
-                "Republic Act No. 10173 — Data Privacy Act of 2012",
-                "Republic Act No. 8792 — Electronic Commerce Act of 2000",
+                "Republic Act No. 10173 - Data Privacy Act of 2012",
+                "Republic Act No. 8792 - Electronic Commerce Act of 2000",
                 "The Revised Penal Code of the Philippines, as applicable",
               ]} />
               <p>
@@ -251,7 +251,7 @@ export default function TermsOfServicePage() {
 
           {/* Footer note */}
           <div className="mt-12 border-t pt-6 text-xs text-muted-foreground">
-            <p>BearCart — PalSU Campus Marketplace · Effective Date: June 2026</p>
+            <p>BearCart - PalSU Campus Marketplace · Effective Date: June 2026</p>
             <p>Governed by the laws of the Republic of the Philippines.</p>
             <div className="mt-4">
               <Link href="/privacy-policy" className="text-primary hover:underline">

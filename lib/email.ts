@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 
 const FROM = `"${process.env.BREVO_FROM_NAME ?? "BearCart"}" <${process.env.BREVO_FROM_EMAIL}>`;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const LOGO_URL = `${APP_URL}/bearcart.png`;
+const LOGO_URL = `${APP_URL}/bearcart.svg`;
 
 // ─── Brand Tokens (inlined into email HTML) ──────────────────────────────────
 
@@ -61,7 +61,7 @@ function emailShell({ body, preheader }: LayoutSection): string {
                   <td valign="middle" style="vertical-align:middle;">
                     <img src="${LOGO_URL}" alt="BearCart" width="36" height="36" style="display:inline-block;vertical-align:middle;border:0;" />
                     <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:20px;font-weight:700;color:${BRAND.primary};letter-spacing:-0.3px;">BearCart</span>
-                    <span style="display:block;margin-left:46px;margin-top:2px;font-size:12px;color:${BRAND.muted};font-weight:500;">The PSU Marketplace</span>
+                    <span style="display:block;margin-left:46px;margin-top:2px;font-size:12px;color:${BRAND.muted};font-weight:500;">PalSU Marketplace</span>
                   </td>
                 </tr>
               </table>
@@ -80,8 +80,8 @@ function emailShell({ body, preheader }: LayoutSection): string {
             <td style="padding:20px 28px;background-color:${BRAND.wash};border-top:1px solid ${BRAND.border};text-align:center;">
               <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">BearCart · PSU Exclusive</p>
               <p style="margin:0;font-size:11px;color:${BRAND.muted};line-height:1.6;">
-                This is an automated email — please do not reply.<br />
-                &copy; ${new Date().getFullYear()} BearCart — Palawan State University Marketplace
+                This is an automated email - please do not reply.<br />
+                &copy; ${new Date().getFullYear()} BearCart - Palawan State University Marketplace
               </p>
             </td>
           </tr>
@@ -160,7 +160,7 @@ export async function sendWelcomeEmail({
   <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${BRAND.ink};">Quick reminders:</p>
   <p style="margin:0;font-size:13px;line-height:1.7;color:${BRAND.muted};">
     → Meetups happen on PSU campus only<br />
-    → Cash on meetup — no shipping<br />
+    → Cash on meetup - no shipping<br />
     → Be respectful 🙏
   </p>
 </div>
@@ -172,7 +172,7 @@ export async function sendWelcomeEmail({
     subject: `Welcome to BearCart, ${firstName} ! `,
     html: emailShell({
       body,
-      preheader: `Welcome to BearCart — start browsing campus listings now.`,
+      preheader: `Welcome to BearCart - start browsing campus listings now.`,
     }),
   });
 }
@@ -256,7 +256,7 @@ ${listingBlock}
     subject,
     html: emailShell({
       body,
-      preheader: `${senderFirstName} sent you a message — ${truncate(messagePreview, 80)}`,
+      preheader: `${senderFirstName} sent you a message - ${truncate(messagePreview, 80)}`,
     }),
   });
 }
@@ -304,7 +304,7 @@ ${noticeBox("Total reports on this item", String(reportCount))}
   await transporter.sendMail({
     from: FROM,
     to: toEmail,
-    subject: `[BearCart Admin] ${targetType} reported — ${truncate(reason, 40)}`,
+    subject: `[BearCart Admin] ${targetType} reported - ${truncate(reason, 40)}`,
     html: emailShell({ body, preheader: `A ${targetType} was reported and needs review.` }),
   });
 }
@@ -336,7 +336,7 @@ export async function sendPostRestoredEmail({
 <p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
 <h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your ${escapeHtml(postType)} is live again</h1>
 <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
-  Good news — your ${escapeHtml(postType)} <strong>&ldquo;${escapeHtml(postTitle)}&rdquo;</strong> has been reviewed and restored. It is once again visible to everyone on BearCart.
+  Good news - your ${escapeHtml(postType)} <strong>&ldquo;${escapeHtml(postTitle)}&rdquo;</strong> has been reviewed and restored. It is once again visible to everyone on BearCart.
 </p>`;
   await transporter.sendMail({
     from: FROM, to: toEmail,

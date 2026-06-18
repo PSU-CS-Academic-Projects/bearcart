@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              BearCart — PalSU Campus Marketplace
+              BearCart - PalSU Campus Marketplace
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               In compliance with Republic Act No. 10173 (Data Privacy Act of 2012) · Effective Date: June 2026
@@ -171,13 +171,13 @@ export default function PrivacyPolicyPage() {
             <Section title="8. Your Rights as a Data Subject">
               <p>Under Republic Act No. 10173 and its IRR, you have the following rights regarding your personal data:</p>
               <Ul items={[
-                "Right to be informed — You have the right to know what personal data we collect, how it is used, and with whom it is shared.",
-                "Right to access — You may request a copy of your personal data that we hold.",
-                "Right to rectification — You may correct inaccurate or incomplete personal data through your profile settings.",
-                "Right to erasure or blocking — You may request the deletion or blocking of your personal data under circumstances provided by law.",
-                "Right to object — You may object to the processing of your personal data for certain purposes.",
-                "Right to data portability — You may request a copy of your data in a structured, commonly used format.",
-                "Right to lodge a complaint — You have the right to file a complaint with the National Privacy Commission (NPC) at www.privacy.gov.ph if you believe your data privacy rights have been violated.",
+                "Right to be informed - You have the right to know what personal data we collect, how it is used, and with whom it is shared.",
+                "Right to access - You may request a copy of your personal data that we hold.",
+                "Right to rectification - You may correct inaccurate or incomplete personal data through your profile settings.",
+                "Right to erasure or blocking - You may request the deletion or blocking of your personal data under circumstances provided by law.",
+                "Right to object - You may object to the processing of your personal data for certain purposes.",
+                "Right to data portability - You may request a copy of your data in a structured, commonly used format.",
+                "Right to lodge a complaint - You have the right to file a complaint with the National Privacy Commission (NPC) at www.privacy.gov.ph if you believe your data privacy rights have been violated.",
               ]} />
               <p>To exercise any of these rights, please contact us through the platform's available support channels.</p>
             </Section>
@@ -236,7 +236,7 @@ export default function PrivacyPolicyPage() {
 
           {/* Footer note */}
           <div className="mt-12 border-t pt-6 text-xs text-muted-foreground">
-            <p>BearCart — PalSU Campus Marketplace · Effective Date: June 2026</p>
+            <p>BearCart - PalSU Campus Marketplace · Effective Date: June 2026</p>
             <p>This document is prepared in compliance with Republic Act No. 10173 (Data Privacy Act of 2012) of the Philippines.</p>
             <div className="mt-4">
               <Link href="/terms-of-service" className="text-primary hover:underline">

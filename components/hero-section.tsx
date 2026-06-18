@@ -9,9 +9,6 @@ export function HeroSection() {
         <div className="flex flex-col md:flex-row md:items-start gap-10 md:gap-16">
 
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-bold text-[#C85F00] uppercase tracking-widest block mb-5">
-              BearCart
-            </span>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4 leading-[1.15]">
               The campus marketplace for PalSU Bearcats.
             </h1>
@@ -58,7 +55,7 @@ export function HeroSection() {
 
           {/* Right: category grid */}
           <div className="w-full md:w-52 shrink-0">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+            <p className="text-xs font-bold text-[#C85F00] uppercase tracking-widest block mb-5">
               Browse by category
             </p>
             <div className="grid grid-cols-2 gap-2">

@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
+import { toStorageUrl } from "@/lib/storage-url";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ export function EditProfileModal({
               <div className="relative size-24 overflow-hidden rounded-full bg-muted">
                 {avatarPreview ? (
                   <Image
-                    src={avatarPreview}
+                    src={toStorageUrl(avatarPreview)}
                     alt="Profile"
                     fill
                     unoptimized

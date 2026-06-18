@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { User } from "@phosphor-icons/react/dist/ssr";
 import { formatListingPrice } from "@/lib/listing-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 
 interface ListingCardProps {
   id: string;
@@ -55,7 +56,7 @@ export function ListingCard({
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
+            <Image src={toStorageUrl(imageUrl)} alt={title} fill unoptimized className="object-cover" />
           ) : (
             <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}
@@ -72,7 +73,7 @@ export function ListingCard({
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[oklch(0.5_0_0)]">
             <div className="relative size-4 shrink-0 overflow-hidden rounded-full bg-[oklch(0.92_0_0)]">
               {sellerAvatar ? (
-                <Image src={sellerAvatar} alt={displayName} fill unoptimized className="object-cover" />
+                <Image src={toStorageUrl(sellerAvatar)} alt={displayName} fill unoptimized className="object-cover" />
               ) : (
                 <User className="size-full p-0.5" />
               )}

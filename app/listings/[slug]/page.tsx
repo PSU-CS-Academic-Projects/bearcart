@@ -250,8 +250,7 @@ export default async function ListingDetailPage({ params }: PageProps) {
                     {listing.description ?? "No description provided."}
                   </p>
                 </div>
-
-</div>
+              </div>
 
               {!isUnavailable && (
                 <ListingActions

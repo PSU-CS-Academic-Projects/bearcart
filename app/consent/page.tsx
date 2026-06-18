@@ -81,13 +81,13 @@ BearCart reserves the right to remove any listing or request at any time, with o
 
 6. TRANSACTIONS
 
-6.1 In-Person Only — All transactions facilitated through BearCart are conducted in person on the PalSU campus. BearCart does not support, facilitate, or guarantee online payments, deliveries, or remote exchanges of any kind.
+6.1 In-Person Only - All transactions facilitated through BearCart are conducted in person on the PalSU campus. BearCart does not support, facilitate, or guarantee online payments, deliveries, or remote exchanges of any kind.
 
-6.2 No Platform Involvement — BearCart acts solely as a platform connecting buyers and sellers. We are not a party to any transaction between users. All agreements, negotiations, and exchanges are made directly between the buyer and seller.
+6.2 No Platform Involvement - BearCart acts solely as a platform connecting buyers and sellers. We are not a party to any transaction between users. All agreements, negotiations, and exchanges are made directly between the buyer and seller.
 
-6.3 No Refund Guarantee — BearCart does not guarantee refunds, returns, or any form of buyer or seller protection. Once a transaction is completed in person, it is final. Users are encouraged to inspect items thoroughly before completing any exchange.
+6.3 No Refund Guarantee - BearCart does not guarantee refunds, returns, or any form of buyer or seller protection. Once a transaction is completed in person, it is final. Users are encouraged to inspect items thoroughly before completing any exchange.
 
-6.4 Transaction at Your Own Risk — By using BearCart to facilitate a transaction, you acknowledge that you do so at your own risk. BearCart is not liable for any loss, damage, or dispute arising from transactions between users.
+6.4 Transaction at Your Own Risk - By using BearCart to facilitate a transaction, you acknowledge that you do so at your own risk. BearCart is not liable for any loss, damage, or dispute arising from transactions between users.
 
 7. CONTENT MODERATION
 
@@ -142,8 +142,8 @@ You may request deletion of your account at any time. Upon termination, your lis
 
 These Terms of Service are governed by and construed in accordance with the laws of the Republic of the Philippines, including but not limited to:
 
-• Republic Act No. 10173 — Data Privacy Act of 2012
-• Republic Act No. 8792 — Electronic Commerce Act of 2000
+• Republic Act No. 10173 - Data Privacy Act of 2012
+• Republic Act No. 8792 - Electronic Commerce Act of 2000
 • The Revised Penal Code of the Philippines, as applicable
 
 Any disputes arising from the use of BearCart shall be subject to the jurisdiction of the appropriate courts of the Philippines.
@@ -246,13 +246,13 @@ Transaction records may be retained for a longer period for platform integrity a
 
 Under Republic Act No. 10173 and its IRR, you have the following rights regarding your personal data:
 
-• Right to be informed — You have the right to know what personal data we collect, how it is used, and with whom it is shared.
-• Right to access — You may request a copy of your personal data that we hold.
-• Right to rectification — You may correct inaccurate or incomplete personal data through your profile settings.
-• Right to erasure or blocking — You may request the deletion or blocking of your personal data under circumstances provided by law.
-• Right to object — You may object to the processing of your personal data for certain purposes.
-• Right to data portability — You may request a copy of your data in a structured, commonly used format.
-• Right to lodge a complaint — You have the right to file a complaint with the National Privacy Commission (NPC) at www.privacy.gov.ph if you believe your data privacy rights have been violated.
+• Right to be informed - You have the right to know what personal data we collect, how it is used, and with whom it is shared.
+• Right to access - You may request a copy of your personal data that we hold.
+• Right to rectification - You may correct inaccurate or incomplete personal data through your profile settings.
+• Right to erasure or blocking - You may request the deletion or blocking of your personal data under circumstances provided by law.
+• Right to object - You may object to the processing of your personal data for certain purposes.
+• Right to data portability - You may request a copy of your data in a structured, commonly used format.
+• Right to lodge a complaint - You have the right to file a complaint with the National Privacy Commission (NPC) at www.privacy.gov.ph if you believe your data privacy rights have been violated.
 
 To exercise any of these rights, please contact us through the platform's available support channels.
 

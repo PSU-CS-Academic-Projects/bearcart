@@ -28,6 +28,7 @@ import {
   type RequestRow as RequestRowType,
 } from "@/lib/actions/requests";
 import { formatTimeAgo, formatCondition } from "@/lib/listing-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -65,6 +66,8 @@ interface PublicProfileTabsProps {
   activeListings: ListingRow[];
   soldListings: ListingRow[];
   requests: RequestRowType[];
+  currentUserId: string | null;
+  isAdmin: boolean;
 }
 
 type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
@@ -73,9 +76,9 @@ type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
 
 function getCoverImage(listing: ListingRow): string {
   const cover = listing.listing_images?.find((img) => img.is_cover);
-  if (cover) return cover.image_url;
+  if (cover) return toStorageUrl(cover.image_url);
   const sorted = [...(listing.listing_images ?? [])].sort((a, b) => a.order - b.order);
-  return sorted[0]?.image_url ?? "";
+  return toStorageUrl(sorted[0]?.image_url ?? "");
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -268,7 +271,11 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <BookmarkSimple className="size-8 text-muted-foreground" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">No saved listings</h3>
-      <p className="mb-4 text-sm text-muted-foreground">Save listings you&apos;re interested in to view them later</p>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Save listings you&apos;re interested in to view them later.<br/>
+        Only you can see your saved items.
+      </p>
+      
       <Button asChild variant="outline">
         <Link href="/listings">
           <MagnifyingGlass className="size-4" />
@@ -340,7 +347,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                                 className="h-8 gap-1.5"
                                 onClick={() => setRequestAction({ id: req.id, type: "fulfilled" })}
                               >
-                                <Check className="size-3.5 text-emerald-600" />
+                                <Check className="size-3.5 text-primary" />
                                 Fulfilled
                               </Button>
                               <Button
@@ -491,7 +498,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ─── PUBLIC PROFILE TABS ────────────────────────────────────────────────
 
-  const { requests } = props as PublicProfileTabsProps;
+  const { requests, currentUserId, isAdmin } = props as PublicProfileTabsProps;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -559,7 +566,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           <div className="overflow-hidden rounded-xl border bg-card">
             {requests.map((req, idx) => (
               <div key={req.id} className={idx > 0 ? "border-t" : ""}>
-                <RequestRow request={req} currentUserId={null} />
+                <RequestRow request={req} currentUserId={currentUserId} isAdmin={isAdmin} />
               </div>
             ))}
           </div>
