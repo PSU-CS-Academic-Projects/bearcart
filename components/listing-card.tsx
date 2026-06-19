@@ -17,6 +17,8 @@ interface ListingCardProps {
   createdAt: string;
   updatedAt?: string;
   imageUrl: string;
+  /** Eager-load the cover image when the card is above the fold (improves LCP). */
+  priority?: boolean;
 }
 
 export function ListingCardSkeleton() {
@@ -49,6 +51,7 @@ export function ListingCard({
   createdAt,
   updatedAt,
   imageUrl,
+  priority = false,
 }: ListingCardProps) {
   const parts = sellerName.trim().split(" ");
   const displayName = parts.length >= 2
@@ -66,7 +69,7 @@ export function ListingCard({
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={toStorageUrl(imageUrl)} alt={title} fill unoptimized className="object-cover" />
+            <Image src={toStorageUrl(imageUrl)} alt={title} fill unoptimized priority={priority} className="object-cover" />
           ) : (
             <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}

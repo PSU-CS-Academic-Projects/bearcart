@@ -443,7 +443,7 @@ export function NavbarClient({
 
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} className="size-14" />
+          <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} priority className="size-14" />
           <span className={`${jakarta.className} text-xl font-bold tracking-tight`}>
             BearCart
           </span>

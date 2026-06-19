@@ -53,7 +53,7 @@ export async function LandingListingsSection({ showHeader = true }: { showHeader
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map((listing) => (
+              {listings.map((listing, index) => (
                 <ListingCard
                   key={listing.id}
                   id={listing.id}
@@ -68,6 +68,7 @@ export async function LandingListingsSection({ showHeader = true }: { showHeader
                   createdAt={listing.created_at}
                   updatedAt={listing.updated_at}
                   imageUrl={getCoverImage(listing)}
+                  priority={index < 3}
                 />
               ))}
             </div>
