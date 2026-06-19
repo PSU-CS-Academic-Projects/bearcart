@@ -365,6 +365,7 @@ export function NavbarClient({
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         (payload) => {
           const newNotif = payload.new as NotificationRow;
+          if (newNotif.type === "new_message") return;
           setNotifications((prev) =>
             prev.some((n) => n.id === newNotif.id) ? prev : [newNotif, ...prev].slice(0, 10)
           );

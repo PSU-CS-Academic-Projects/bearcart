@@ -46,6 +46,7 @@ export async function getRecentNotifications(limit = 10): Promise<NotificationRo
     .from("notifications")
     .select("*")
     .eq("user_id", user.id)
+    .neq("type", "new_message")
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -80,7 +81,8 @@ export async function getAllNotifications(
   let query = supabase
     .from("notifications")
     .select("*", { count: "exact" })
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .neq("type", "new_message");
 
   if (filter === "unread") {
     query = query.eq("is_read", false);
@@ -131,7 +133,8 @@ export async function getUnseenNotificationCount(): Promise<number> {
     .from("notifications")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("seen", false);
+    .eq("seen", false)
+    .neq("type", "new_message");  
 
   return count ?? 0;
 }
