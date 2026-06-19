@@ -30,12 +30,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  FloppyDisk,
-  SpinnerGap,
-  X,
-  Check,
-  XCircle,
-  Trash,
+  CameraIcon,
+  FloppyDiskIcon,
+  SpinnerGapIcon,
+  XIcon,
+  CheckIcon,
+  XCircleIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import {
@@ -278,7 +279,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex-1">
-        <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
             <Breadcrumb
               items={[
@@ -300,7 +301,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 disabled={submitting}
                 onClick={() => setConfirmAction("fulfilled")}
               >
-                <Check className="size-4 text-emerald-600" />
+                <CheckIcon className="size-4 text-emerald-600" />
                 Mark as Fulfilled
               </Button>
               <Button
@@ -310,7 +311,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 disabled={submitting}
                 onClick={() => setConfirmAction("closed")}
               >
-                <XCircle className="size-4 text-muted-foreground" />
+                <XCircleIcon className="size-4 text-muted-foreground" />
                 Close Request
               </Button>
               <Button
@@ -321,7 +322,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 onClick={() => setConfirmAction("delete")}
                 className="text-destructive hover:text-destructive"
               >
-                <Trash className="size-4" />
+                <TrashIcon className="size-4" />
                 Delete Request
               </Button>
             </div>
@@ -331,6 +332,10 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
             {/* Photos */}
             <section className="space-y-3">
               <div>
+                 <div className="flex items-center gap-2">
+                  <CameraIcon className="size-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Photos</h2>
+              </div>
                 <Label>Photos (optional)</Label>
                 <p className="text-xs text-muted-foreground">
                   Up to {MAX_PHOTOS} photos. {totalPhotos} of {MAX_PHOTOS} used.
@@ -394,63 +399,65 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 <p className="text-sm text-destructive">{errors.category}</p>
               )}
             </div>
+        
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-req-desc">Add more details</Label>
-              <Textarea
-                id="edit-req-desc"
-                placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={DESC_MAX}
-                rows={4}
-                disabled={submitting}
-                className={cn(errors.description && "border-destructive")}
-              />
-              <div className="flex justify-between">
-                {errors.description ? (
-                  <p className="text-sm text-destructive">{errors.description}</p>
-                ) : (
-                  <span />
-                )}
-                <CharCounter current={description.length} max={DESC_MAX} />
-              </div>
-            </div>
-
-            {/* Budget */}
-            <div className="space-y-2">
-              <Label>Budget (optional)</Label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="e.g. 500"
-                  value={budget}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey || e.altKey) return;
-                    if (
-                      shouldBlockCurrencyKey(
-                        e.key,
-                        e.currentTarget.value,
-                        e.currentTarget.selectionStart,
-                        e.currentTarget.selectionEnd
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
-                  disabled={submitting}
-                  className={cn("pl-7", errors.budget && "border-destructive")}
-                />
-              </div>
-              {errors.budget && (
-                <p className="text-sm text-destructive">{errors.budget}</p>
+        {/* Description + Budget */}
+        <div className="space-y-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-req-desc">Add more details</Label>
+            <Textarea
+              id="edit-req-desc"
+              placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={DESC_MAX}
+              rows={4}
+              disabled={submitting}
+              className={cn(errors.description && "border-destructive")}
+            />
+            <div className="flex justify-between">
+              {errors.description ? (
+                <p className="text-sm text-destructive">{errors.description}</p>
+              ) : (
+                <span />
               )}
+              <CharCounter current={description.length} max={DESC_MAX} />
             </div>
+          </div>
 
+          <div className="space-y-2">
+            <Label>Budget (optional)</Label>
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500"
+                value={budget}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
+                disabled={submitting}
+                className={cn("pl-7", errors.budget && "border-destructive")}
+              />
+            </div>
+            {errors.budget && (
+              <p className="text-sm text-destructive">{errors.budget}</p>
+            )}
+          </div>
+        </div>
+            
             {/* Urgency */}
             <div className="space-y-2">
               <Label>
@@ -484,14 +491,12 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
               </div>
             </div>
 
-            <div className="h-px bg-border" />
-
             {/* Action Buttons */}
             <section className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Link href="/requests">
                   <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={submitting}>
-                    <X className="size-4" />
+                    <XIcon className="size-4" />
                     Cancel
                   </Button>
                 </Link>
@@ -504,12 +509,12 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                   >
                   {submitting ? (
                     <>
-                      <SpinnerGap className="size-4 animate-spin" />
+                      <SpinnerGapIcon className="size-4 animate-spin" />
                       Saving changes...
                     </>
                   ) : (
                     <>
-                      <FloppyDisk className="size-4" />
+                      <FloppyDiskIcon className="size-4" />
                       Save Changes
                     </>
                   )}

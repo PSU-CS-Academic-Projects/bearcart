@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
+import { PaperPlaneTiltIcon, SpinnerGapIcon, CameraIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { createRequest, type RequestUrgency } from "@/lib/actions/requests";
 import {
@@ -176,12 +176,16 @@ export function PostRequestForm() {
               ]}
             />
             <h1 className="mt-4 text-2xl font-bold text-foreground">Post a Request</h1>
-            <p className="text-muted-foreground">Tell the community what you&apos;re looking for</p>
+            <p className="text-muted-foreground">Tell the campus what you&apos;re looking for</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Photos (optional) */}
             <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CameraIcon className="size-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Photos</h2>
+              </div>
               <div>
                 <Label>Photos (optional)</Label>
                 <p className="text-xs text-muted-foreground">
@@ -246,60 +250,63 @@ export function PostRequestForm() {
               )}
             </div>
 
-            {/* Description */}
-            <div id="req-desc-section" className="space-y-2">
-              <Label htmlFor="req-desc">Add more details</Label>
-              <Textarea
-                id="req-desc"
-                placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={DESC_MAX}
-                rows={4}
-                disabled={submitting}
-                className={cn(errors.description && "border-destructive")}
-              />
-              <div className="flex justify-between">
-                {errors.description ? (
-                  <p className="text-sm text-destructive">{errors.description}</p>
-                ) : (
-                  <span />
-                )}
-                <CharCounter current={description.length} max={DESC_MAX} />
-              </div>
-            </div>
-
-            {/* Budget */}
-            <div id="req-budget-section" className="space-y-2">
-              <Label>Budget (optional)</Label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="e.g. 500"
-                  value={budget}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey || e.altKey) return;
-                    if (
-                      shouldBlockCurrencyKey(
-                        e.key,
-                        e.currentTarget.value,
-                        e.currentTarget.selectionStart,
-                        e.currentTarget.selectionEnd
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
+            {/* Description + Budget */}
+            <div className="space-y-2">
+              <div id="req-desc-section" className="space-y-2">
+                <Label htmlFor="req-desc">
+                  Add more details <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="req-desc"
+                  placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={DESC_MAX}
+                 rows={4}
                   disabled={submitting}
-                  className={cn("pl-7", errors.budget && "border-destructive")}
+                  className={cn(errors.description && "border-destructive")}
                 />
+                <div className="flex justify-between">
+                  {errors.description ? (
+                    <p className="text-sm text-destructive">{errors.description}</p>
+                  ) : (
+                    <span />
+                  )}
+                  <CharCounter current={description.length} max={DESC_MAX} />
+                </div>
               </div>
-              {errors.budget && (
-                <p className="text-sm text-destructive">{errors.budget}</p>
-              )}
+
+              <div id="req-budget-section" className="space-y-2">
+                <Label>Budget (optional)</Label>
+                <div className="relative max-w-xs">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 500"
+                    value={budget}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey || e.altKey) return;
+                      if (
+                        shouldBlockCurrencyKey(
+                          e.key,
+                          e.currentTarget.value,
+                          e.currentTarget.selectionStart,
+                          e.currentTarget.selectionEnd
+                        )
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
+                    disabled={submitting}
+                    className={cn("pl-7", errors.budget && "border-destructive")}
+                  />
+                </div>
+                {errors.budget && (
+                  <p className="text-sm text-destructive">{errors.budget}</p>
+                )}
+              </div>
             </div>
 
             {/* Urgency */}
@@ -335,27 +342,32 @@ export function PostRequestForm() {
               </div>
             </div>
 
-            <div className="h-px bg-border" />
-
             {/* Submit */}
-            <Button
-              type="submit"
-              size="lg"
-              disabled={submitting}
-              className="w-full"
-            >
-              {submitting ? (
-                <>
-                  <SpinnerGap className="size-4 animate-spin" />
-                  Posting your request...
-                </>
-              ) : (
-                <>
-                  <PaperPlaneTilt className="size-4" />
-                  Post Request
-                </>
-              )}
-            </Button>
+            <section className="space-y-4">
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={submitting}
+                  className="w-fit"
+                >
+                  {submitting ? (
+                    <>
+                      <SpinnerGapIcon className="size-4 animate-spin" />
+                      Posting your request...
+                    </>
+                  ) : (
+                    <>
+                      <PaperPlaneTiltIcon className="size-4" />
+                      Post Request
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-center text-xs text-muted-foreground sm:text-right">
+                By posting you agree to Bearcart&apos;s community guidelines
+              </p>
+            </section>
           </form>
         </div>
       </main>

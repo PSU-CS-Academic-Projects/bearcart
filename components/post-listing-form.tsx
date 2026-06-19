@@ -414,7 +414,7 @@ export function PostListingForm() {
       type={isMobile ? "button" : "submit"}
       onClick={isMobile ? handleSubmit : undefined}
       disabled={submitting}
-      className="flex-1 sm:flex-none"
+      className="w-fit"
     >
       {submitting ? (
         <>
@@ -530,12 +530,11 @@ export function PostListingForm() {
             <section className="space-y-6">
               <div className="flex items-center gap-2"><ListBullets className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Listing Details</h2></div>
               {detailsSection}
-            </section>
-            <div className="h-px bg-border" />
+            </section>  
 
             {/* Submit */}
             <section className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                 {submitButton}
               </div>
               <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to Bearcart&apos;s community guidelines</p>

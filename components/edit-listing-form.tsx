@@ -553,7 +553,6 @@ export function EditListingForm({ listing }: EditListingFormProps) {
               </div>
               {detailsSection}
             </section>
-            <div className="h-px bg-border" />
 
             {/* Action Buttons */}
             <section className="space-y-4">
