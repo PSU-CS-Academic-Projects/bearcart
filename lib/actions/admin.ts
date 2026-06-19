@@ -8,6 +8,7 @@ import {
   sendPostTakedownEmail,
   sendAccountWarnedEmail,
   sendAccountBannedEmail,
+  sendAccountUnbannedEmail,
 } from "@/lib/email";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export type ActivityType =
   | "listing_takedown"
   | "request_takedown"
   | "user_banned"
+  | "user_unbanned"
   | "user_warned"
   | "message_deleted";
 
@@ -220,6 +222,7 @@ function describeLogActivity(type: string, actorName: string | null, title: stri
     case "listing_takedown": return `Listing "${t}" was taken down by ${who}${reasonSuffix}`;
     case "request_takedown": return `Request "${t}" was taken down by ${who}${reasonSuffix}`;
     case "user_banned": return `${t} was banned by ${who}`;
+    case "user_unbanned": return `${t}'s ban was lifted by ${who}`;
     case "user_warned": return `${t} was warned by ${who}`;
     case "message_deleted": return `A message was deleted by ${who}`;
     default: return "Activity";
@@ -756,11 +759,37 @@ export async function banUser(targetId: string, banType: Exclude<BanType, "none"
 }
 
 export async function unbanUser(targetId: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
+  const target = await requireNonAdminTarget(supabase, targetId);
+
   const { error } = await supabase.from("users").update({
     ban_type: "none", banned_at: null, ban_reason: null,
   }).eq("id", targetId);
   if (error) throw new Error(`Failed to lift ban: ${error.message}`);
+
+  // In-app notification (mirrors ban/warn).
+  await supabase.from("notifications").insert({
+    user_id: targetId, type: "account_unbanned",
+    title: "Your account restriction has been lifted",
+    body: "An admin has removed the restriction on your account. You have full access again.",
+  });
+
+  // Email 
+  if (target.email) {
+    try {
+      await sendAccountUnbannedEmail({ toEmail: target.email, firstName: target.first_name ?? "there" });
+    } catch (err) { console.error("[admin] unban email error:", err); }
+  }
+
+  // Audit
+  await logActivity({
+    type: "user_unbanned",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType: "user",
+    targetId,
+    targetTitle: target.full_name ?? null,
+  });
 }
 
 export async function promoteToAdmin(targetId: string) {

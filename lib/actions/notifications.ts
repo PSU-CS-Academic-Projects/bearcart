@@ -18,6 +18,7 @@ export type NotificationType =
   | "post_takedown"
   | "account_warned"
   | "account_banned"
+  | "account_unbanned"
   | "new_report";
 
 export interface NotificationRow {

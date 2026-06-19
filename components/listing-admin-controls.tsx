@@ -66,7 +66,7 @@ export function ListingAdminControls({
       )}
       <button
         onClick={() => setConfirm("takedown")}
-        className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-primary"
+        className="flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-destructive"
       >
         <Warning className="size-3.5" />
         Take down this listing as admin

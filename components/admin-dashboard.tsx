@@ -884,6 +884,8 @@ function activityVisual(type: ActivityType): {
       return { Icon: Trash, tone: AMBER };
     case "user_banned":
       return { Icon: Prohibit, tone: AMBER };
+    case "user_unbanned":
+      return { Icon: ArrowClockwise, tone: NEUTRAL };
     case "user_warned":
       return { Icon: Warning, tone: AMBER };
     case "message_deleted":

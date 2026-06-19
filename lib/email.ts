@@ -408,3 +408,20 @@ ${noticeBox("Reason", reason)}`;
     html: emailShell({ body, preheader: `Your account has been restricted from ${scope}.` }),
   });
 }
+
+export async function sendAccountUnbannedEmail({
+  toEmail, firstName,
+}: { toEmail: string; firstName: string }) {
+  const body = `
+<p style="margin:0 0 8px;font-size:14px;color:${BRAND.muted};">Hi ${escapeHtml(firstName)},</p>
+<h1 style="margin:0 0 14px;font-size:20px;font-weight:700;color:${BRAND.ink};">Your account restriction has been lifted</h1>
+<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.ink};">
+  Good news - a BearCart admin has reviewed your account and <strong>removed the restriction</strong>. You now have full access again: you can post listings and requests and message other Bearcats.
+</p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">Thanks for being part of the community - please keep our guidelines in mind.</p>`;
+  await transporter.sendMail({
+    from: FROM, to: toEmail,
+    subject: `Your BearCart account restriction has been lifted`,
+    html: emailShell({ body, preheader: `Your account restriction has been lifted - full access restored.` }),
+  });
+}

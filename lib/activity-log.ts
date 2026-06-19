@@ -15,6 +15,7 @@ export type ActivityLogType =
   | "listing_takedown"
   | "request_takedown"
   | "user_banned"
+  | "user_unbanned"
   | "user_warned"
   | "message_deleted";
 
