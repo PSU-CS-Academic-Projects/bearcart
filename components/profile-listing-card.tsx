@@ -93,9 +93,9 @@ export function ProfileListingCard({
 
           {/* Delisted badge */}
           {isDelisted && (
-            <div className="absolute left-2 bottom-2 z-10">
-              <span className="rounded-sm bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                Delisted
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span className="rounded-sm bg-white px-3 py-1 text-sm font-bold text-[oklch(0.2_0_0)]">
+                DELISTED
               </span>
             </div>
           )}

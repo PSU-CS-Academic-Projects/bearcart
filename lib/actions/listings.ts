@@ -608,14 +608,15 @@ export async function deleteListing(listingId: string) {
 export async function getRelatedListings(listingId: string, sellerId: string, limit = 4) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from("listings")
     .select(
       `
       id, slug, title, price, category, condition, created_at,
       listing_images ( id, image_url, is_cover, order ),
       seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url )
-    `
+    `,
+      { count: "exact" }
     )
     .eq("seller_id", sellerId)
     .eq("status", "available")
@@ -624,6 +625,6 @@ export async function getRelatedListings(listingId: string, sellerId: string, li
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) return [];
-  return data ?? [];
+  if (error) return { listings: [], total: 0 };
+  return { listings: data ?? [], total: count ?? 0 };
 }

@@ -17,6 +17,7 @@ import {
   MagnifyingGlass, User, Plus, PencilSimple, XCircle, Check, Trash,
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
+import { Pagination } from "@/components/pagination";
 import { RequestRow } from "@/components/request-row";
 import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
 import { updateListingStatus, deleteListing } from "@/lib/actions/listings";
@@ -80,6 +81,36 @@ function getCoverImage(listing: ListingRow): string {
   if (cover) return toStorageUrl(cover.image_url);
   const sorted = [...(listing.listing_images ?? [])].sort((a, b) => a.order - b.order);
   return toStorageUrl(sorted[0]?.image_url ?? "");
+}
+
+const PROFILE_PAGE_SIZE = 12;
+
+//Client-side pagination for a profile tab. 
+ 
+function Paginated<T>({
+  items,
+  children,
+}: {
+  items: T[];
+  children: (slice: T[]) => React.ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / PROFILE_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * PROFILE_PAGE_SIZE;
+  const slice = items.slice(start, start + PROFILE_PAGE_SIZE);
+
+  return (
+    <>
+      {children(slice)}
+      {totalPages > 1 && (
+        <div className="mt-6">
+          
+          <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setPage} />
+        </div>
+      )}
+    </>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -315,17 +346,22 @@ export function ProfileTabs(props: ProfileTabsProps) {
           </TabsList>
 
           <TabsContent value="active" className="mt-6">
-            {activeItems.length > 0 ? renderGrid(activeItems, "active") : emptyActive}
+            {activeItems.length > 0 ? (
+              <Paginated items={activeItems}>{(slice) => renderGrid(slice, "active")}</Paginated>
+            ) : emptyActive}
           </TabsContent>
 
           <TabsContent value="sold" className="mt-6">
-            {soldItems.length > 0 ? renderGrid(soldItems, "sold") : emptySold}
+            {soldItems.length > 0 ? (
+              <Paginated items={soldItems}>{(slice) => renderGrid(slice, "sold")}</Paginated>
+            ) : emptySold}
           </TabsContent>
 
           <TabsContent value="requests" className="mt-6">
             {requestItems.length > 0 ? (
+              <Paginated items={requestItems}>{(slice) => (
               <div className="overflow-hidden rounded-xl border bg-card">
-                {requestItems.map((req, idx) => (
+                {slice.map((req, idx) => (
                   <div key={req.id} className={idx > 0 ? "border-t" : ""}>
                     <RequestRow
                       request={req}
@@ -379,6 +415,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                   </div>
                 ))}
               </div>
+              )}</Paginated>
             ) : (
               <Card className="flex flex-col items-center justify-center p-12 text-center">
                 <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
@@ -402,7 +439,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
             {savedItems.length > 0 && (
               <p className="mb-3 text-xs text-muted-foreground">Only you can see your saved items.</p>
             )}
-            {savedItems.length > 0 ? renderGrid(savedItems, "saved") : emptySaved}
+            {savedItems.length > 0 ? (
+              <Paginated items={savedItems}>{(slice) => renderGrid(slice, "saved")}</Paginated>
+            ) : emptySaved}
           </TabsContent>
         </Tabs>
 
@@ -522,8 +561,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
       <TabsContent value="listings" className="mt-6">
         {activeItems.length > 0 ? (
+          <Paginated items={activeItems}>{(slice) => (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {activeItems.map((listing) => (
+            {slice.map((listing) => (
               <ProfileListingCard
                 key={listing.id}
                 id={listing.id}
@@ -541,13 +581,15 @@ export function ProfileTabs(props: ProfileTabsProps) {
               />
             ))}
           </div>
+          )}</Paginated>
         ) : emptyActive}
       </TabsContent>
 
       <TabsContent value="sold" className="mt-6">
         {soldItems.length > 0 ? (
+          <Paginated items={soldItems}>{(slice) => (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {soldItems.map((listing) => (
+            {slice.map((listing) => (
               <ProfileListingCard
                 key={listing.id}
                 id={listing.id}
@@ -565,18 +607,21 @@ export function ProfileTabs(props: ProfileTabsProps) {
               />
             ))}
           </div>
+          )}</Paginated>
         ) : emptySold}
       </TabsContent>
 
       <TabsContent value="requests" className="mt-6">
         {requests.length > 0 ? (
+          <Paginated items={requests}>{(slice) => (
           <div className="overflow-hidden rounded-xl border bg-card">
-            {requests.map((req, idx) => (
+            {slice.map((req, idx) => (
               <div key={req.id} className={idx > 0 ? "border-t" : ""}>
                 <RequestRow request={req} currentUserId={currentUserId} isAdmin={isAdmin} />
               </div>
             ))}
           </div>
+          )}</Paginated>
         ) : (
           <Card className="flex flex-col items-center justify-center p-12 text-center">
             <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">

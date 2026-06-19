@@ -107,10 +107,10 @@ export default async function ListingDetailPage({ params }: PageProps) {
   // Check if user has saved this listing
   const saved = user ? await isListingSaved(listing.id) : false;
 
-  // Fetch related listings from same seller
-  const related = listing.seller
+  // Fetch related listings from same seller (preview + total count)
+  const { listings: related, total: relatedTotal } = listing.seller
     ? await getRelatedListings(listing.id, listing.seller.id)
-    : [];
+    : { listings: [], total: 0 };
 
   // Build photo array sorted by order
   const photos = (listing.listing_images ?? [])
@@ -330,9 +330,19 @@ export default async function ListingDetailPage({ params }: PageProps) {
           {/* More from this Seller */}
           {related.length > 0 && (
             <section className="mt-8 border-t pt-6">
-              <h2 className="mb-4 text-lg font-semibold text-foreground">
-                More from this Seller
-              </h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-foreground">
+                  More from this Seller{relatedTotal > 0 ? ` (${relatedTotal})` : ""}
+                </h2>
+                {listing.seller && relatedTotal > related.length && (
+                  <Link
+                    href={`/profile/${listing.seller.slug ?? listing.seller.id}`}
+                    className="shrink-0 text-sm font-medium text-primary hover:underline"
+                  >
+                    View all
+                  </Link>
+                )}
+              </div>
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {related.map((r) => {
                   const imgs = r.listing_images as {

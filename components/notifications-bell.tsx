@@ -52,6 +52,7 @@ function getNotificationIcon(type: NotificationType) {
     case "account_banned":
       return Prohibit;
     case "post_restored":
+    case "account_unbanned":
       return ArrowCounterClockwise;
     case "account_warned":
       return Warning;
