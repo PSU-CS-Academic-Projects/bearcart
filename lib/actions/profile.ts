@@ -3,8 +3,19 @@
 import { createClient } from "@/lib/supabase-server";
 import { uploadImage, deleteImage } from "./storage";
 import { moderateImageOrThrow } from "@/lib/moderation";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface PersonResult {
+  id: string;
+  slug: string | null;
+  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  postCount: number;
+}
 
 export interface UserProfile {
   id: string;
@@ -24,6 +35,43 @@ export interface ProfileStats {
   totalListed: number;
   totalSold: number;
   totalViews: number;
+}
+
+// ─── People search (logged-in users only) ─────────────────────────────────────
+export async function searchPeople(query: string): Promise<PersonResult[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  // Server-side gate: only verified, logged-in users may search people.
+  if (!user) return [];
+
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  // Rate limit per user (shares the "search" sliding window: 30/min).
+  await enforceRateLimit("search", `user:${user.id}`);
+
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, slug, full_name, first_name, last_name, avatar_url")
+    .ilike("full_name", `%${trimmed}%`)
+    .is("deleted_at", null)
+    .limit(6);
+
+  if (!users || users.length === 0) return [];
+
+  const ids = users.map((u) => u.id);
+  const { data: listings } = await supabase
+    .from("listings")
+    .select("seller_id")
+    .in("seller_id", ids)
+    .is("deleted_at", null);
+
+  const countMap: Record<string, number> = {};
+  for (const l of listings ?? []) {
+    countMap[l.seller_id] = (countMap[l.seller_id] ?? 0) + 1;
+  }
+
+  return users.map((u) => ({ ...u, postCount: countMap[u.id] ?? 0 }));
 }
 
 // ─── READ (current user) ─────────────────────────────────────────────────────

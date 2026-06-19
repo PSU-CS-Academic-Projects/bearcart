@@ -37,6 +37,7 @@ import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { getRecentNotifications, getUnseenNotificationCount, type NotificationRow } from "@/lib/actions/notifications";
+import { searchPeople } from "@/lib/actions/profile";
 import { toStorageUrl } from "@/lib/storage-url";
 
 
@@ -48,7 +49,7 @@ type SearchMode = "items" | "people";
 
 interface PersonResult {
   id: string;
-  slug?: string;
+  slug?: string | null;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
@@ -300,33 +301,9 @@ export function NavbarClient({
 
     setPeopleLoading(true);
     const timer = setTimeout(async () => {
-      const { data: users } = await supabase
-        .from("users")
-        .select("id, slug, full_name, first_name, last_name, avatar_url")
-        .ilike("full_name", `%${peopleQuery}%`)
-        .is("deleted_at", null)
-        .limit(6);
-
-      if (!users || users.length === 0) {
-        setPeopleResults([]);
-        setShowPeopleDropdown(true);
-        setPeopleLoading(false);
-        return;
-      }
-
-      const ids = users.map((u) => u.id);
-      const { data: listings } = await supabase
-        .from("listings")
-        .select("seller_id")
-        .in("seller_id", ids)
-        .is("deleted_at", null);
-
-      const countMap: Record<string, number> = {};
-      for (const l of listings ?? []) {
-        countMap[l.seller_id] = (countMap[l.seller_id] ?? 0) + 1;
-      }
-
-      setPeopleResults(users.map((u) => ({ ...u, postCount: countMap[u.id] ?? 0 })));
+      // server-side — guests get an empty list even if they reach this code.
+      const results = await searchPeople(peopleQuery).catch(() => []);
+      setPeopleResults(results);
       setShowPeopleDropdown(true);
       setPeopleLoading(false);
     }, 200);
@@ -479,7 +456,8 @@ export function NavbarClient({
         >
           <div ref={desktopSearchRef} className="relative w-full max-w-xl">
             <div className="flex min-w-0 w-full items-center rounded-lg border bg-background px-2">
-              <ModeToggle mode={searchMode} onToggle={handleModeToggle} />
+              {/* People search is for logged-in users only — guests only see item search. */}
+              {user && <ModeToggle mode={searchMode} onToggle={handleModeToggle} />}
               <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
                 <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
                 {searchMode === "items" ? (
@@ -574,31 +552,33 @@ export function NavbarClient({
             <div className="mt-6 flex flex-col gap-4">
               {/* Mobile Search */}
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2">
-                {/* Mode toggle */}
-                <div className="flex rounded-lg border bg-background">
-                  <button
-                    type="button"
-                    onClick={() => handleModeToggle("items")}
-                    className={`flex-1 rounded-l-lg py-2 text-xs font-medium transition-colors ${
-                      searchMode === "items"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Items
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModeToggle("people")}
-                    className={`flex-1 rounded-r-lg py-2 text-xs font-medium transition-colors ${
-                      searchMode === "people"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    People
-                  </button>
-                </div>
+                {/* Mode toggle — people search is for logged-in users only. */}
+                {user && (
+                  <div className="flex rounded-lg border bg-background">
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("items")}
+                      className={`flex-1 rounded-l-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "items"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Items
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("people")}
+                      className={`flex-1 rounded-r-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "people"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      People
+                    </button>
+                  </div>
+                )}
 
                 {/* Search input */}
                 <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
