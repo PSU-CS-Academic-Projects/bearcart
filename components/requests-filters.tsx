@@ -303,80 +303,46 @@ function FiltersContent() {
 
       {/* Budget */}
       <div>
-        <h3 className="mb-3 font-semibold text-foreground">Budget Range</h3>
+        <h3 className="mb-3 font-semibold text-foreground">Budget</h3>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
-            const min = fd.get("min") as string;
             const max = fd.get("max") as string;
-            const minValue = parseCurrencyInput(min);
             const maxValue = parseCurrencyInput(max);
             set({
-              min: minValue !== null && minValue > 0 ? String(minValue) : null,
               max: maxValue !== null && maxValue > 0 ? String(maxValue) : null,
             });
           }}
           className="flex flex-col gap-3"
         >
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Label htmlFor="req-min" className="sr-only">Min budget</Label>
-              <Input
-                id="req-min"
-                name="min"
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 500"
-                defaultValue={formatCurrencyInput(minBudget)}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey || e.metaKey || e.altKey) return;
-                  if (
-                    shouldBlockCurrencyKey(
-                      e.key,
-                      e.currentTarget.value,
-                      e.currentTarget.selectionStart,
-                      e.currentTarget.selectionEnd
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(e) => {
-                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
-                }}
-                className="h-9 text-sm"
-              />
-            </div>
-            <span className="text-muted-foreground">–</span>
-            <div className="flex-1">
-              <Label htmlFor="req-max" className="sr-only">Max budget</Label>
-              <Input
-                id="req-max"
-                name="max"
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 500"
-                defaultValue={formatCurrencyInput(maxBudget)}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey || e.metaKey || e.altKey) return;
-                  if (
-                    shouldBlockCurrencyKey(
-                      e.key,
-                      e.currentTarget.value,
-                      e.currentTarget.selectionStart,
-                      e.currentTarget.selectionEnd
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(e) => {
-                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
-                }}
-                className="h-9 text-sm"
-              />
-            </div>
+          <div>
+            <Label htmlFor="req-max" className="sr-only">Max budget</Label>
+            <Input
+              id="req-max"
+              name="max"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 500"
+              defaultValue={formatCurrencyInput(maxBudget)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+              }}
+              className="h-9 text-sm"
+            />
           </div>
           <Button type="submit" variant="outline" size="sm" className="w-full">
             Apply Budget

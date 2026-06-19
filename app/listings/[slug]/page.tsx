@@ -367,7 +367,6 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       sellerAvatar={s?.avatar_url ?? ""}
                       timePosted={formatTimeAgo(r.created_at as string)}
                       createdAt={r.created_at as string}
-                      updatedAt={r.updated_at as string}
                       imageUrl={cover}
                     />
                   );

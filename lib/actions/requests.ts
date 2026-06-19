@@ -348,7 +348,6 @@ export interface CreateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
-  is_negotiable: boolean;
   urgency: RequestUrgency;
   /** Up to 3 base64-encoded images */
   photos: string[];
@@ -404,7 +403,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
-      is_negotiable: input.is_negotiable,
+      is_negotiable: false,
       urgency: input.urgency,
     })
     .select("id, slug")
@@ -439,7 +438,6 @@ export interface UpdateRequestInput {
   category: string;
   budget_min: number | null;
   budget_max: number | null;
-  is_negotiable: boolean;
   urgency: RequestUrgency;
   /**
    * Full photo list in final display order. Existing photos are http(s) URLs,
@@ -504,7 +502,7 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
-      is_negotiable: input.is_negotiable,
+      is_negotiable: false,
       urgency: input.urgency,
     })
     .eq("id", input.requestId)

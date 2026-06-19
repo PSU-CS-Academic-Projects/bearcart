@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HamburgerIcon, BackpackIcon } from "@phosphor-icons/react/dist/ssr";
+import { HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon, } from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
   return (
@@ -60,24 +66,15 @@ export function HeroSection() {
             </p>
             <div className="grid grid-cols-2 gap-2">
               <a href="/listings?category=Accessories" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <path d="M16 10a4 4 0 0 1-8 0" />
-                </svg>
+                <HandbagIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Accessories</span>
               </a>
               <a href="/listings?category=electronics" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <path d="M8 21h8M12 17v4" />
-                </svg>
+                <LaptopIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Electronics</span>
               </a>
               <a href="/listings?category=clothing" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z" />
-                </svg>
+                <TShirtIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Clothing</span>
               </a>
               <a href="/listings?category=food" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
@@ -89,17 +86,11 @@ export function HeroSection() {
                 <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
               </a>
               <a href="/listings?category=services" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                </svg>
+                <WrenchIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Services</span>
               </a>
               <a href="/listings?category=others" className="group col-span-2 flex flex-row items-center gap-2.5 px-3 py-2.5 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <circle cx="5" cy="12" r="1" />
-                  <circle cx="12" cy="12" r="1" />
-                  <circle cx="19" cy="12" r="1" />
-                </svg>
+                <DotsThreeIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800">Others</span>
               </a>
             </div>

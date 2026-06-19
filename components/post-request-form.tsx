@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { createRequest, type RequestUrgency } from "@/lib/actions/requests";
@@ -96,7 +95,6 @@ export function PostRequestForm() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [budget, setBudget] = useState("");
-  const [negotiable, setNegotiable] = useState(false);
   const [urgency, setUrgency] = useState<RequestUrgency>("not_urgent");
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -123,7 +121,9 @@ export function PostRequestForm() {
 
     if (!category) next.category = "Please select a category";
 
-    if (description.length > DESC_MAX) {
+    if (!description.trim()) {
+      next.description = "Please add some details about what you're looking for";
+    } else if (description.length > DESC_MAX) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
 
@@ -151,7 +151,6 @@ export function PostRequestForm() {
         category,
         budget_min: budgetNum,
         budget_max: null,
-        is_negotiable: negotiable,
         urgency,
         photos,
       });
@@ -249,7 +248,7 @@ export function PostRequestForm() {
 
             {/* Description */}
             <div id="req-desc-section" className="space-y-2">
-              <Label htmlFor="req-desc">Add more details (optional)</Label>
+              <Label htmlFor="req-desc">Add more details</Label>
               <Textarea
                 id="req-desc"
                 placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
@@ -297,15 +296,6 @@ export function PostRequestForm() {
                   disabled={submitting}
                   className={cn("pl-7", errors.budget && "border-destructive")}
                 />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="post-negotiable"
-                  checked={negotiable}
-                  onCheckedChange={(c) => setNegotiable(c as boolean)}
-                  disabled={submitting}
-                />
-                <Label htmlFor="post-negotiable" className="text-sm font-normal">Price is negotiable</Label>
               </div>
               {errors.budget && (
                 <p className="text-sm text-destructive">{errors.budget}</p>

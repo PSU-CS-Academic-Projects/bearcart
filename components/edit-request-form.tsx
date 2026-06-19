@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -133,7 +132,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
       ? formatCurrencyInput(String(request.budget_min))
       : ""
   );
-  const [negotiable, setNegotiable] = useState(request.is_negotiable ?? false);
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -147,7 +145,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
       request.budget_min !== null && request.budget_min > 0
         ? formatCurrencyInput(String(request.budget_min))
         : "",
-    negotiable: request.is_negotiable ?? false,
     urgency: request.urgency,
     photos: initialExisting.map((img) => img.url),
   }));
@@ -160,7 +157,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     category !== original.category ||
     description !== original.description ||
     budget !== original.budget ||
-    negotiable !== original.negotiable ||
     urgency !== original.urgency ||
     photosChanged;
 
@@ -173,7 +169,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     if (!mounted.current) { mounted.current = true; return; }
     hideNoChanges();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, category, description, budget, negotiable, urgency, photos]);
+  }, [title, category, description, budget, urgency, photos]);
 
   const totalPhotos = photos.length;
 
@@ -192,7 +188,9 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     if (!title.trim()) next.title = "Tell us what you're looking for";
     else if (title.length > TITLE_MAX) next.title = `Title must be ${TITLE_MAX} characters or less`;
     if (!category) next.category = "Please select a category";
-    if (description.length > DESC_MAX) {
+    if (!description.trim()) {
+      next.description = "Please add some details about what you're looking for";
+    } else if (description.length > DESC_MAX) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
     const budgetNum = parseCurrencyInput(budget);
@@ -220,7 +218,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
         category,
         budget_min: budgetNum,
         budget_max: null,
-        is_negotiable: negotiable,
         urgency,
         orderedPhotos: photos,
         removedImageIds: removedIds,
@@ -357,6 +354,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
               </Label>
               <Input
                 id="edit-req-title"
+                placeholder="e.g. Looking for a used calculator"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={TITLE_MAX}
@@ -399,7 +397,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="edit-req-desc">Add more details (optional)</Label>
+              <Label htmlFor="edit-req-desc">Add more details</Label>
               <Textarea
                 id="edit-req-desc"
                 placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
@@ -447,15 +445,6 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                   disabled={submitting}
                   className={cn("pl-7", errors.budget && "border-destructive")}
                 />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="edit-negotiable"
-                  checked={negotiable}
-                  onCheckedChange={(c) => setNegotiable(c as boolean)}
-                  disabled={submitting}
-                />
-                <Label htmlFor="edit-negotiable" className="text-sm font-normal">Price is negotiable</Label>
               </div>
               {errors.budget && (
                 <p className="text-sm text-destructive">{errors.budget}</p>
