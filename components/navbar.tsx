@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, getCurrentUser } from "@/lib/supabase-server";
 import { getUnreadMessageCount } from "@/lib/actions/messages";
 import {
   getRecentNotifications,
@@ -22,9 +22,11 @@ export interface NavbarUser {
 // ─── Server Component ─────────────────────────────────────────────────────────
 
 export async function Navbar() {
-  // Auth + user profile fetch
+  // Auth + user profile fetch. getCurrentUser() is request-memoized, so this
+  // shares the JWT validation with the rest of the render instead of making
+  // its own network round-trip.
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const authUser = await getCurrentUser();
 
   let navbarUser: NavbarUser | null = null;
   let initialUnreadCount = 0;

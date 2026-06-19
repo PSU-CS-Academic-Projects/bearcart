@@ -96,7 +96,7 @@ async function ListingsGrid({
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {listings.map((listing) => (
+            {listings.map((listing, index) => (
               <ListingCard
                 key={listing.id}
                 id={listing.id}
@@ -111,6 +111,7 @@ async function ListingsGrid({
                 createdAt={listing.created_at}
                 updatedAt={listing.updated_at}
                 imageUrl={getCoverImage(listing)}
+                priority={index < 4}
               />
             ))}
           </div>
