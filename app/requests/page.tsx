@@ -11,7 +11,8 @@ import {
 } from "@/components/requests-filters";
 import { RequestRow, RequestRowSkeleton } from "@/components/request-row";
 import { Pagination } from "@/components/pagination";
-import { getRequests, type RequestFilters } from "@/lib/actions/requests";
+import { SortSelect } from "@/components/sort-select";
+import { getRequests, type RequestFilters, type RequestSort } from "@/lib/actions/requests";
 import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { createClient } from "@/lib/supabase-server";
 import { parseCurrencyInput } from "@/lib/currency";
@@ -62,12 +63,19 @@ async function RequestsList({
   const maxBudget = typeof searchParams.max === "string" ? parseCurrencyInput(searchParams.max) : null;
   const page = typeof searchParams.page === "string" ? parseInt(searchParams.page) : 1;
 
+  const VALID_SORTS: RequestSort[] = ["newest", "oldest", "budget-low", "budget-high"];
+  const sortParam = typeof searchParams.sort === "string" ? searchParams.sort : undefined;
+  const sortBy: RequestSort = VALID_SORTS.includes(sortParam as RequestSort)
+    ? (sortParam as RequestSort)
+    : "newest";
+
   const filters: RequestFilters = {
     search,
     categories,
     urgencies,
     minBudget: minBudget !== null && minBudget > 0 ? minBudget : undefined,
     maxBudget: maxBudget !== null && maxBudget > 0 ? maxBudget : undefined,
+    sortBy,
     page: isNaN(page) ? 1 : page,
     pageSize: 12,
   };
@@ -165,19 +173,24 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               Help fellow Bearcats get what they need
             </p>
           </div>
-          {isLoggedIn && (
-            <Button asChild>
-              <Link href="/requests/new">
-                <Plus className="size-4" />
-                Post a Request
-              </Link>
-            </Button>
-          )}
         </div>
 
         {/* Top Controls */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <RequestsMobileFiltersSheet />
+
+          <div className="ml-auto flex items-center text-sm">
+            <Suspense fallback={null}>
+              <SortSelect
+                options={[
+                  { value: "newest", label: "Newest" },
+                  { value: "oldest", label: "Oldest" },
+                  { value: "budget-low", label: "Budget: Low to High" },
+                  { value: "budget-high", label: "Budget: High to Low" },
+                ]}
+              />
+            </Suspense>
+          </div>
         </div>
 
         {/* Active Filter Badges */}

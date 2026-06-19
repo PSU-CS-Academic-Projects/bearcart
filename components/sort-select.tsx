@@ -9,13 +9,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const sortOptions = [
+export interface SortOption {
+  value: string;
+  label: string;
+}
+
+const listingSortOptions: SortOption[] = [
   { value: "newest", label: "Newest" },
   { value: "price-low", label: "Price: Low to High" },
   { value: "price-high", label: "Price: High to Low" },
 ];
 
-export function SortSelect() {
+export function SortSelect({ options = listingSortOptions }: { options?: SortOption[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -40,7 +45,7 @@ export function SortSelect() {
         <SelectValue placeholder="Sort by" />
       </SelectTrigger>
       <SelectContent>
-        {sortOptions.map((option) => (
+        {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}
           </SelectItem>

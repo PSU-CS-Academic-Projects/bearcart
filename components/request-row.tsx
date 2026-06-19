@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import {
   HandbagIcon,
   LaptopIcon,
@@ -23,6 +24,7 @@ import {
   ProhibitIcon,
   ArrowCounterClockwiseIcon,
   Trash,
+  HandWavingIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,9 +89,9 @@ function categoryIconFor(category: string): React.ComponentType<{ className?: st
 // ─── Urgency Badge ────────────────────────────────────────────────────────────
 
 const URGENCY_STYLES: Record<RequestUrgency, string> = {
-  not_urgent: "bg-muted text-muted-foreground",
-  moderate: "bg-primary/10 text-primary",
-  urgent: "bg-amber-900/10 text-amber-900",
+  not_urgent: "bg-muted text-muted-foreground",       
+  moderate: "bg-orange-50 text-orange-500 border border-orange-200", 
+  urgent: "bg-red-50 text-amber-800 border border-red-200",
 };
 
 function UrgencyBadge({ urgency }: { urgency: RequestUrgency }) {
@@ -363,6 +365,7 @@ export function RequestRow({
               onClick={handleIHaveThis}
               className="h-7 px-3 text-xs"
             >
+             <HandWavingIcon className="size-4" />
               I Have This
             </Button>
           )}
@@ -504,7 +507,7 @@ export function RequestRow({
       </AlertDialog>
 
       {/* Image lightbox */}
-      {lightboxOpen && images.length > 0 && (
+      {lightboxOpen && images.length > 0 && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
           onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
@@ -581,7 +584,8 @@ export function RequestRow({
               </span>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

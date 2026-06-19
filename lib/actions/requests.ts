@@ -12,6 +12,8 @@ import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 export type RequestUrgency = "not_urgent" | "moderate" | "urgent";
 export type RequestStatus = "open" | "fulfilled" | "closed";
 
+export type RequestSort = "newest" | "oldest" | "budget-low" | "budget-high";
+
 export interface RequestFilters {
   search?: string;
   category?: string;
@@ -20,6 +22,7 @@ export interface RequestFilters {
   urgencies?: string[];
   minBudget?: number;
   maxBudget?: number;
+  sortBy?: RequestSort;
   page?: number;
   pageSize?: number;
 }
@@ -118,6 +121,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     search,
     minBudget,
     maxBudget,
+    sortBy = "newest",
     page = 1,
     pageSize = 20,
   } = filters;
@@ -181,7 +185,26 @@ export async function getRequests(filters: RequestFilters = {}) {
     query = query.lte("budget_min", maxBudget);
   }
 
-  query = query.order("created_at", { ascending: false });
+  // Sorting. Budget sorts order by budget_min with requests that have no budget
+  switch (sortBy) {
+    case "oldest":
+      query = query.order("created_at", { ascending: true });
+      break;
+    case "budget-low":
+      query = query
+        .order("budget_min", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      break;
+    case "budget-high":
+      query = query
+        .order("budget_min", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      break;
+    case "newest":
+    default:
+      query = query.order("created_at", { ascending: false });
+      break;
+  }
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;

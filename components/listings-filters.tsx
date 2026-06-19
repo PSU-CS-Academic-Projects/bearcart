@@ -332,7 +332,7 @@ function FiltersContent() {
                 name="min"
                 type="text"
                 inputMode="numeric"
-                placeholder="e.g. 500"
+                placeholder="e.g. 100"
                 defaultValue={formatCurrencyInput(minPrice)}
                 onKeyDown={(e) => {
                   if (e.ctrlKey || e.metaKey || e.altKey) return;
