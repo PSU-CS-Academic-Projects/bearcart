@@ -27,6 +27,8 @@ interface ProfileListingCardProps {
   category: string;
   condition: string;
   timePosted: string;
+  createdAt: string;
+  updatedAt?: string;
   imageUrl: string;
   variant: "active" | "sold" | "saved";
   dateSold?: string;
@@ -45,6 +47,8 @@ export function ProfileListingCard({
   category,
   condition,
   timePosted,
+  createdAt,
+  updatedAt,
   imageUrl,
   variant,
   dateSold,
@@ -54,6 +58,13 @@ export function ProfileListingCard({
   onDelete,
   onRemoveSaved,
 }: ProfileListingCardProps) {
+
+  const wasUpdated =
+    updatedAt && Math.abs(new Date(updatedAt).getTime() - new Date(createdAt).getTime()) > 60000;
+
+  const tooltipDate = wasUpdated ? updatedAt : createdAt;
+  const tooltipLabel = wasUpdated ? "Updated" : "Posted";
+  
   return (
     <Link href={`/listings/${slug ?? id}`} className="group block">
       <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
@@ -150,7 +161,21 @@ export function ProfileListingCard({
           <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">
             {title}
           </h3>
-          <p className="mt-1.5 text-xs text-[oklch(0.5_0_0)]">
+         <p 
+            className="mt-1.5 text-xs text-[oklch(0.5_0_0)]"
+            title={
+              variant === "sold" && dateSold 
+                ? undefined 
+                : `${tooltipLabel} ${new Date(tooltipDate).toLocaleString("en-PH", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}`
+            }
+          >
             {variant === "sold" && dateSold ? `Sold ${dateSold}` : timePosted} · {condition}
           </p>
         </div>

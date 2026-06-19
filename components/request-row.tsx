@@ -310,15 +310,26 @@ export function RequestRow({
             <>
               <span>&middot;</span>
               <span>Budget: {formatBudget(request.budget_min, request.budget_max)}</span>
-              {request.is_negotiable && (
-                <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  Negotiable
-                </span>
-              )}
             </>
           )}
           <span>&middot;</span>
-          <span>{formatTimeAgo(request.created_at)}</span>
+          <span
+            title={new Date(
+              (request as { updated_at?: string }).updated_at &&
+              Math.abs(new Date((request as { updated_at?: string }).updated_at!).getTime() - new Date(request.created_at).getTime()) > 60000
+                ? (request as { updated_at?: string }).updated_at!
+                : request.created_at
+            ).toLocaleString("en-PH", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          >
+            {formatTimeAgo(request.created_at)}
+          </span>
         </p>
 
         {/* Action row */}

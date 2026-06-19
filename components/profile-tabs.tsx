@@ -43,6 +43,7 @@ interface ListingRow {
   status: string;
   is_delisted?: boolean;
   created_at: string;
+  updated_at?: string;
   listing_images: { image_url: string; is_cover: boolean; order: number }[];
 }
 
@@ -223,6 +224,8 @@ export function ProfileTabs(props: ProfileTabsProps) {
           category={listing.category}
           condition={formatCondition(listing.condition)}
           timePosted={formatTimeAgo(listing.created_at)}
+          createdAt={listing.created_at}
+          updatedAt={listing.updated_at}
           imageUrl={getCoverImage(listing)}
           variant={variant}
           isDelisted={listing.is_delisted}
@@ -530,6 +533,8 @@ export function ProfileTabs(props: ProfileTabsProps) {
                 category={listing.category}
                 condition={formatCondition(listing.condition)}
                 timePosted={formatTimeAgo(listing.created_at)}
+                createdAt={listing.created_at}
+                updatedAt={listing.updated_at}
                 imageUrl={getCoverImage(listing)}
                 variant="active"
                 isDelisted={listing.is_delisted}
@@ -552,6 +557,8 @@ export function ProfileTabs(props: ProfileTabsProps) {
                 category={listing.category}
                 condition={formatCondition(listing.condition)}
                 timePosted={formatTimeAgo(listing.created_at)}
+                createdAt={listing.created_at}
+                updatedAt={listing.updated_at}
                 imageUrl={getCoverImage(listing)}
                 variant="sold"
                 isDelisted={listing.is_delisted}

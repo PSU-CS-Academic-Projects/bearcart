@@ -159,9 +159,9 @@ function getRequestStatusBadge(status: string) {
 }
 
 function formatBudgetRange(min: number | null, max: number | null): string | null {
-  if (min != null && max != null) return `${formatListingPrice(min)} – ${formatListingPrice(max)}`;
-  if (min != null) return `From ${formatListingPrice(min)}`;
-  if (max != null) return `Up to ${formatListingPrice(max)}`;
+  if (min != null && max != null) return `Budget: ${formatListingPrice(min)} – ${formatListingPrice(max)}`;
+  if (min != null) return `Budget: ${formatListingPrice(min)}`;
+  if (max != null) return `Budget: ${formatListingPrice(max)}`;
   return null;
 }
 
@@ -348,7 +348,7 @@ export function ChatWindow({
               {conversation.otherUser.name}
             </Link>
             <Badge variant="secondary" className="text-xs">
-              PSU {conversation.otherUser.role}
+              {conversation.otherUser.role}
             </Badge>
           </div>
           <span className={`text-xs ${isOtherUserOnline ? "text-emerald-600" : "text-muted-foreground"}`}>

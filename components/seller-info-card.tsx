@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toStorageUrl } from "@/lib/storage-url";
 import {
   CalendarIcon,
-  StudentIcon,
+  BuildingIcon,
   UserIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { formatTimeAgo } from "@/lib/listing-helpers";
@@ -29,7 +29,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
   const displayName =
     seller.full_name ??
     ([seller.first_name, seller.last_name].filter(Boolean).join(" ") ||
-    "PSU Member");
+    "Member");
 
   const initials = displayName
     .split(" ")
@@ -72,7 +72,7 @@ export function SellerInfoCard({ seller }: SellerInfoCardProps) {
         <div className="space-y-1.5 border-y py-2.5">
           {seller.college && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <StudentIcon className="size-3.5 shrink-0 text-primary" />
+              <BuildingIcon className="size-3.5 shrink-0 text-primary" />
               <span className="truncate">{seller.college}</span>
             </div>
           )}

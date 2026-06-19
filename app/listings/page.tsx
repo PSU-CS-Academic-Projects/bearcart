@@ -108,6 +108,8 @@ async function ListingsGrid({
                 sellerName={getSellerName(listing)}
                 sellerAvatar={listing.seller?.avatar_url ?? ""}
                 timePosted={formatTimeAgo(listing.created_at)}
+                createdAt={listing.created_at}
+                updatedAt={listing.updated_at}
                 imageUrl={getCoverImage(listing)}
               />
             ))}

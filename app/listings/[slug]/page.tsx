@@ -213,19 +213,26 @@ export default async function ListingDetailPage({ params }: PageProps) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
+                  <span 
+                    className="flex items-center gap-1"
+                    title={new Date(listing.created_at).toLocaleString("en-PH", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  >
                     <Clock className="size-3.5" />
-                    Posted {new Date(listing.created_at).toLocaleString("en-Ph", {
+                    Posted {new Date(listing.created_at).toLocaleString("en-PH", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </span>
 
-                  <span className="flex items-center gap-1">
-                    <Eye className="size-3.5" />
-                    {(listing.views_count ?? 0).toLocaleString()} views
-                  </span>
+                 
 
                   {listing.updated_at &&
                     listing.created_at &&
@@ -233,15 +240,29 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       new Date(listing.updated_at).getTime() -
                         new Date(listing.created_at).getTime()
                     ) > 60000 && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span 
+                        className="flex items-center gap-1 text-xs text-muted-foreground"
+                        title={new Date(listing.updated_at).toLocaleString("en-PH", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      >
                         <PencilSimple className="size-3" />
-                        Updated {new Date(listing.updated_at).toLocaleString("en-Ph", {
+                        Updated {new Date(listing.updated_at).toLocaleString("en-PH", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}
                       </span>
                     )}
+                  <span className="flex items-center gap-1">
+                       <Eye className="size-3.5" />
+                      {(listing.views_count ?? 0).toLocaleString()} views
+                  </span>
                 </div>
                 <div className="rounded-xl bg-secondary/45 px-3 py-2.5">
                   <h2 className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-primary/80">
@@ -345,6 +366,8 @@ export default async function ListingDetailPage({ params }: PageProps) {
                       sellerName={s?.full_name ?? "Student"}
                       sellerAvatar={s?.avatar_url ?? ""}
                       timePosted={formatTimeAgo(r.created_at as string)}
+                      createdAt={r.created_at as string}
+                      updatedAt={r.updated_at as string}
                       imageUrl={cover}
                     />
                   );

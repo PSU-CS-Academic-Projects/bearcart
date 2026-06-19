@@ -14,6 +14,8 @@ interface ListingCardProps {
   sellerName: string;
   sellerAvatar: string;
   timePosted: string;
+  createdAt: string;
+  updatedAt?: string;
   imageUrl: string;
 }
 
@@ -44,12 +46,20 @@ export function ListingCard({
   sellerName,
   sellerAvatar,
   timePosted,
+  createdAt,
+  updatedAt,
   imageUrl,
 }: ListingCardProps) {
   const parts = sellerName.trim().split(" ");
   const displayName = parts.length >= 2
     ? `${parts[0]} ${parts[parts.length - 1][0]}.`
     : parts[0];
+
+    const wasUpdated =
+  updatedAt && Math.abs(new Date(updatedAt).getTime() - new Date(createdAt).getTime()) > 60000;
+
+  const tooltipDate = wasUpdated ? updatedAt : createdAt;
+  const tooltipLabel = wasUpdated ? "Updated" : "Posted";
 
   return (
     <Link href={`/listings/${slug ?? id}`} className="group block">
@@ -78,7 +88,18 @@ export function ListingCard({
                 <User className="size-full p-0.5" />
               )}
             </div>
-            <span>{displayName} · {timePosted} · {condition}</span>
+           <span
+              title={`${tooltipLabel} ${new Date(tooltipDate).toLocaleString("en-PH", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })}`}
+            >
+              {displayName} · {timePosted} · {condition}
+            </span>
           </div>
         </div>
       </article>
