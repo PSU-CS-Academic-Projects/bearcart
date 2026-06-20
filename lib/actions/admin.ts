@@ -181,21 +181,14 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
 export async function getPlatformStats(): Promise<PlatformStats> {
   const { supabase } = await requireAdmin();
 
-  const headCount = async (table: string) => {
-    const { count } = await supabase.from(table).select("id", { count: "exact", head: true });
-    return count ?? 0;
-  };
-
-  const [totalUsers, totalListings, totalRequests] = await Promise.all([
-    headCount("users"),
-    headCount("listings"),
-    headCount("requests"),
+  const [totalUsers, totalListings, totalRequests, totalSold] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }).is("deleted_at", null).then(r => r.count ?? 0),
+    supabase.from("listings").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_delisted", false).in("status", ["available", "reserved"]).then(r => r.count ?? 0),
+    supabase.from("requests").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_delisted", false).eq("status", "open").then(r => r.count ?? 0),
+    supabase.from("listings").select("id", { count: "exact", head: true }).eq("status", "sold").then(r => r.count ?? 0),
   ]);
 
-  const { count: totalSold } = await supabase
-    .from("listings").select("id", { count: "exact", head: true }).eq("status", "sold");
-
-  return { totalUsers, totalListings, totalRequests, totalSold: totalSold ?? 0 };
+  return { totalUsers, totalListings, totalRequests, totalSold };
 }
 
 // ─── Recent activity feed ─────────────────────────────────────────────────────

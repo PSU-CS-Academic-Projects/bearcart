@@ -261,7 +261,7 @@ export function PostListingForm() {
 
   const photosSection = (
     <div id="photo-upload-zone">
-      <PhotoUpload
+      <PhotoUpload 
         photos={formData.photos}
         onPhotosChange={(photos) => updateField("photos", photos)}
         error={errors.photos}
@@ -462,7 +462,7 @@ export function PostListingForm() {
           <div className="p-4">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div><h2 className="text-lg font-semibold text-foreground">Add Photos</h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
+                <div><h2 className="text-lg font-semibold text-foreground">Add Photos <span className="text-destructive">*</span></h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
                 {photosSection}
               </div>
             )}
@@ -521,7 +521,7 @@ export function PostListingForm() {
           >
             {/* Photos */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos</h2></div>
+              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos <span className="text-destructive">*</span></h2></div>
               {photosSection}
             </section>
             <div className="h-px bg-border" />

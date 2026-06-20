@@ -43,14 +43,6 @@ export async function RequestsSection() {
               Help PalSU students and faculty find what they need
             </p>
           </div>
-          {user && (
-            <Button asChild>
-              <Link href="/requests/new">
-                <Plus className="size-4" />
-                Post a Request
-              </Link>
-            </Button>
-          )}
         </div>
 
         {requests.length === 0 ? (
