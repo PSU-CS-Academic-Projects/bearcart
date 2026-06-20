@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { sendWelcomeEmail } from "@/lib/email";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST() {
   try {
@@ -11,6 +12,15 @@ export async function POST() {
 
     if (!user || !user.email) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Rate limit: 3 welcome emails per hour per ID.
+    const rl = await checkRateLimit("welcomeEmail", `user:${user.id}`);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      );
     }
 
     // Fetch the user's profile to get their first name

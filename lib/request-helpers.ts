@@ -1,4 +1,5 @@
 import type { RequestRow, RequestUrgency } from "@/lib/actions/requests";
+import { formatPeso } from "@/lib/currency";
 
 /** Build a "Juan C." style short name from a request's requester. */
 export function getRequesterShortName(requester: RequestRow["requester"]): string {
@@ -27,12 +28,19 @@ export function getRequesterFullName(requester: RequestRow["requester"]): string
 
 /** Format the budget range as "₱200 - ₱300", "₱200+", "Up to ₱300", or "Budget flexible". */
 export function formatBudget(min: number | null, max: number | null): string {
-  if (min !== null && max !== null) {
-    return `₱${min.toLocaleString()} – ₱${max.toLocaleString()}`;
+  const positiveMin = min !== null && min > 0 ? min : null;
+  const positiveMax = max !== null && max > 0 ? max : null;
+
+  if (positiveMin !== null && positiveMax !== null) {
+    return `${formatPeso(positiveMin)} – ${formatPeso(positiveMax)}`;
   }
-  if (min !== null) return `₱${min.toLocaleString()}+`;
-  if (max !== null) return `Up to ₱${max.toLocaleString()}`;
+  if (positiveMin !== null) return formatPeso(positiveMin);
+  if (positiveMax !== null) return `Up to ${formatPeso(positiveMax)}`;
   return "Budget flexible";
+}
+
+export function hasPositiveBudget(min: number | null, max: number | null): boolean {
+  return (min !== null && min > 0) || (max !== null && max > 0);
 }
 
 /** Convert urgency value to a human label. */
@@ -45,8 +53,14 @@ export function urgencyLabel(urgency: RequestUrgency): string {
   }
 }
 
+/** All request image URLs ordered by their `order` column (cover first). */
+export function getRequestImageUrls(request: RequestRow): string[] {
+  return [...(request.request_images ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .map((img) => img.image_url);
+}
+
 /** Pick the first image URL (lowest order) from a request, or empty string. */
 export function getRequestCoverImage(request: RequestRow): string {
-  const sorted = [...(request.request_images ?? [])].sort((a, b) => a.order - b.order);
-  return sorted[0]?.image_url ?? "";
+  return getRequestImageUrls(request)[0] ?? "";
 }

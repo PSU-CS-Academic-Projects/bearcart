@@ -7,7 +7,59 @@ import { cn } from "@/lib/utils";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+// ─── Magic byte detection ─────────────────────────────────────────────────────
+// Reads the first 12 bytes of a file and returns the actual MIME type.
+// This catches files renamed with a different extension (e.g. a GIF saved as .jpg).
+
+interface DetectedImage {
+  mime: string;
+  label: string;
+}
+
+function detectMimeFromBytes(file: File): Promise<DetectedImage | null> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buf = new Uint8Array(e.target!.result as ArrayBuffer);
+
+      // JPEG: FF D8 FF
+      if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF)
+        return resolve({ mime: "image/jpeg", label: "JPEG" });
+
+      // PNG: 89 50 4E 47 0D 0A 1A 0A
+      if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47)
+        return resolve({ mime: "image/png", label: "PNG" });
+
+      // WebP: RIFF????WEBP
+      if (
+        buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+        buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+      ) return resolve({ mime: "image/webp", label: "WebP" });
+
+      // GIF: 47 49 46 38 ("GIF8")
+      if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)
+        return resolve({ mime: "image/gif", label: "GIF" });
+
+      // BMP: 42 4D ("BM")
+      if (buf[0] === 0x42 && buf[1] === 0x4D)
+        return resolve({ mime: "image/bmp", label: "BMP" });
+
+      // ISO-BMFF based formats (AVIF / HEIC): ????ftyp????
+      if (buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) {
+        const brand = String.fromCharCode(buf[8], buf[9], buf[10], buf[11]);
+        if (brand === "avif" || brand === "avis") return resolve({ mime: "image/avif", label: "AVIF" });
+        if (["heic", "heix", "mif1", "msf1"].includes(brand)) return resolve({ mime: "image/heic", label: "HEIC" });
+      }
+
+      resolve(null);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,21 +89,44 @@ export function PhotoUpload({
   // ── File validation ───────────────────────────────────────────────────────
 
   const validateAndProcessFiles = useCallback(
-    (files: File[]) => {
+    async (files: File[]) => {
       setFileError(null);
       const errors: string[] = [];
       const validFiles: File[] = [];
 
+   const ALLOWED_LABEL = "JPG, JPEG, PNG, or WEBP";
+
       for (const file of files) {
-        if (!ALLOWED_TYPES.includes(file.type)) {
-          errors.push(`"${file.name}" — Only JPG, PNG, and WEBP files are allowed`);
+        const ext = "." + (file.name.split(".").pop()?.toLowerCase() ?? "");
+        const extClaimsAllowed = ALLOWED_EXTENSIONS.includes(ext);
+
+        // Always check real bytes first — this is the source of truth.
+        const detected = await detectMimeFromBytes(file);
+        const isAllowed = detected !== null && ALLOWED_TYPES.includes(detected.mime);
+
+        if (!isAllowed) {
+          if (detected && extClaimsAllowed) {
+            // Case 2: extension claims an allowed type, but the real content disagrees (renamed file).
+            errors.push(
+              `"${file.name}" - This file is actually  .${detected.label}, even though it's named with a ${ext} extension. Please upload a ${ALLOWED_LABEL} file.`
+            );
+          } else if (detected) {
+            // Case 1: genuinely an unsupported format, and we know what it is.
+            errors.push(`"${file.name}" - ${detected.label} files aren't supported. Please upload a ${ALLOWED_LABEL} file.`);
+          } else {
+            // Couldn't identify the bytes at all.
+            errors.push(`"${file.name}" isn't a supported image. Please upload a ${ALLOWED_LABEL} file.`);
+          }
           continue;
         }
+
+        // Size check
         if (file.size > MAX_FILE_SIZE) {
           const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-          errors.push(`"${file.name}" is ${sizeMB} MB — max 5 MB per photo`);
+          errors.push(`"${file.name}" is ${sizeMB} MB - max 5 MB per photo`);
           continue;
         }
+
         validFiles.push(file);
       }
 
@@ -72,7 +147,6 @@ export function PhotoUpload({
         reader.onload = (e) => {
           const result = e.target?.result as string;
           newPhotos.push(result);
-          // Only call onPhotosChange when all files processed
           if (newPhotos.length === photos.length + filesToProcess.length) {
             onPhotosChange([...newPhotos]);
           }
@@ -80,7 +154,6 @@ export function PhotoUpload({
         reader.readAsDataURL(file);
       });
 
-      // Reset input so re-selecting the same file works
       if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [photos, maxPhotos, onPhotosChange]
@@ -103,8 +176,7 @@ export function PhotoUpload({
       e.preventDefault();
       setIsDragging(false);
       if (disabled) return;
-      const files = Array.from(e.dataTransfer.files);
-      validateAndProcessFiles(files);
+      validateAndProcessFiles(Array.from(e.dataTransfer.files));
     },
     [disabled, validateAndProcessFiles]
   );
@@ -116,16 +188,13 @@ export function PhotoUpload({
   };
 
   const removePhoto = (index: number) => {
-    const newPhotos = photos.filter((_, i) => i !== index);
-    onPhotosChange(newPhotos);
+    onPhotosChange(photos.filter((_, i) => i !== index));
     setFileError(null);
   };
 
   // ── Drag to reorder ───────────────────────────────────────────────────────
 
-  const handleThumbDragStart = (index: number) => {
-    setDragIndex(index);
-  };
+  const handleThumbDragStart = (index: number) => setDragIndex(index);
 
   const handleThumbDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
@@ -135,10 +204,10 @@ export function PhotoUpload({
 
   const handleThumbDragEnd = () => {
     if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
-      const newPhotos = [...photos];
-      const [moved] = newPhotos.splice(dragIndex, 1);
-      newPhotos.splice(dragOverIndex, 0, moved);
-      onPhotosChange(newPhotos);
+      const next = [...photos];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(dragOverIndex, 0, moved);
+      onPhotosChange(next);
     }
     setDragIndex(null);
     setDragOverIndex(null);
@@ -184,14 +253,14 @@ export function PhotoUpload({
           Drag photos here or click to upload
         </p>
         <p className="text-xs text-muted-foreground">
-          Accepts JPG, PNG, WEBP. Max 5 MB per photo.
+          Accepts JPG, JPEG, PNG, WEBP. Max 5 MB per photo.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           {photos.length} / {maxPhotos} photos uploaded
         </p>
       </label>
 
-      {/* Error Message */}
+      {/* Inline error */}
       {displayError && (
         <p className="text-sm text-destructive">{displayError}</p>
       )}
@@ -219,20 +288,17 @@ export function PhotoUpload({
                 className="size-full object-cover"
                 draggable={false}
               />
-              {/* Cover Photo Badge */}
               {index === 0 && (
                 <div className="absolute left-1 top-1 flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-xs font-medium text-primary-foreground">
                   <Star className="size-3" />
                   Cover
                 </div>
               )}
-              {/* Drag Handle */}
               {!disabled && (
                 <div className="absolute bottom-1 left-1 flex size-6 items-center justify-center rounded bg-foreground/60 text-background opacity-0 transition-opacity group-hover:opacity-100">
                   <DotsSixVertical className="size-4" />
                 </div>
               )}
-              {/* Remove Button */}
               {!disabled && (
                 <button
                   type="button"

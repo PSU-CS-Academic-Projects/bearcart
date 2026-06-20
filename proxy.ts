@@ -1,6 +1,32 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Accessible without being logged in at all
+function isPublicRoute(pathname: string): boolean {
+  return (
+    pathname === '/' ||
+    pathname === '/listings' ||
+    pathname.startsWith('/listings/') ||
+    pathname === '/requests' ||
+    pathname.startsWith('/requests/') ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-of-service'
+  )
+}
+
+// Exempt from onboarding enforcement even when logged in
+// (keeps the OAuth flow and onboarding pages from redirect-looping)
+function isOnboardingExempt(pathname: string): boolean {
+  return (
+    pathname.startsWith('/auth/') ||
+    pathname === '/setup' ||
+    pathname === '/consent' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-of-service' ||
+    pathname.startsWith('/api/')
+  )
+}
+
 export default async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -25,41 +51,39 @@ export default async function proxy(request: NextRequest) {
     }
   )
 
-  // Refresh session — keeps cookies alive
+  // Refresh session — required by @supabase/ssr to keep cookies alive
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // Auth routes are always accessible — OAuth flow must never be blocked
-  const isAuthRoute = pathname.startsWith('/auth')
-
-  // Public routes accessible without login
-  const isPublicRoute = pathname === '/' || pathname === '/listings' || pathname.startsWith('/listings/')
-
-  // If not logged in, only allow public pages + auth routes
-  if (!user && !isAuthRoute && !isPublicRoute) {
+  // Not logged in → allow public routes, block everything else
+  if (!user) {
+    if (isPublicRoute(pathname) || pathname.startsWith('/auth/')) {
+      return supabaseResponse
+    }
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // For logged-in users, enforce setup on every route except /auth/*
-  if (user && !isAuthRoute) {
-    const { data: userData } = await supabase
-      .from('users')
-      .select('college')
-      .eq('id', user.id)
-      .single()
+  // Logged in + onboarding exempt → skip DB check entirely
+  if (isOnboardingExempt(pathname)) {
+    return supabaseResponse
+  }
 
-    const needsSetup = !userData || !userData.college
+  // Logged in + all other routes → enforce onboarding completion
+  const { data: userData } = await supabase
+    .from('users')
+    .select('college, terms_accepted')
+    .eq('id', user.id)
+    .single()
 
-    // Needs setup → force to /setup (even from homepage)
-    if (needsSetup && pathname !== '/setup') {
-      return NextResponse.redirect(new URL('/setup', request.url))
-    }
+  const returnTo = encodeURIComponent(pathname + request.nextUrl.search)
 
-    // Already set up → block going back to /setup
-    if (!needsSetup && pathname === '/setup') {
-      return NextResponse.redirect(new URL('/listings', request.url))
-    }
+  if (!userData?.college) {
+    return NextResponse.redirect(new URL(`/setup?returnTo=${returnTo}`, request.url))
+  }
+
+  if (!userData.terms_accepted) {
+    return NextResponse.redirect(new URL(`/consent?returnTo=${returnTo}`, request.url))
   }
 
   return supabaseResponse

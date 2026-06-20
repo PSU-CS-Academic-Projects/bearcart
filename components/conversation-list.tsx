@@ -3,7 +3,6 @@
 import {
   ChatCircle,
   MagnifyingGlass,
-  ShoppingBag,
   DotsThreeVertical,
   Archive,
   ArrowCounterClockwise,
@@ -17,13 +16,17 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+import { toStorageUrl } from "@/lib/storage-url";
+import { formatTime } from "@/lib/format-time";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Conversation {
   id: string;
+  iAmSeller: boolean;
   otherUser: {
     id: string;
+    slug?: string;
     name: string;
     avatar: string;
     role: "Student" | "Faculty";
@@ -31,9 +34,18 @@ export interface Conversation {
   };
   listing?: {
     id: string;
+    slug?: string;
     title: string;
     thumbnail: string;
     price: number;
+    status: string;
+  };
+  request?: {
+    id: string;
+    title: string;
+    thumbnail: string;
+    budgetMin: number | null;
+    budgetMax: number | null;
     status: string;
   };
   lastMessage: {
@@ -64,26 +76,6 @@ function getInitials(name: string): string {
     .join("")
     .slice(0, 2)
     .toUpperCase() || "?";
-}
-
-function formatTime(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  if (days === 0) {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } else if (days === 1) {
-    return "Yesterday";
-  } else if (days < 7) {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
-  } else {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -257,9 +249,10 @@ function ConversationItem({
           <div className="relative size-12 overflow-hidden rounded-full bg-muted">
             {conversation.otherUser.avatar ? (
               <Image
-                src={conversation.otherUser.avatar}
+                src={toStorageUrl(conversation.otherUser.avatar)}
                 alt={conversation.otherUser.name}
                 fill
+                unoptimized
                 className="object-cover"
               />
             ) : (
@@ -288,7 +281,7 @@ function ConversationItem({
             <div className="mt-0.5 flex items-center gap-2">
               {conversation.listing.thumbnail ? (
                 <Image
-                  src={conversation.listing.thumbnail}
+                  src={toStorageUrl(conversation.listing.thumbnail)}
                   alt={conversation.listing.title}
                   width={40}
                   height={40}
@@ -296,11 +289,33 @@ function ConversationItem({
                 />
               ) : (
                 <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                  <ShoppingBag className="size-5 text-muted-foreground/60" />
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                 </div>
               )}
               <span className="truncate text-xs text-muted-foreground">
                 {conversation.listing.title}
+              </span>
+            </div>
+          )}
+
+          {/* Request context */}
+          {conversation.request && (
+            <div className="mt-0.5 flex items-center gap-2">
+              {conversation.request.thumbnail ? (
+                <Image
+                  src={toStorageUrl(conversation.request.thumbnail)}
+                  alt={conversation.request.title}
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 rounded object-cover"
+                />
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
+                </div>
+              )}
+              <span className="truncate text-xs text-muted-foreground">
+                <span className="font-medium">Request:</span> {conversation.request.title}
               </span>
             </div>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -15,30 +15,35 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  Package,
-  Wrench,
-  DotsThree,
-  Faders,
-  MagnifyingGlass,
-  Trash,
-  GraduationCap,
-  X,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  PackageIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
+  TrashIcon,
+  BackpackIcon,
+  XIcon,
 } from "@phosphor-icons/react";
+import {
+  formatCurrencyInput,
+  formatPeso,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Books", icon: Book },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "School Supplies", icon: GraduationCap },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+  { name: "Accessories", icon: HandbagIcon },
+  { name: "Electronics", icon: LaptopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: BackpackIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
 const CONDITIONS = [
@@ -191,7 +196,7 @@ export function ActiveFilterBadges() {
             onClick={() => set({ search: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -202,8 +207,8 @@ export function ActiveFilterBadges() {
             onClick={() => removeCategory(cat)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
-          </button>
+            <XIcon className="size-3" />
+          </button>                     
         </Badge>
       ))}
       {conditions.map((cond) => (
@@ -213,18 +218,18 @@ export function ActiveFilterBadges() {
             onClick={() => removeCondition(cond)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
       {(minPrice || maxPrice) && (
         <Badge variant="secondary" className="gap-1 py-1 pl-2.5 pr-1.5">
-          ₱{minPrice || "0"} – ₱{maxPrice || "∞"}
+          {minPrice ? formatPeso(parseCurrencyInput(minPrice) ?? 0) : "₱0"} – {maxPrice ? formatPeso(parseCurrencyInput(maxPrice) ?? 0) : "₱∞"}
           <button
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -246,7 +251,6 @@ function FiltersContent() {
     toggleCategory,
     conditions,
     toggleCondition,
-    search,
     minPrice,
     maxPrice,
     set,
@@ -254,36 +258,8 @@ function FiltersContent() {
     hasActiveFilters,
   } = useFilterParams();
 
-  // Controlled search input — stays in sync when URL changes externally
-  const [searchInput, setSearchInput] = useState(search);
-  useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Search */}
-      <div>
-        <h3 className="mb-3 font-semibold text-foreground">Search</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            set({ search: searchInput.trim() || null });
-          }}
-        >
-          <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
-            <MagnifyingGlass className="size-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search listings..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </form>
-      </div>
-
       {/* Categories — multi-select */}
       <div>
         <h3 className="mb-3 font-semibold text-foreground">Categories</h3>
@@ -339,9 +315,11 @@ function FiltersContent() {
             const fd = new FormData(e.currentTarget);
             const min = fd.get("min") as string;
             const max = fd.get("max") as string;
+            const minValue = parseCurrencyInput(min);
+            const maxValue = parseCurrencyInput(max);
             set({
-              min: min && parseInt(min) > 0 ? min : null,
-              max: max && parseInt(max) > 0 ? max : null,
+              min: minValue !== null && minValue > 0 ? String(minValue) : null,
+              max: maxValue !== null && maxValue > 0 ? String(maxValue) : null,
             });
           }}
           className="flex flex-col gap-3"
@@ -352,9 +330,26 @@ function FiltersContent() {
               <Input
                 id="min-price"
                 name="min"
-                type="number"
-                placeholder="₱ Min"
-                defaultValue={minPrice}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 100"
+                defaultValue={formatCurrencyInput(minPrice)}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -364,9 +359,26 @@ function FiltersContent() {
               <Input
                 id="max-price"
                 name="max"
-                type="number"
-                placeholder="₱ Max"
-                defaultValue={maxPrice}
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500"
+                defaultValue={formatCurrencyInput(maxPrice)}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+                }}
                 className="h-9 text-sm"
               />
             </div>
@@ -380,7 +392,7 @@ function FiltersContent() {
       {/* Clear Filters */}
       {hasActiveFilters && (
         <Button variant="outline" className="mt-2" onClick={clearAll}>
-          <Trash className="size-4" />
+          <TrashIcon className="size-4" />
           Clear All Filters
         </Button>
       )}
@@ -399,7 +411,7 @@ export function ListingsFiltersSidebar({ className }: ListingsFiltersProps) {
     <aside className={className}>
       <div className="sticky top-24 rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -415,14 +427,14 @@ export function ListingsMobileFiltersSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

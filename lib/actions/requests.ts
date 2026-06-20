@@ -1,11 +1,18 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
+import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
+import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
+import { logActivity, type ActivityLogType } from "@/lib/activity-log";
+import { validateAndSanitize, base64ToBuffer } from "@/lib/image-validation";
+import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type RequestUrgency = "not_urgent" | "moderate" | "urgent";
 export type RequestStatus = "open" | "fulfilled" | "closed";
+
+export type RequestSort = "newest" | "oldest" | "budget-low" | "budget-high";
 
 export interface RequestFilters {
   search?: string;
@@ -15,6 +22,7 @@ export interface RequestFilters {
   urgencies?: string[];
   minBudget?: number;
   maxBudget?: number;
+  sortBy?: RequestSort;
   page?: number;
   pageSize?: number;
 }
@@ -27,18 +35,22 @@ export interface RequestImageRow {
 
 export interface RequestRow {
   id: string;
+  slug: string;
   requester_id: string;
   title: string;
   description: string | null;
   category: string;
   budget_min: number | null;
   budget_max: number | null;
+  is_negotiable: boolean;
   urgency: RequestUrgency;
   status: RequestStatus;
+  is_delisted: boolean;
   created_at: string;
   request_images: RequestImageRow[];
   requester: {
     id: string;
+    slug?: string;
     full_name: string | null;
     first_name: string | null;
     last_name: string | null;
@@ -60,21 +72,17 @@ async function uploadRequestImage(
 ): Promise<string> {
   const supabase = await createClient();
 
-  const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
-  if (!match) throw new Error("Invalid image format. Only JPG, PNG, and WEBP are allowed.");
+  // Rate limit: 10 image uploads per minute per ID.
+  await enforceRateLimit("imageUpload", `user:${requesterId}`);
 
-  const mimeType = match[1];
-  const extension = match[2] === "jpeg" ? "jpg" : match[2];
-  const rawBase64 = match[3];
-
-  const binaryString = atob(rawBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  if (bytes.byteLength > MAX_IMAGE_SIZE_BYTES) {
+  // Size check first, before any processing.
+  const raw = base64ToBuffer(base64Data);
+  if (raw.byteLength > MAX_IMAGE_SIZE_BYTES) {
     throw new Error("Image is larger than the 5MB limit.");
   }
+
+  // Magic-byte format check + flatten transparency → white + convert to WebP.
+  const { bytes, mimeType, extension } = await validateAndSanitize(base64Data);
 
   const fileId = crypto.randomUUID();
   const filePath = `${requesterId}/${requestId}/${fileId}.${extension}`;
@@ -105,6 +113,7 @@ export async function getRequests(filters: RequestFilters = {}) {
     search,
     minBudget,
     maxBudget,
+    sortBy = "newest",
     page = 1,
     pageSize = 20,
   } = filters;
@@ -123,20 +132,27 @@ export async function getRequests(filters: RequestFilters = {}) {
         ? filters.urgency.split(",").map((u) => u.trim()).filter(Boolean)
         : [];
 
+  // Rate limit text searches (30/min per IP). Plain browsing/pagination is not
+  // limited — only an actual search query counts.
+  if (search && search.trim()) {
+    await enforceRateLimit("search", `ip:${await getClientIp()}`);
+  }
+
   let query = supabase
     .from("requests")
     .select(
       `
-      id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `,
       { count: "exact" }
     )
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null);
 
   if (search) {
@@ -161,7 +177,26 @@ export async function getRequests(filters: RequestFilters = {}) {
     query = query.lte("budget_min", maxBudget);
   }
 
-  query = query.order("created_at", { ascending: false });
+  // Sorting. Budget sorts order by budget_min with requests that have no budget
+  switch (sortBy) {
+    case "oldest":
+      query = query.order("created_at", { ascending: true });
+      break;
+    case "budget-low":
+      query = query
+        .order("budget_min", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      break;
+    case "budget-high":
+      query = query
+        .order("budget_min", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      break;
+    case "newest":
+    default:
+      query = query.order("created_at", { ascending: false });
+      break;
+  }
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -186,14 +221,15 @@ export async function getRecentRequests(limit = 10): Promise<RequestRow[]> {
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -209,11 +245,11 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("id", id)
@@ -228,6 +264,26 @@ export async function getRequestById(id: string): Promise<RequestRow | null> {
   return data as unknown as RequestRow;
 }
 
+export async function getRequestBySlug(slug: string): Promise<RequestRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("requests")
+    .select(`
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
+      request_images ( id, image_url, "order" ),
+      requester:users!requests_requester_id_fkey (
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
+      )
+    `)
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as unknown as RequestRow;
+}
+
 // ─── READ (similar — same category, exclude current) ─────────────────────────
 
 export async function getSimilarRequests(
@@ -239,15 +295,16 @@ export async function getSimilarRequests(
   const { data, error } = await supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .ilike("category", category)
     .eq("status", "open")
+    .eq("is_delisted", false)
     .is("deleted_at", null)
     .neq("id", requestId)
     .order("created_at", { ascending: false })
@@ -264,19 +321,32 @@ export async function getRequestsByRequester(
   status?: RequestStatus
 ): Promise<RequestRow[]> {
   const supabase = await createClient();
+
+  // Delisted requests are only visible to their owner and to admins.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canSeeDelisted = !!user && user.id === requesterId;
+  if (user && !canSeeDelisted) {
+    const { data: viewer } = await supabase.from("users").select("is_admin").eq("id", user.id).single();
+    canSeeDelisted = !!viewer?.is_admin;
+  }
+
   let query = supabase
     .from("requests")
     .select(`
-      id, requester_id, title, description, category,
-      budget_min, budget_max, urgency, status, created_at,
+      id, slug, requester_id, title, description, category,
+      budget_min, budget_max, is_negotiable, urgency, status, is_delisted, created_at,
       request_images ( id, image_url, "order" ),
       requester:users!requests_requester_id_fkey (
-        id, full_name, first_name, last_name, avatar_url, role, college, created_at
+        id, slug, full_name, first_name, last_name, avatar_url, role, college, created_at
       )
     `)
     .eq("requester_id", requesterId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  if (!canSeeDelisted) {
+    query = query.eq("is_delisted", false);
+  }
 
   if (status) query = query.eq("status", status);
 
@@ -298,16 +368,30 @@ export interface CreateRequestInput {
   photos: string[];
 }
 
-export async function createRequest(input: CreateRequestInput): Promise<{ id: string }> {
+export async function createRequest(input: CreateRequestInput): Promise<{ id: string; slug: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  if (input.budget_min !== null && input.budget_min < 0) {
-    throw new Error("Minimum budget must be 0 or greater");
+  // Rate limit: 5 new requests per minute per ID.
+  await enforceRateLimit("postRequest", `user:${user.id}`);
+
+  const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
+  if (banRow?.ban_type === "post" || banRow?.ban_type === "full") {
+    throw new Error("Your account is banned from posting. Contact an admin if you believe this is a mistake.");
   }
-  if (input.budget_max !== null && input.budget_max < 0) {
-    throw new Error("Maximum budget must be 0 or greater");
+
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
+  }
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
   }
   if (
     input.budget_min !== null &&
@@ -316,6 +400,13 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
   ) {
     throw new Error("Minimum budget must be less than or equal to maximum budget");
   }
+
+  // 0. Content moderation — runs before any DB write.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(input.photos);
 
   // 1. Insert request row
   const { data: request, error: insertErr } = await supabase
@@ -327,9 +418,10 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: false,
       urgency: input.urgency,
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (insertErr) throw new Error(`Failed to create request: ${insertErr.message}`);
@@ -349,7 +441,7 @@ export async function createRequest(input: CreateRequestInput): Promise<{ id: st
     await supabase.from("request_images").insert(imageRows);
   }
 
-  return { id: request.id };
+  return { id: request.id, slug: request.slug as string };
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
@@ -362,12 +454,13 @@ export interface UpdateRequestInput {
   budget_min: number | null;
   budget_max: number | null;
   urgency: RequestUrgency;
-  /** Existing image URLs to keep (in new order) */
-  existingPhotos: string[];
+  /**
+   * Full photo list in final display order. Existing photos are http(s) URLs,
+   * newly added photos are base64 data URLs. Position 0 becomes the cover.
+   */
+  orderedPhotos: string[];
   /** Image IDs that were removed by the user */
   removedImageIds: string[];
-  /** New base64-encoded images to upload */
-  newPhotos: string[];
 }
 
 export async function updateRequest(input: UpdateRequestInput): Promise<{ id: string }> {
@@ -393,6 +486,27 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
   ) {
     throw new Error("Minimum budget must be less than or equal to maximum budget");
   }
+  if (input.budget_min !== null && input.budget_min < 1) {
+    throw new Error("Minimum budget must be at least ₱1");
+  }
+  if (input.budget_min !== null && input.budget_min > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Minimum budget cannot exceed ₱999,999");
+  }
+  if (input.budget_max !== null && input.budget_max < 1) {
+    throw new Error("Maximum budget must be at least ₱1");
+  }
+  if (input.budget_max !== null && input.budget_max > MAX_CURRENCY_AMOUNT) {
+    throw new Error("Maximum budget cannot exceed ₱999,999");
+  }
+
+  const newPhotos = input.orderedPhotos.filter((p) => p.startsWith("data:"));
+
+  // 0. Content moderation — text plus any newly added images.
+  await moderateTextOrThrow([
+    { label: "title", value: input.title },
+    { label: "description", value: input.description },
+  ]);
+  await moderateImagesOrThrow(newPhotos);
 
   // 1. Update fields
   const { error: updateError } = await supabase
@@ -403,6 +517,7 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
       category: input.category,
       budget_min: input.budget_min,
       budget_max: input.budget_max,
+      is_negotiable: false,
       urgency: input.urgency,
     })
     .eq("id", input.requestId)
@@ -425,22 +540,42 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
     await supabase.from("request_images").delete().in("id", input.removedImageIds);
   }
 
-  // 3. Upload new photos
-  const newRows: { request_id: string; image_url: string; order: number }[] = [];
-  const startOrder = input.existingPhotos.length;
-  for (let i = 0; i < input.newPhotos.length; i++) {
-    try {
-      const url = await uploadRequestImage(user.id, input.requestId, input.newPhotos[i]);
-      newRows.push({ request_id: input.requestId, image_url: url, order: startOrder + i });
-    } catch (err) {
-      console.error(`Failed to upload new photo ${i}:`, err);
+  // 3. Upload new photos, mapping each base64 entry to its uploaded URL while
+  //    preserving the caller's interleaved display order.
+  const resolvedUrls: string[] = [];
+  for (const photo of input.orderedPhotos) {
+    if (photo.startsWith("data:")) {
+      try {
+        const url = await uploadRequestImage(user.id, input.requestId, photo);
+        resolvedUrls.push(url);
+      } catch (err) {
+        console.error("Failed to upload new photo:", err);
+      }
+    } else {
+      resolvedUrls.push(photo);
     }
   }
+
+  // Insert rows for the freshly uploaded images (existing rows are reordered below).
+  const { data: existingRows } = await supabase
+    .from("request_images")
+    .select("id, image_url")
+    .eq("request_id", input.requestId);
+  const existingUrls = new Set((existingRows ?? []).map((r) => r.image_url));
+
+  const newRows = resolvedUrls
+    .filter((url) => !existingUrls.has(url))
+    .map((url) => ({
+      request_id: input.requestId,
+      image_url: url,
+      order: resolvedUrls.indexOf(url),
+    }));
   if (newRows.length > 0) {
     await supabase.from("request_images").insert(newRows);
   }
 
-  // 4. Reorder existing images
+  // 4. Reorder ALL images from their position in the final ordered list.
+  //    Requests have no is_cover column — cover is simply the lowest order.
   const { data: allImages } = await supabase
     .from("request_images")
     .select("id, image_url")
@@ -448,13 +583,11 @@ export async function updateRequest(input: UpdateRequestInput): Promise<{ id: st
 
   if (allImages) {
     const updates = allImages.map((img) => {
-      let order = input.existingPhotos.indexOf(img.image_url);
-      if (order === -1) {
-        const newIdx = newRows.findIndex((r) => r.image_url === img.image_url);
-        if (newIdx !== -1) order = startOrder + newIdx;
-      }
-      if (order === -1) order = 999;
-      return supabase.from("request_images").update({ order }).eq("id", img.id);
+      const order = resolvedUrls.indexOf(img.image_url);
+      return supabase
+        .from("request_images")
+        .update({ order: order === -1 ? 999 : order })
+        .eq("id", img.id);
     });
     await Promise.all(updates);
   }
@@ -485,12 +618,33 @@ async function setRequestStatus(
   if (error) throw new Error(`Failed to update request: ${error.message}`);
 }
 
+/** Audit: record a user-driven request status change to the activity feed. */
+async function logRequestStatusChange(requestId: string, type: ActivityLogType): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const [{ data: req }, { data: actor }] = await Promise.all([
+    supabase.from("requests").select("title").eq("id", requestId).single(),
+    supabase.from("users").select("full_name").eq("id", user.id).single(),
+  ]);
+  await logActivity({
+    type,
+    actorId: user.id,
+    actorName: actor?.full_name ?? null,
+    targetType: "request",
+    targetId: requestId,
+    targetTitle: req?.title ?? null,
+  });
+}
+
 export async function markRequestFulfilled(requestId: string): Promise<void> {
-  return setRequestStatus(requestId, "fulfilled");
+  await setRequestStatus(requestId, "fulfilled");
+  await logRequestStatusChange(requestId, "request_fulfilled");
 }
 
 export async function closeRequest(requestId: string): Promise<void> {
-  return setRequestStatus(requestId, "closed");
+  await setRequestStatus(requestId, "closed");
+  await logRequestStatusChange(requestId, "request_closed");
 }
 
 export async function deleteRequest(requestId: string): Promise<void> {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Footer } from "@/components/footer";
@@ -29,12 +30,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  PaperPlaneTilt,
-  SpinnerGap,
-  X,
-  Check,
-  XCircle,
-  Trash,
+  CameraIcon,
+  FloppyDiskIcon,
+  SpinnerGapIcon,
+  XIcon,
+  CheckIcon,
+  XCircleIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import {
@@ -45,9 +47,15 @@ import {
   type RequestRow,
   type RequestUrgency,
 } from "@/lib/actions/requests";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
+import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
 
 const CATEGORIES = [
-  "Books",
+  "Accessories",
   "Electronics",
   "Clothing",
   "Food",
@@ -56,10 +64,10 @@ const CATEGORIES = [
   "Others",
 ];
 
-const URGENCIES: { value: RequestUrgency; label: string; description: string; dot: string }[] = [
-  { value: "not_urgent", label: "Flexible", description: "No rush, whenever", dot: "bg-emerald-500" },
-  { value: "moderate", label: "Need Soon", description: "Within the next week", dot: "bg-amber-500" },
-  { value: "urgent", label: "Urgent", description: "ASAP — exams or deadline", dot: "bg-red-500" },
+const URGENCIES: { value: RequestUrgency; label: string }[] = [
+  { value: "not_urgent", label: "Flexible" },
+  { value: "moderate", label: "Need Soon" },
+  { value: "urgent", label: "Urgent" },
 ];
 
 const TITLE_MAX = 100;
@@ -107,28 +115,73 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     .sort((a, b) => a.order - b.order)
     .map((img) => ({ id: img.id, url: img.image_url }));
 
-  const [existing, setExisting] = useState<ExistingImage[]>(initialExisting);
+  // photos = full ordered list (existing http URLs + new base64 data URLs)
+  const [photos, setPhotos] = useState<string[]>(initialExisting.map((img) => img.url));
   const [removedIds, setRemovedIds] = useState<string[]>([]);
-  const [newPhotos, setNewPhotos] = useState<string[]>([]);
+  // url → id map for existing images, so removals can be reported by id
+  const [imageIdMap] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    initialExisting.forEach((img) => { map[img.url] = img.id; });
+    return map;
+  });
 
   const [title, setTitle] = useState(request.title);
   const [category, setCategory] = useState(request.category);
   const [description, setDescription] = useState(request.description ?? "");
-  const [budgetMin, setBudgetMin] = useState(
-    request.budget_min !== null ? String(request.budget_min) : ""
-  );
-  const [budgetMax, setBudgetMax] = useState(
-    request.budget_max !== null ? String(request.budget_max) : ""
+  const [budget, setBudget] = useState(
+    request.budget_min !== null && request.budget_min > 0
+      ? formatCurrencyInput(String(request.budget_min))
+      : ""
   );
   const [urgency, setUrgency] = useState<RequestUrgency>(request.urgency);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const totalPhotos = existing.length + newPhotos.length;
-  const remainingSlots = Math.max(0, MAX_PHOTOS - existing.length);
+  // ── Change tracking ──────────────────────────────────────────────────────
+  // Snapshot of the values loaded from the DB, captured once on mount.
+  const [original] = useState(() => ({
+    title: request.title,
+    category: request.category,
+    description: request.description ?? "",
+    budget:
+      request.budget_min !== null && request.budget_min > 0
+        ? formatCurrencyInput(String(request.budget_min))
+        : "",
+    urgency: request.urgency,
+    photos: initialExisting.map((img) => img.url),
+  }));
 
-  const removeExisting = (id: string) => {
-    setExisting((prev) => prev.filter((p) => p.id !== id));
-    setRemovedIds((prev) => [...prev, id]);
+  const photosChanged =
+    photos.length !== original.photos.length ||
+    photos.some((p, i) => p !== original.photos[i]);
+  const hasChanges =
+    title !== original.title ||
+    category !== original.category ||
+    description !== original.description ||
+    budget !== original.budget ||
+    urgency !== original.urgency ||
+    photosChanged;
+
+  // "No changes to save yet." hint shown when Save is pressed with no changes.
+  const { showNoChanges, flashNoChanges, hideNoChanges } = useNoChangesHint();
+
+  // Hide the hint as soon as the user edits any field (skips the initial mount).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    hideNoChanges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, category, description, budget, urgency, photos]);
+
+  const totalPhotos = photos.length;
+
+  const handlePhotosChange = (updated: string[]) => {
+    // Existing photos dropped from the list get reported for deletion by id.
+    const removed = photos.filter((p) => p.startsWith("http") && !updated.includes(p));
+    removed.forEach((url) => {
+      const id = imageIdMap[url];
+      if (id) setRemovedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    });
+    setPhotos(updated);
   };
 
   const validate = useCallback((): boolean => {
@@ -136,44 +189,42 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
     if (!title.trim()) next.title = "Tell us what you're looking for";
     else if (title.length > TITLE_MAX) next.title = `Title must be ${TITLE_MAX} characters or less`;
     if (!category) next.category = "Please select a category";
-    if (description.length > DESC_MAX) {
+    if (!description.trim()) {
+      next.description = "Please add some details about what you're looking for";
+    } else if (description.length > DESC_MAX) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
-    const minNum = budgetMin ? parseFloat(budgetMin) : null;
-    const maxNum = budgetMax ? parseFloat(budgetMax) : null;
-    if (minNum !== null && minNum < 0) next.budget = "Minimum budget cannot be negative";
-    else if (maxNum !== null && maxNum < 0) next.budget = "Maximum budget cannot be negative";
-    else if (minNum !== null && maxNum !== null && minNum > maxNum) {
-      next.budget = "Minimum must be less than or equal to maximum";
-    }
+    const budgetNum = parseCurrencyInput(budget);
+    if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [title, category, description, budgetMin, budgetMax]);
+  }, [title, category, description, budget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) {
-      toast.error("Please fix the errors in the form");
+    if (submitting) return;
+    if (!hasChanges) {
+      flashNoChanges();
       return;
     }
+    hideNoChanges();
+    if (!validate()) return;
     setSubmitting(true);
     try {
-      const minNum = budgetMin ? parseFloat(budgetMin) : null;
-      const maxNum = budgetMax ? parseFloat(budgetMax) : null;
+      const budgetNum = parseCurrencyInput(budget);
       await updateRequest({
         requestId: request.id,
         title: title.trim(),
         description: description.trim(),
         category,
-        budget_min: minNum,
-        budget_max: maxNum,
+        budget_min: budgetNum,
+        budget_max: null,
         urgency,
-        existingPhotos: existing.map((p) => p.url),
+        orderedPhotos: photos,
         removedImageIds: removedIds,
-        newPhotos,
       });
       toast.success("Request updated!");
-      router.push(`/requests/${request.id}`);
+      router.push("/requests");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update request";
       toast.error(message);
@@ -228,12 +279,11 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex-1">
-        <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
             <Breadcrumb
               items={[
-                { label: "Looking For", href: "/requests" },
-                { label: request.title, href: `/requests/${request.id}` },
+                { label: "Requests", href: "/requests" },
                 { label: "Edit" },
               ]}
             />
@@ -242,51 +292,62 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Status actions — top of form, same position as Mark as Sold in listing edit */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("fulfilled")}
+              >
+                <CheckIcon className="size-4 text-emerald-600" />
+                Mark as Fulfilled
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("closed")}
+              >
+                <XCircleIcon className="size-4 text-muted-foreground" />
+                Close Request
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={submitting}
+                onClick={() => setConfirmAction("delete")}
+                className="text-destructive hover:text-destructive"
+              >
+                <TrashIcon className="size-4" />
+                Delete Request
+              </Button>
+            </div>
+
+            <div className="h-px bg-border" />
+
             {/* Photos */}
             <section className="space-y-3">
               <div>
+                 <div className="flex items-center gap-2">
+                  <CameraIcon className="size-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Photos</h2>
+              </div>
                 <Label>Photos (optional)</Label>
                 <p className="text-xs text-muted-foreground">
                   Up to {MAX_PHOTOS} photos. {totalPhotos} of {MAX_PHOTOS} used.
                 </p>
               </div>
 
-              {existing.length > 0 && (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                  {existing.map((img) => (
-                    <div
-                      key={img.id}
-                      className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
-                    >
-                      <Image
-                        src={img.url}
-                        alt="Existing"
-                        fill
-                        className="object-cover"
-                        sizes="120px"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeExisting(img.id)}
-                        disabled={submitting}
-                        className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-foreground/80 text-background opacity-0 transition-opacity hover:bg-foreground group-hover:opacity-100"
-                        aria-label="Remove photo"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {remainingSlots > 0 && (
-                <PhotoUpload
-                  photos={newPhotos}
-                  onPhotosChange={setNewPhotos}
-                  maxPhotos={remainingSlots}
-                  disabled={submitting}
-                />
-              )}
+              <PhotoUpload
+                photos={photos}
+                onPhotosChange={handlePhotosChange}
+                maxPhotos={MAX_PHOTOS}
+                disabled={submitting}
+              />
             </section>
 
             <div className="h-px bg-border" />
@@ -298,6 +359,7 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
               </Label>
               <Input
                 id="edit-req-title"
+                placeholder="e.g. Looking for a used calculator"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={TITLE_MAX}
@@ -337,72 +399,65 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                 <p className="text-sm text-destructive">{errors.category}</p>
               )}
             </div>
+        
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-req-desc">Add more details (optional)</Label>
-              <Textarea
-                id="edit-req-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={DESC_MAX}
-                rows={4}
-                disabled={submitting}
-                className={cn(errors.description && "border-destructive")}
-              />
-              <div className="flex justify-between">
-                {errors.description ? (
-                  <p className="text-sm text-destructive">{errors.description}</p>
-                ) : (
-                  <span />
-                )}
-                <CharCounter current={description.length} max={DESC_MAX} />
-              </div>
-            </div>
-
-            {/* Budget */}
-            <div className="space-y-2">
-              <Label>Budget Range (optional)</Label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="From"
-                      value={budgetMin}
-                      onChange={(e) => setBudgetMin(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
-                <span className="text-muted-foreground">to</span>
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="To"
-                      value={budgetMax}
-                      onChange={(e) => setBudgetMax(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
-              </div>
-              {errors.budget && (
-                <p className="text-sm text-destructive">{errors.budget}</p>
+        {/* Description + Budget */}
+        <div className="space-y-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-req-desc">Add more details</Label>
+            <Textarea
+              id="edit-req-desc"
+              placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={DESC_MAX}
+              rows={4}
+              disabled={submitting}
+              className={cn(errors.description && "border-destructive")}
+            />
+            <div className="flex justify-between">
+              {errors.description ? (
+                <p className="text-sm text-destructive">{errors.description}</p>
+              ) : (
+                <span />
               )}
+              <CharCounter current={description.length} max={DESC_MAX} />
             </div>
+          </div>
 
+          <div className="space-y-2">
+            <Label>Budget (optional)</Label>
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 500"
+                value={budget}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey || e.altKey) return;
+                  if (
+                    shouldBlockCurrencyKey(
+                      e.key,
+                      e.currentTarget.value,
+                      e.currentTarget.selectionStart,
+                      e.currentTarget.selectionEnd
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
+                disabled={submitting}
+                className={cn("pl-7", errors.budget && "border-destructive")}
+              />
+            </div>
+            {errors.budget && (
+              <p className="text-sm text-destructive">{errors.budget}</p>
+            )}
+          </div>
+        </div>
+            
             {/* Urgency */}
             <div className="space-y-2">
               <Label>
@@ -418,84 +473,60 @@ export function EditRequestForm({ request }: EditRequestFormProps) {
                       onClick={() => setUrgency(u.value)}
                       disabled={submitting}
                       className={cn(
-                        "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors",
+                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground transition-colors",
                         active
-                          ? "border-primary bg-primary/5"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : "border-border hover:bg-accent/50",
                         submitting && "opacity-50"
                       )}
                     >
-                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <span className={cn("size-2.5 rounded-full", u.dot)} />
-                        {u.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {u.description}
-                      </span>
+                      <span className={cn(
+                        "size-2.5 rounded-full border-2",
+                        active ? "border-primary bg-primary" : "border-gray-300 bg-transparent"
+                      )} />
+                      {u.label}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="h-px bg-border" />
-
-            {/* Submit */}
-            <Button type="submit" size="lg" disabled={submitting} className="w-full">
-              {submitting ? (
-                <>
-                  <SpinnerGap className="size-4 animate-spin" />
-                  Saving changes...
-                </>
-              ) : (
-                <>
-                  <PaperPlaneTilt className="size-4" />
-                  Save Changes
-                </>
+            {/* Action Buttons */}
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <Link href="/requests">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={submitting}>
+                    <XIcon className="size-4" />
+                    Cancel
+                  </Button>
+                </Link>
+                <Button 
+                  type="submit"
+                  disabled={submitting} 
+                  className={cn("w-full sm:w-auto",
+                    !hasChanges && "cursor-not-allowed opacity-50",
+                    submitting && "cursor-wait")}
+                  >
+                  {submitting ? (
+                    <>
+                      <SpinnerGapIcon className="size-4 animate-spin" />
+                      Saving changes...
+                    </>
+                  ) : (
+                    <>
+                      <FloppyDiskIcon className="size-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+              {showNoChanges && (
+                <p className="text-xs text-destructive text-right">
+                  No changes to save yet.
+                </p>
               )}
-            </Button>
+            </section>
           </form>
-
-          {/* Status Actions */}
-          <div className="mt-12 space-y-4 rounded-xl border bg-card p-5">
-            <h2 className="text-lg font-semibold text-foreground">Manage Request</h2>
-            <div className="space-y-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start gap-2"
-                disabled={submitting}
-                onClick={() => setConfirmAction("fulfilled")}
-              >
-                <Check className="size-4 text-emerald-600" />
-                Mark as Fulfilled
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start gap-2"
-                disabled={submitting}
-                onClick={() => setConfirmAction("closed")}
-              >
-                <XCircle className="size-4 text-muted-foreground" />
-                Close Request (without fulfilling)
-              </Button>
-            </div>
-          </div>
-
-          {/* Delete */}
-          <div className="mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
-              disabled={submitting}
-              onClick={() => setConfirmAction("delete")}
-            >
-              <Trash className="size-4" />
-              Delete Request
-            </Button>
-          </div>
         </div>
       </main>
       <Footer />

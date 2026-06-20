@@ -14,30 +14,37 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Tag, ShoppingCart, BookmarkSimple, Storefront, Package,
-  MagnifyingGlass, Star, User, Plus, PencilSimple, XCircle, Check,
+  MagnifyingGlass, User, Plus, PencilSimple, XCircle, Check, Trash,
 } from "@phosphor-icons/react";
 import { ProfileListingCard } from "@/components/profile-listing-card";
+import { Pagination } from "@/components/pagination";
 import { RequestRow } from "@/components/request-row";
-import { updateListingStatus } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
+import { updateListingStatus, deleteListing } from "@/lib/actions/listings";
 import { removeSavedListing } from "@/lib/actions/saved";
 import {
   markRequestFulfilled,
   closeRequest,
+  deleteRequest,
   type RequestRow as RequestRowType,
 } from "@/lib/actions/requests";
 import { formatTimeAgo, formatCondition } from "@/lib/listing-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ListingRow {
   id: string;
+  slug?: string;
   title: string;
   price: number;
   category: string;
   condition: string;
   status: string;
+  is_delisted?: boolean;
   created_at: string;
+  updated_at?: string;
   listing_images: { image_url: string; is_cover: boolean; order: number }[];
 }
 
@@ -59,7 +66,10 @@ interface OwnProfileTabsProps {
 interface PublicProfileTabsProps {
   variant: "public";
   activeListings: ListingRow[];
+  soldListings: ListingRow[];
   requests: RequestRowType[];
+  currentUserId: string | null;
+  isAdmin: boolean;
 }
 
 type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
@@ -68,20 +78,38 @@ type ProfileTabsProps = OwnProfileTabsProps | PublicProfileTabsProps;
 
 function getCoverImage(listing: ListingRow): string {
   const cover = listing.listing_images?.find((img) => img.is_cover);
-  return cover?.image_url ?? listing.listing_images?.[0]?.image_url ?? "";
+  if (cover) return toStorageUrl(cover.image_url);
+  const sorted = [...(listing.listing_images ?? [])].sort((a, b) => a.order - b.order);
+  return toStorageUrl(sorted[0]?.image_url ?? "");
 }
 
-function StarRating({ rating }: { rating: number }) {
+const PROFILE_PAGE_SIZE = 12;
+
+//Client-side pagination for a profile tab. 
+ 
+function Paginated<T>({
+  items,
+  children,
+}: {
+  items: T[];
+  children: (slice: T[]) => React.ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / PROFILE_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * PROFILE_PAGE_SIZE;
+  const slice = items.slice(start, start + PROFILE_PAGE_SIZE);
+
   return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={`size-4 ${i <= rating ? "text-amber-500" : "text-muted-foreground/30"}`}
-          weight={i <= rating ? "fill" : "regular"}
-        />
-      ))}
-    </div>
+    <>
+      {children(slice)}
+      {totalPages > 1 && (
+        <div className="mt-6">
+          
+          <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setPage} />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -91,8 +119,13 @@ export function ProfileTabs(props: ProfileTabsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(props.variant === "own" ? "active" : "listings");
   const [markSoldId, setMarkSoldId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeItems, setActiveItems] = useState(props.activeListings);
-  const [soldItems, setSoldItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).soldListings : []);
+  const [soldItems, setSoldItems] = useState(
+    props.variant === "own"
+      ? (props as OwnProfileTabsProps).soldListings
+      : (props as PublicProfileTabsProps).soldListings
+  );
   const [savedItems, setSavedItems] = useState(props.variant === "own" ? (props as OwnProfileTabsProps).savedListings : []);
   const [requestItems, setRequestItems] = useState<RequestRowType[]>(
     props.variant === "own" ? (props as OwnProfileTabsProps).ownRequests : []
@@ -101,14 +134,16 @@ export function ProfileTabs(props: ProfileTabsProps) {
     id: string;
     type: "fulfilled" | "closed";
   } | null>(null);
+  const [removeSavedId, setRemoveSavedId] = useState<string | null>(null);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
   const ownUserId = props.variant === "own" ? (props as OwnProfileTabsProps).currentUserId : "";
 
   // ── Mark as Sold ──────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     if (!markSoldId) return;
     try {
-      await updateListingStatus(markSoldId, "sold");
+      await updateListingStatus(markSoldId, "sold", soldToUserId);
       const listing = activeItems.find((l) => l.id === markSoldId);
       if (listing) {
         setActiveItems((prev) => prev.filter((l) => l.id !== markSoldId));
@@ -121,16 +156,47 @@ export function ProfileTabs(props: ProfileTabsProps) {
     setMarkSoldId(null);
   };
 
+  // ── Delete Listing ────────────────────────────────────────────────────
+
+  const handleDeleteListing = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteListing(deleteId);
+      setActiveItems((prev) => prev.filter((l) => l.id !== deleteId));
+      toast.success("Listing removed!");
+    } catch {
+      toast.error("Failed to remove listing");
+    }
+    setDeleteId(null);
+  };
+
   // ── Remove Saved ──────────────────────────────────────────────────────
 
-  const handleRemoveSaved = async (listingId: string) => {
+  const handleRemoveSaved = async () => {
+    if (!removeSavedId) return;
     try {
-      await removeSavedListing(listingId);
-      setSavedItems((prev) => prev.filter((l) => l.id !== listingId));
+      await removeSavedListing(removeSavedId);
+      setSavedItems((prev) => prev.filter((l) => l.id !== removeSavedId));
       toast.success("Removed from saved!");
     } catch {
       toast.error("Failed to remove saved listing");
     }
+    setRemoveSavedId(null);
+  };
+
+  // ── Delete Request ────────────────────────────────────────────────────
+
+  const handleDeleteRequest = async () => {
+    if (!deleteRequestId) return;
+    const id = deleteRequestId;
+    try {
+      await deleteRequest(id);
+      setRequestItems((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Request deleted!");
+    } catch {
+      toast.error("Failed to delete request");
+    }
+    setDeleteRequestId(null);
   };
 
   // ── Request Status Action ─────────────────────────────────────────────
@@ -183,17 +249,21 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <ProfileListingCard
           key={listing.id}
           id={listing.id}
+          slug={(listing as { slug?: string }).slug}
           title={listing.title}
           price={listing.price}
           category={listing.category}
           condition={formatCondition(listing.condition)}
           timePosted={formatTimeAgo(listing.created_at)}
+          createdAt={listing.created_at}
+          updatedAt={listing.updated_at}
           imageUrl={getCoverImage(listing)}
           variant={variant}
-          onEdit={variant === "active" ? () => router.push(`/listings/${listing.id}/edit`) : undefined}
+          isDelisted={listing.is_delisted}
+          onEdit={variant === "active" ? () => router.push(`/listings/${(listing as { slug?: string }).slug ?? listing.id}/edit`) : undefined}
           onMarkSold={variant === "active" ? () => setMarkSoldId(listing.id) : undefined}
-          onDelete={undefined}
-          onRemoveSaved={variant === "saved" ? () => handleRemoveSaved(listing.id) : undefined}
+          onDelete={variant === "active" ? () => setDeleteId(listing.id) : undefined}
+          onRemoveSaved={variant === "saved" ? () => setRemoveSavedId(listing.id) : undefined}
         />
       ))}
     </div>
@@ -225,7 +295,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <Package className="size-8 text-muted-foreground" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">No sold items yet</h3>
-      <p className="text-sm text-muted-foreground">Items you sell will appear here</p>
+      <p className="text-sm text-muted-foreground">Items sold will appear here</p>
     </Card>
   );
 
@@ -235,7 +305,11 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <BookmarkSimple className="size-8 text-muted-foreground" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">No saved listings</h3>
-      <p className="mb-4 text-sm text-muted-foreground">Save listings you&apos;re interested in to view them later</p>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Save listings you&apos;re interested in to view them later.<br/>
+        Only you can see your saved items.
+      </p>
+      
       <Button asChild variant="outline">
         <Link href="/listings">
           <MagnifyingGlass className="size-4" />
@@ -272,17 +346,22 @@ export function ProfileTabs(props: ProfileTabsProps) {
           </TabsList>
 
           <TabsContent value="active" className="mt-6">
-            {activeItems.length > 0 ? renderGrid(activeItems, "active") : emptyActive}
+            {activeItems.length > 0 ? (
+              <Paginated items={activeItems}>{(slice) => renderGrid(slice, "active")}</Paginated>
+            ) : emptyActive}
           </TabsContent>
 
           <TabsContent value="sold" className="mt-6">
-            {soldItems.length > 0 ? renderGrid(soldItems, "sold") : emptySold}
+            {soldItems.length > 0 ? (
+              <Paginated items={soldItems}>{(slice) => renderGrid(slice, "sold")}</Paginated>
+            ) : emptySold}
           </TabsContent>
 
           <TabsContent value="requests" className="mt-6">
             {requestItems.length > 0 ? (
+              <Paginated items={requestItems}>{(slice) => (
               <div className="overflow-hidden rounded-xl border bg-card">
-                {requestItems.map((req, idx) => (
+                {slice.map((req, idx) => (
                   <div key={req.id} className={idx > 0 ? "border-t" : ""}>
                     <RequestRow
                       request={req}
@@ -296,7 +375,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1.5"
-                                onClick={() => router.push(`/requests/${req.id}/edit`)}
+                                onClick={() => router.push(`/requests/${req.slug ?? req.id}/edit`)}
                               >
                                 <PencilSimple className="size-3.5" />
                                 Edit
@@ -307,7 +386,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
                                 className="h-8 gap-1.5"
                                 onClick={() => setRequestAction({ id: req.id, type: "fulfilled" })}
                               >
-                                <Check className="size-3.5 text-emerald-600" />
+                                <Check className="size-3.5 text-primary" />
                                 Fulfilled
                               </Button>
                               <Button
@@ -321,12 +400,22 @@ export function ProfileTabs(props: ProfileTabsProps) {
                               </Button>
                             </>
                           )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteRequestId(req.id)}
+                          >
+                            <Trash className="size-3.5" />
+                            Delete
+                          </Button>
                         </div>
                       }
                     />
                   </div>
                 ))}
               </div>
+              )}</Paginated>
             ) : (
               <Card className="flex flex-col items-center justify-center p-12 text-center">
                 <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
@@ -347,7 +436,12 @@ export function ProfileTabs(props: ProfileTabsProps) {
           </TabsContent>
 
           <TabsContent value="saved" className="mt-6">
-            {savedItems.length > 0 ? renderGrid(savedItems, "saved") : emptySaved}
+            {savedItems.length > 0 && (
+              <p className="mb-3 text-xs text-muted-foreground">Only you can see your saved items.</p>
+            )}
+            {savedItems.length > 0 ? (
+              <Paginated items={savedItems}>{(slice) => renderGrid(slice, "saved")}</Paginated>
+            ) : emptySaved}
           </TabsContent>
         </Tabs>
 
@@ -376,18 +470,66 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </AlertDialog>
 
         {/* Mark as Sold Confirmation */}
-        <AlertDialog open={!!markSoldId} onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}>
+        <MarkAsSoldDialog
+          open={!!markSoldId}
+          onOpenChange={(o) => { if (!o) setMarkSoldId(null); }}
+          listingId={markSoldId ?? ""}
+          onConfirm={handleMarkSold}
+        />
+
+        {/* Delete Listing Confirmation */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => { if (!o) setDeleteId(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Mark as Sold?</AlertDialogTitle>
+              <AlertDialogTitle>Remove Listing?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to mark this listing as sold? This will hide it from the marketplace.
+                This will permanently delete the listing and cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleMarkSold}>
-                Yes, Mark as Sold
+              <AlertDialogAction
+                onClick={handleDeleteListing}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                Yes, Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Remove Saved Confirmation */}
+        <AlertDialog open={!!removeSavedId} onOpenChange={(o) => { if (!o) setRemoveSavedId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove from saved?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove this from your saved items?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleRemoveSaved}>Remove</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Request Confirmation */}
+        <AlertDialog open={!!deleteRequestId} onOpenChange={(o) => { if (!o) setDeleteRequestId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this request?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this request? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteRequest}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -398,7 +540,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
 
   // ─── PUBLIC PROFILE TABS ────────────────────────────────────────────────
 
-  const { requests } = props as PublicProfileTabsProps;
+  const { requests, currentUserId, isAdmin } = props as PublicProfileTabsProps;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -407,41 +549,79 @@ export function ProfileTabs(props: ProfileTabsProps) {
           <Tag className="size-4" />
           Active Listings ({activeItems.length})
         </TabsTrigger>
+        <TabsTrigger value="sold" className="gap-2">
+          <ShoppingCart className="size-4" />
+          Sold ({soldItems.length})
+        </TabsTrigger>
         <TabsTrigger value="requests" className="gap-2">
           <MagnifyingGlass className="size-4" />
-          Looking For ({requests.length})
+          Requests ({requests.length})
         </TabsTrigger>
       </TabsList>
 
       <TabsContent value="listings" className="mt-6">
         {activeItems.length > 0 ? (
+          <Paginated items={activeItems}>{(slice) => (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {activeItems.map((listing) => (
+            {slice.map((listing) => (
               <ProfileListingCard
                 key={listing.id}
                 id={listing.id}
+                slug={(listing as { slug?: string }).slug}
                 title={listing.title}
                 price={listing.price}
                 category={listing.category}
                 condition={formatCondition(listing.condition)}
                 timePosted={formatTimeAgo(listing.created_at)}
+                createdAt={listing.created_at}
+                updatedAt={listing.updated_at}
                 imageUrl={getCoverImage(listing)}
                 variant="active"
+                isDelisted={listing.is_delisted}
               />
             ))}
           </div>
+          )}</Paginated>
         ) : emptyActive}
+      </TabsContent>
+
+      <TabsContent value="sold" className="mt-6">
+        {soldItems.length > 0 ? (
+          <Paginated items={soldItems}>{(slice) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {slice.map((listing) => (
+              <ProfileListingCard
+                key={listing.id}
+                id={listing.id}
+                slug={(listing as { slug?: string }).slug}
+                title={listing.title}
+                price={listing.price}
+                category={listing.category}
+                condition={formatCondition(listing.condition)}
+                timePosted={formatTimeAgo(listing.created_at)}
+                createdAt={listing.created_at}
+                updatedAt={listing.updated_at}
+                imageUrl={getCoverImage(listing)}
+                variant="sold"
+                isDelisted={listing.is_delisted}
+              />
+            ))}
+          </div>
+          )}</Paginated>
+        ) : emptySold}
       </TabsContent>
 
       <TabsContent value="requests" className="mt-6">
         {requests.length > 0 ? (
+          <Paginated items={requests}>{(slice) => (
           <div className="overflow-hidden rounded-xl border bg-card">
-            {requests.map((req, idx) => (
+            {slice.map((req, idx) => (
               <div key={req.id} className={idx > 0 ? "border-t" : ""}>
-                <RequestRow request={req} currentUserId={null} />
+                <RequestRow request={req} currentUserId={currentUserId} isAdmin={isAdmin} />
               </div>
             ))}
           </div>
+          )}</Paginated>
         ) : (
           <Card className="flex flex-col items-center justify-center p-12 text-center">
             <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">

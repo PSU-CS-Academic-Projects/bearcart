@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -8,7 +8,6 @@ import { Footer } from "@/components/footer";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ConditionSelector } from "@/components/condition-selector";
-import { TagsInput } from "@/components/tags-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,34 +35,36 @@ import {
 import {
   Camera,
   ListBullets,
-  MapPin,
   FloppyDisk,
   SpinnerGap,
-  Buildings,
   Trash,
   CheckCircle,
   X as XIcon,
 } from "@phosphor-icons/react";
 
 import { updateListing, updateListingStatus, deleteListing } from "@/lib/actions/listings";
+import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useNoChangesHint } from "@/lib/hooks/no-changes-hints";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const categories = [
-  { value: "books", label: "Books" },
+  { value: "accessories", label: "Accessories" },
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "food", label: "Food" },
-  { value: "supplies", label: "Supplies" },
+  { value: "school supplies", label: "School Supplies" },
   { value: "services", label: "Services" },
   { value: "others", label: "Others" },
 ];
 
-const meetupLocations = [
-  "Library", "Cafeteria", "Main Building Lobby", "Covered Court", "Department Office",
-];
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
@@ -79,6 +80,7 @@ interface ExistingImage {
 
 interface ListingData {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   price: number;
@@ -86,7 +88,6 @@ interface ListingData {
   category: string;
   condition: string;
   status: string;
-  tags: string[];
   images: ExistingImage[];
 }
 
@@ -97,8 +98,6 @@ interface FormData {
   price: string;
   negotiable: boolean;
   description: string;
-  tags: string[];
-  meetupLocations: string[];
 }
 
 interface FormErrors {
@@ -165,12 +164,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [markingSold, setMarkingSold] = useState(false);
-
-  // ── Parse existing tags ────────────────────────────────────────────────
-  const existingMeetupLocations = listing.tags
-    .filter((t) => t.startsWith("meetup:"))
-    .map((t) => t.replace("meetup:", ""));
-  const existingRegularTags = listing.tags.filter((t) => !t.startsWith("meetup:"));
+  const [markSoldOpen, setMarkSoldOpen] = useState(false);
 
   // ── Photo State ────────────────────────────────────────────────────────
   // photos = mix of existing URLs and new base64 strings, in display order
@@ -191,34 +185,53 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     title: listing.title,
     category: listing.category.toLowerCase(),
     condition: conditionDbToUi[listing.condition] ?? listing.condition,
-    price: listing.price.toString(),
+    price: formatCurrencyInput(listing.price.toString()),
     negotiable: listing.is_negotiable,
     description: listing.description,
-    tags: existingRegularTags,
-    meetupLocations: existingMeetupLocations,
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // ── Change tracking ──────────────────────────────────────────────────────
+  // Snapshot of the values loaded from the DB, captured once on mount.
+  const [original] = useState(() => ({
+    title: listing.title,
+    category: listing.category.toLowerCase(),
+    condition: conditionDbToUi[listing.condition] ?? listing.condition,
+    price: formatCurrencyInput(listing.price.toString()),
+    negotiable: listing.is_negotiable,
+    description: listing.description,
+    photos: listing.images.map((img) => img.url),
+  }));
+
+  const photosChanged =
+    photos.length !== original.photos.length ||
+    photos.some((p, i) => p !== original.photos[i]);
+  const hasChanges =
+    formData.title !== original.title ||
+    formData.category !== original.category ||
+    formData.condition !== original.condition ||
+    formData.price !== original.price ||
+    formData.negotiable !== original.negotiable ||
+    formData.description !== original.description ||
+    photosChanged;
+
+  // "No changes to save yet." hint shown when Save is pressed with no changes.
+  const { showNoChanges, flashNoChanges, hideNoChanges } = useNoChangesHint();
 
   // ── Field Updaters ─────────────────────────────────────────────────────
 
   const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+    hideNoChanges();
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
-  const toggleArrayField = <K extends keyof FormData>(field: K, value: string) => {
-    const currentArray = formData[field] as string[];
-    const newArray = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    updateField(field, newArray as FormData[K]);
-  };
-
   // ── Photo handlers ─────────────────────────────────────────────────────
 
   const handlePhotosChange = (newPhotos: string[]) => {
+    hideNoChanges();
     // Detect removed photos by comparing with current photos
     const removed = photos.filter((p) => !newPhotos.includes(p));
     for (const removedUrl of removed) {
@@ -242,7 +255,9 @@ export function EditListingForm({ listing }: EditListingFormProps) {
     else if (formData.title.length > TITLE_MAX) newErrors.title = `Title must be ${TITLE_MAX} characters or less`;
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.condition) newErrors.condition = "Please select a condition";
-    if (!formData.price) newErrors.price = "Price is required";
+    const priceNum = parseCurrencyInput(formData.price);
+    if (priceNum === null) newErrors.price = "Price is required";
+    else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
     if (!formData.description.trim()) newErrors.description = "Description is required";
     else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     setErrors(newErrors);
@@ -252,33 +267,30 @@ export function EditListingForm({ listing }: EditListingFormProps) {
   // ── Submit ─────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
+    if (submitting) return;
+    if (!hasChanges) {
+      flashNoChanges();
+      return;
+    }
+    hideNoChanges();
     if (!validateAll()) return;
 
     setSubmitting(true);
     try {
-      // Separate existing URLs from new base64 photos
-      const existingPhotos = photos.filter((p) => p.startsWith("http"));
-      const newPhotos = photos.filter((p) => p.startsWith("data:"));
-
-      const meetupTags = formData.meetupLocations.map((loc) => `meetup:${loc}`);
-      const allTags = [...formData.tags, ...meetupTags];
-
       await updateListing({
         listingId: listing.id,
         title: formData.title.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: parseCurrencyInput(formData.price) ?? 0,
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionUiToDb[formData.condition] ?? "good",
-        tags: allTags,
-        existingPhotos,
+        orderedPhotos: photos,
         removedImageIds,
-        newPhotos,
       });
 
       toast.success("Listing updated successfully");
-      router.push(`/listings/${listing.id}`);
+      router.push(`/listings/${listing.slug ?? listing.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update listing";
       toast.error(message);
@@ -288,10 +300,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
 
   // ── Mark as Sold ───────────────────────────────────────────────────────
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (soldToUserId?: string) => {
     setMarkingSold(true);
     try {
-      await updateListingStatus(listing.id, "sold");
+      await updateListingStatus(listing.id, "sold", soldToUserId);
       toast.success("Listing marked as sold");
       router.push("/profile");
     } catch (err) {
@@ -338,7 +350,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         <Label htmlFor="edit-title">Title <span className="text-destructive">*</span></Label>
         <Input
           id="edit-title"
-          placeholder="e.g. Calculus Textbook 10th Edition"
+          placeholder="e.g. Scientific Calculator"
           value={formData.title}
           onChange={(e) => updateField("title", e.target.value)}
           maxLength={TITLE_MAX}
@@ -380,10 +392,24 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
           <Input
             id="edit-price"
-            type="number"
-            placeholder="0.00"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 500"
             value={formData.price}
-            onChange={(e) => updateField("price", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey || e.altKey) return;
+              if (
+                shouldBlockCurrencyKey(
+                  e.key,
+                  e.currentTarget.value,
+                  e.currentTarget.selectionStart,
+                  e.currentTarget.selectionEnd
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+            onChange={(e) => updateField("price", formatCurrencyInput(e.target.value))}
             className={cn("pl-7", errors.price && "border-destructive")}
             disabled={submitting}
           />
@@ -400,7 +426,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
         <Label htmlFor="edit-description">Description <span className="text-destructive">*</span></Label>
         <Textarea
           id="edit-description"
-          placeholder="Describe your item..."
+          placeholder="Describe your listing..."
           value={formData.description}
           onChange={(e) => updateField("description", e.target.value)}
           maxLength={DESC_MAX}
@@ -413,129 +439,70 @@ export function EditListingForm({ listing }: EditListingFormProps) {
           <CharCounter current={formData.description.length} max={DESC_MAX} />
         </div>
       </div>
-
-      {/* Tags */}
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagsInput
-          tags={formData.tags}
-          onTagsChange={(tags) => updateField("tags", tags)}
-          placeholder="Add tags and press Enter"
-          maxTags={5}
-          maxTagLength={20}
-          disabled={submitting}
-        />
-      </div>
-    </div>
-  );
-
-  const meetupSection = (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <Label className="flex items-center gap-2">
-          <Buildings className="size-4 text-primary" />
-          Preferred Meetup Spots on PSU Campus
-        </Label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {meetupLocations.map((loc) => (
-            <div key={loc} className="flex items-center gap-2">
-              <Checkbox
-                id={`edit-location-${loc}`}
-                checked={formData.meetupLocations.includes(loc)}
-                onCheckedChange={() => toggleArrayField("meetupLocations", loc)}
-                disabled={submitting}
-              />
-              <Label htmlFor={`edit-location-${loc}`} className="text-sm font-normal">{loc}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 
   const statusSection = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Label>Listing Status</Label>
-          <div className="flex items-center gap-2">
-            <Badge className={statusConfig[listing.status]?.className ?? "bg-gray-100 text-gray-800"}>
-              {statusConfig[listing.status]?.label ?? listing.status}
-            </Badge>
-          </div>
-        </div>
-
-        {listing.status === "available" && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={markingSold || submitting}>
-                <CheckCircle className="size-4" />
-                Mark as Sold
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mark this listing as sold?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  It will be hidden from the marketplace. This action cannot be easily undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleMarkSold} disabled={markingSold}>
-                  {markingSold ? (
-                    <><SpinnerGap className="size-4 animate-spin" /> Updating...</>
-                  ) : (
-                    "Yes, mark as sold"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
-    </div>
-  );
-
-  const deleteSection = (
-    <div className="space-y-4">
-      <div className="h-px bg-border" />
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-          <p className="text-xs text-muted-foreground">Permanently remove this listing</p>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={deleting || submitting}>
-              <Trash className="size-4" />
-              Delete Listing
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure you want to delete this listing?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This cannot be undone. The listing will be permanently removed from the marketplace.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deleting ? (
-                  <><SpinnerGap className="size-4 animate-spin" /> Deleting...</>
-                ) : (
-                  "Yes, delete listing"
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+    <div className="flex flex-wrap items-center gap-3">
+      {listing.status !== "available" && (
+        <Badge className={statusConfig[listing.status]?.className ?? "bg-gray-100 text-gray-800"}>
+          {statusConfig[listing.status]?.label ?? listing.status}
+        </Badge>
+      )}
+      {listing.status === "available" && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={markingSold || submitting}
+            onClick={() => setMarkSoldOpen(true)}
+          >
+            <CheckCircle className="size-4" />
+            {markingSold ? "Updating…" : "Mark as Sold"}
+          </Button>
+          <MarkAsSoldDialog
+            open={markSoldOpen}
+            onOpenChange={setMarkSoldOpen}
+            listingId={listing.id}
+            onConfirm={handleMarkSold}
+          />
+        </>
+      )}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={deleting || submitting}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash className="size-4" />
+            Delete Listing
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. The listing will be permanently removed from the marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <><SpinnerGap className="size-4 animate-spin" /> Deleting...</>
+              ) : (
+                "Yes, delete listing"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 
@@ -549,7 +516,7 @@ export function EditListingForm({ listing }: EditListingFormProps) {
             <Breadcrumb
               items={[
                 { label: "Listings", href: "/listings" },
-                { label: listing.title, href: `/listings/${listing.id}` },
+                { label: listing.title, href: `/listings/${listing.slug ?? listing.id}` },
                 { label: "Edit" },
               ]}
             />
@@ -586,22 +553,11 @@ export function EditListingForm({ listing }: EditListingFormProps) {
               </div>
               {detailsSection}
             </section>
-            <div className="h-px bg-border" />
-
-            {/* Meetup */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-2">
-                <MapPin className="size-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Meetup Preferences</h2>
-              </div>
-              {meetupSection}
-            </section>
-            <div className="h-px bg-border" />
 
             {/* Action Buttons */}
             <section className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <Link href={`/listings/${listing.id}`}>
+                <Link href={`/listings/${listing.slug ?? listing.id}`}>
                   <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={submitting}>
                     <XIcon className="size-4" />
                     Cancel
@@ -610,7 +566,10 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="w-full sm:w-auto"
+                  className={cn("w-full sm:w-auto",
+                    !hasChanges && "cursor-not-allowed opacity-50",
+                    submitting && "cursor-wait"
+                  )}
                 >
                   {submitting ? (
                     <>
@@ -625,10 +584,13 @@ export function EditListingForm({ listing }: EditListingFormProps) {
                   )}
                 </Button>
               </div>
+              {showNoChanges && (
+                <p className="text-xs text-destructive text-right">
+                  No changes to save yet.
+                </p>
+              )}
             </section>
 
-            {/* Delete Section */}
-            {deleteSection}
           </form>
         </div>
       </main>

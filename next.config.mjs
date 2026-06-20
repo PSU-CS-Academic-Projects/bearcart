@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['sharp'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
@@ -32,6 +33,16 @@ const nextConfig = {
       },
     ],
   },
+
+  async rewrites() {
+    return [
+      {
+        source: '/storage/:path*',
+        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/:path*`,
+      }
+    ]
+  },
+
   async headers() {
     return [
       {

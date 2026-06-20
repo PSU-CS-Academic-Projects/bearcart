@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { jakarta } from "@/lib/fonts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -34,32 +28,38 @@ import {
   User as UserIcon,
   SignOut,
   ChatCircle,
-  ListBullets,
   Plus,
   Bell,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
-import type { NotificationRow } from "@/lib/actions/notifications";
+import { getRecentNotifications, getUnseenNotificationCount, type NotificationRow } from "@/lib/actions/notifications";
+import { searchPeople } from "@/lib/actions/profile";
+import { toStorageUrl } from "@/lib/storage-url";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  "All Categories",
-  "Books",
-  "Electronics",
-  "Clothing",
-  "Food",
-  "Supplies",
-  "Services",
-  "Others",
-];
+
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type SearchMode = "items" | "people";
+
+interface PersonResult {
+  id: string;
+  slug?: string | null;
+  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  postCount: number;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getInitials(user: NavbarUser): string {
+function getInitials(user: { full_name: string; first_name?: string | null; last_name?: string | null }): string {
   const first = user.first_name?.charAt(0) ?? "";
   const last = user.last_name?.charAt(0) ?? "";
   if (first || last) return (first + last).toUpperCase();
@@ -68,6 +68,89 @@ function getInitials(user: NavbarUser): string {
 
 function formatUnreadCount(count: number): string {
   return count > 9 ? "9+" : String(count);
+}
+
+// ─── People Dropdown ──────────────────────────────────────────────────────────
+
+function PeopleDropdownContent({
+  results,
+  loading,
+  onSelect,
+}: {
+  results: PersonResult[];
+  loading: boolean;
+  onSelect: () => void;
+}) {
+  if (loading) {
+    return <p className="px-4 py-3 text-sm text-muted-foreground">Searching...</p>;
+  }
+  if (results.length === 0) {
+    return <p className="px-4 py-3 text-sm text-muted-foreground">No users found</p>;
+  }
+  return (
+    <>
+      {results.map((person) => (
+        <Link
+          key={person.id}
+          href={`/profile/${person.slug ?? person.id}`}
+          onClick={onSelect}
+          className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent"
+        >
+          <div className="flex items-center gap-3">
+            {person.avatar_url ? (
+              <Image
+                src={toStorageUrl(person.avatar_url)}
+                alt={person.full_name}
+                width={32}
+                height={32}
+                unoptimized
+                className="size-8 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {getInitials(person)}
+              </span>
+            )}
+            <span className="text-sm font-medium text-foreground">{person.full_name}</span>
+          </div>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {person.postCount} {person.postCount === 1 ? "listing" : "listings"}
+          </span>
+        </Link>
+      ))}
+    </>
+  );
+}
+
+// ─── Mode Toggle ──────────────────────────────────────────────────────────────
+
+function ModeToggle({ mode, onToggle }: { mode: SearchMode; onToggle: (m: SearchMode) => void }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 border-r pr-2.5 mr-0">
+      <button
+        type="button"
+        onClick={() => onToggle("items")}
+        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+          mode === "items"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Items
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggle("people")}
+        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+          mode === "people"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        People
+      </button>
+    </div>
+  );
 }
 
 // ─── Messages Icon ────────────────────────────────────────────────────────────
@@ -89,16 +172,17 @@ function MessagesIcon({ count }: { count: number }) {
   );
 }
 
-// ─── Avatar Button ────────────────────────────────────────────────────────────
+// ─── Avatar Image ─────────────────────────────────────────────────────────────
 
 function AvatarImage({ user }: { user: NavbarUser }) {
   if (user.avatar_url) {
     return (
       <Image
-        src={user.avatar_url}
+        src={toStorageUrl(user.avatar_url)}
         alt={user.full_name}
         width={32}
         height={32}
+        unoptimized
         className="size-8 rounded-full object-cover ring-2 ring-primary/30"
       />
     );
@@ -113,12 +197,8 @@ function AvatarImage({ user }: { user: NavbarUser }) {
 // ─── Profile Dropdown ─────────────────────────────────────────────────────────
 
 function ProfileDropdown({ user }: { user: NavbarUser }) {
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -128,8 +208,7 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
-        {/* User info header — non-clickable */}
+      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DropdownMenuLabel className="flex flex-col gap-0.5 pb-2">
           <span className="text-sm font-semibold leading-tight">{user.full_name}</span>
           <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
@@ -144,24 +223,22 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex cursor-pointer items-center gap-2">
-            <ListBullets className="size-4" />
-            My Listings
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild>
-          <Link href="/listings/new" className="flex cursor-pointer items-center gap-2">
-            <Plus className="size-4" />
-            Post a Listing
-          </Link>
-        </DropdownMenuItem>
+        {user.is_admin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="flex cursor-pointer items-center gap-2 font-medium text-primary">
+                <ShieldCheck className="size-4" />
+                Admin Dashboard
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
-          onClick={handleSignOut}
+          onClick={async () => await signOut()}
           className="flex cursor-pointer items-center gap-2 text-destructive focus:text-destructive"
         >
           <SignOut className="size-4" />
@@ -188,141 +265,178 @@ export function NavbarClient({
   initialNotifications,
 }: NavbarClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // ── Items search state ─────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+
+  // ── People search state ────────────────────────────────────────────────
+  const [searchMode, setSearchMode] = useState<SearchMode>("items");
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [peopleResults, setPeopleResults] = useState<PersonResult[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [showPeopleDropdown, setShowPeopleDropdown] = useState(false);
+
+  // ── Other state ────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [notifCount, setNotifCount] = useState(initialNotificationCount);
+  // Notification realtime state lives here as the single source of truth and is
+  // shared with <NotificationsBell> via props. This lets the whole navbar use
+  // ONE realtime channel instead of the bell and the navbar each opening their
+  // own subscription to the notifications table.
+  const [notifications, setNotifications] = useState<NotificationRow[]>(initialNotifications);
+  const [unseenCount, setUnseenCount] = useState(initialNotificationCount);
 
-  // ── Realtime: notifications INSERT/UPDATE → keep mobile bell badge live ─
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
+
+  // ── People search: debounced Supabase query ────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (searchMode !== "people" || peopleQuery.length < 2) {
+      setPeopleResults([]);
+      setShowPeopleDropdown(false);
+      setPeopleLoading(false);
+      return;
+    }
 
-    const channel = supabase
-      .channel(`navbar-notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => setNotifCount((c) => c + 1)
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        async () => {
-          const { count } = await supabase
-            .from("notifications")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .eq("is_read", false);
-          setNotifCount(count ?? 0);
-        }
-      )
-      .subscribe();
+    setPeopleLoading(true);
+    const timer = setTimeout(async () => {
+      // server-side — guests get an empty list even if they reach this code.
+      const results = await searchPeople(peopleQuery).catch(() => []);
+      setPeopleResults(results);
+      setShowPeopleDropdown(true);
+      setPeopleLoading(false);
+    }, 200);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+    return () => clearTimeout(timer);
+  }, [peopleQuery, searchMode]);
 
-  // ── Recompute unread message count from current conversations ─────────
+  // ── Close people dropdown on outside click (desktop) ──────────────────
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (desktopSearchRef.current && !desktopSearchRef.current.contains(e.target as Node)) {
+        setShowPeopleDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  const userId = user?.id;
+
+  // ── Recompute unread conversation count ─────────────────────────────────
+  // Counts distinct conversations with at least one unread message from the other person,
+  // not raw message count — so 5 unread msgs in 1 conversation shows badge "1".
   const refetchUnreadCount = useCallback(async (userId: string) => {
     try {
       const { data: convos } = await supabase
         .from("conversations")
         .select("id")
         .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
-
-      if (!convos || convos.length === 0) {
-        setUnreadCount(0);
-        return;
-      }
-
-      const { count } = await supabase
+      if (!convos || convos.length === 0) { setUnreadCount(0); return; }
+      const { data } = await supabase
         .from("messages")
-        .select("id", { count: "exact", head: true })
+        .select("conversation_id")
         .in("conversation_id", convos.map((c) => c.id))
         .neq("sender_id", userId)
         .eq("is_read", false);
-
-      setUnreadCount(count ?? 0);
-    } catch {
-      // Silently fail — unread count is non-critical
-    }
+      setUnreadCount(new Set((data ?? []).map((m) => m.conversation_id)).size);
+    } catch { /* non-critical */ }
   }, []);
 
-  // ── Realtime: messages INSERT/UPDATE → keep message badge in sync ────
-  useEffect(() => {
-    if (!user) return;
+  //  Refresh the shared notification list + exact unseen count 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const [fresh, count] = await Promise.all([
+        getRecentNotifications(10),
+        getUnseenNotificationCount(),
+      ]);
+      setNotifications(fresh);
+      setUnseenCount(count);
+    } catch { /* non-critical */ }
+  }, []);
 
+  //  Realtime: ONE channel for both notifications and messages 
+  useEffect(() => {
+    if (!userId) return;
     const channel = supabase
-      .channel(`navbar-messages:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
+      .channel(`navbar-realtime:${userId}`)
+      // ── Notifications ──
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
         (payload) => {
-          const msg = payload.new as { sender_id: string; is_read: boolean };
-          // Only count messages from someone else as unread
-          if (msg.sender_id !== user.id && msg.is_read === false) {
-            setUnreadCount((c) => c + 1);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-        },
-        () => {
-          // is_read flipping → recompute the count from server
-          refetchUnreadCount(user.id);
-        }
-      )
+          const newNotif = payload.new as NotificationRow;
+          if (newNotif.type === "new_message") return;
+          setNotifications((prev) =>
+            prev.some((n) => n.id === newNotif.id) ? prev : [newNotif, ...prev].slice(0, 10)
+          );
+          setUnseenCount((c) => c + 1);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => { refreshNotifications(); })
+      // ── Messages ──
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
+        async (payload) => {
+          const msg = payload.new as { sender_id: string; is_read: boolean; conversation_id: string };
+          if (msg.sender_id === userId || msg.is_read) return;
+          // Only bump the badge if this is the first unread in this conversation.
+          // If there are already other unreads in the same convo, the conversation
+          // was already counted — incrementing again would over-count.
+          const { count } = await supabase
+            .from("messages")
+            .select("id", { count: "exact", head: true })
+            .eq("conversation_id", msg.conversation_id)
+            .neq("sender_id", userId)
+            .eq("is_read", false);
+          // count includes the new message itself; if it's exactly 1 this convo
+          // just went from 0 → 1 unread, so it's a new unread conversation.
+          if ((count ?? 0) === 1) setUnreadCount((c) => c + 1);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" },
+        () => refetchUnreadCount(userId))
       .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, refetchUnreadCount, refreshNotifications]);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, refetchUnreadCount]);
-
-  // ── Listen for in-app "messages-read" event from chat-window ─────────
   useEffect(() => {
-    if (!user) return;
-    const handler = () => refetchUnreadCount(user.id);
-    window.addEventListener("palmart:messages-read", handler);
-    return () => window.removeEventListener("palmart:messages-read", handler);
-  }, [user, refetchUnreadCount]);
+    if (!userId) return;
+    const handler = () => refetchUnreadCount(userId);
+    window.addEventListener("bearcart:messages-read", handler);
+    return () => window.removeEventListener("bearcart:messages-read", handler);
+  }, [userId, refetchUnreadCount]);
 
-  // ── Search submit ──────────────────────────────────────────────────────
+  // ── Mode toggle ────────────────────────────────────────────────────────
+  function handleModeToggle(mode: SearchMode) {
+    setSearchMode(mode);
+    if (mode === "items") {
+      setPeopleQuery("");
+      setShowPeopleDropdown(false);
+      setPeopleResults([]);
+    } else {
+      setSearchQuery("");
+    }
+  }
+
+  function handlePeopleSelect() {
+    setShowPeopleDropdown(false);
+    setPeopleQuery("");
+    setMobileMenuOpen(false);
+  }
+
+  // ── Items search submit ────────────────────────────────────────────────
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (searchQuery.trim()) params.set("search", searchQuery.trim());
-    if (selectedCategory && selectedCategory !== "All Categories") {
-      params.set("category", selectedCategory);
-    }
-    router.push(`/listings?${params.toString()}`);
+    if (searchMode === "people") return;
+    const targetPath = pathname.startsWith("/requests") ? "/requests" : "/listings";
+    const isOnTargetPage = pathname === targetPath;
+    const base = isOnTargetPage ? new URLSearchParams(searchParams.toString()) : new URLSearchParams();
+    base.delete("page");
+    if (searchQuery.trim()) { base.set("search", searchQuery.trim()); } else { base.delete("search"); }
+    const query = base.toString();
+    setMobileMenuOpen(false);
+    router.push(query ? `${targetPath}?${query}` : targetPath);
   };
 
-  const handleSignOut = async () => {
-    setMobileMenuOpen(false);
-    await signOut();
-  };
+  const showDesktopPeople = searchMode === "people" && (showPeopleDropdown || peopleLoading) && peopleQuery.length >= 2;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card">
@@ -330,74 +444,82 @@ export function NavbarClient({
 
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
-          <span className="text-xl font-bold text-foreground">BearCart</span>
+          <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} priority className="size-14" />
+          <span className={`${jakarta.className} text-xl font-bold tracking-tight`}>
+            BearCart
+          </span>
         </Link>
 
         {/* ── Desktop Search ────────────────────────────────────────── */}
         <form
           onSubmit={handleSearchSubmit}
-          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-8 md:flex"
+          className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-5 lg:flex"
         >
-          <div className="flex w-full max-w-xl min-w-0 items-center rounded-lg border bg-background">
-            <div className="flex items-center border-r px-3">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="h-9 w-36 shrink-0 border-0 bg-transparent shadow-none focus:ring-0">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div ref={desktopSearchRef} className="relative w-full max-w-xl">
+            <div className="flex min-w-0 w-full items-center rounded-lg border bg-background px-2">
+              {/* People search is for logged-in users only — guests only see item search. */}
+              {user && <ModeToggle mode={searchMode} onToggle={handleModeToggle} />}
+              <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
+                <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
+                {searchMode === "items" ? (
+                  <input
+                    type="text"
+                    placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Search people..."
+                    value={peopleQuery}
+                    onChange={(e) => setPeopleQuery(e.target.value)}
+                    autoComplete="off"
+                    className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                )}
+              </div>
             </div>
-            <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-              <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search listings..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </div>
+
+            {/* People results dropdown */}
+            {showDesktopPeople && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border bg-card shadow-lg">
+                <PeopleDropdownContent
+                  results={peopleResults}
+                  loading={peopleLoading}
+                  onSelect={handlePeopleSelect}
+                />
+              </div>
+            )}
           </div>
         </form>
 
         {/* ── Desktop Right ─────────────────────────────────────────── */}
-        <div className="relative z-10 hidden shrink-0 items-center gap-2 md:flex">
-          {/* Looking For — visible to everyone */}
-          <Link
-            href="/requests"
-            className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Looking For
+        <div className="relative z-10 hidden shrink-0 items-center gap-2 lg:flex">
+          <Link href="/listings" className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            Listings
+          </Link>
+          <Link href="/requests" className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            Requests
           </Link>
 
           {user ? (
             <>
-              {/* Post a Listing */}
               <Button size="sm" asChild>
-                <Link href="/listings/new">
+                <Link href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}>
                   <Plus className="size-4" />
-                  Post a Listing
+                  Post
                 </Link>
               </Button>
-
-              {/* Messages with unread badge */}
               <MessagesIcon count={unreadCount} />
-
-              {/* Notifications bell with unread badge */}
               <NotificationsBell
-                userId={user.id}
-                initialUnreadCount={initialNotificationCount}
-                initialNotifications={initialNotifications}
+                notifications={notifications}
+                setNotifications={setNotifications}
+                unseenCount={unseenCount}
+                setUnseenCount={setUnseenCount}
+                refresh={refreshNotifications}
               />
-
-              {/* Profile avatar dropdown */}
               <ProfileDropdown user={user} />
             </>
           ) : (
@@ -410,10 +532,9 @@ export function NavbarClient({
 
         {/* ── Mobile Menu Trigger ───────────────────────────────────── */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild className="md:hidden">
+          <SheetTrigger asChild className="lg:hidden">
             <Button variant="ghost" size="icon" className="relative">
               <List className="size-5" />
-              {/* Unread dot on hamburger when logged in */}
               {user && unreadCount > 0 && (
                 <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />
               )}
@@ -432,55 +553,95 @@ export function NavbarClient({
             <div className="mt-6 flex flex-col gap-4">
               {/* Mobile Search */}
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Mode toggle — people search is for logged-in users only. */}
+                {user && (
+                  <div className="flex rounded-lg border bg-background">
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("items")}
+                      className={`flex-1 rounded-l-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "items"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Items
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("people")}
+                      className={`flex-1 rounded-r-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "people"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      People
+                    </button>
+                  </div>
+                )}
+
+                {/* Search input */}
                 <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
-                  <MagnifyingGlass className="size-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search listings..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  />
+                  <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
+                  {searchMode === "items" ? (
+                    <input
+                      type="text"
+                      placeholder={pathname.startsWith("/requests") ? "Search requests..." : "Search listings..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Search people..."
+                      value={peopleQuery}
+                      onChange={(e) => setPeopleQuery(e.target.value)}
+                      autoComplete="off"
+                      className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    />
+                  )}
                 </div>
+
+                {/* Mobile people results (inline, not floating) */}
+                {searchMode === "people" && peopleQuery.length >= 2 && (
+                  <div className="overflow-hidden rounded-lg border bg-background">
+                    <PeopleDropdownContent
+                      results={peopleResults}
+                      loading={peopleLoading}
+                      onSelect={handlePeopleSelect}
+                    />
+                  </div>
+                )}
               </form>
 
               <div className="h-px bg-border" />
 
-              {/* Looking For — visible to everyone */}
+              <Link
+                href="/listings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
+              >
+                <ShoppingCart className="size-4" />
+                Listings
+              </Link>
+
               <Link
                 href="/requests"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
               >
                 <MagnifyingGlass className="size-4" />
-                Looking For
+                Requests
               </Link>
 
-              {/* Mobile Auth Section */}
               {user ? (
                 <>
-                  {/* User info card */}
                   <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-3">
                     <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
                       {user.avatar_url ? (
-                        <Image
-                          src={user.avatar_url}
-                          alt={user.full_name}
-                          fill
-                          className="object-cover ring-2 ring-primary/30"
-                        />
+                        <Image src={toStorageUrl(user.avatar_url)} alt={user.full_name} fill unoptimized sizes="40px" className="object-cover ring-2 ring-primary/30" />
                       ) : (
                         <span className="flex size-full items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
                           {getInitials(user)}
@@ -493,7 +654,6 @@ export function NavbarClient({
                     </div>
                   </div>
 
-                  {/* Messages */}
                   <Link
                     href="/messages"
                     onClick={() => setMobileMenuOpen(false)}
@@ -510,7 +670,6 @@ export function NavbarClient({
                     )}
                   </Link>
 
-                  {/* Notifications */}
                   <Link
                     href="/notifications"
                     onClick={() => setMobileMenuOpen(false)}
@@ -520,14 +679,13 @@ export function NavbarClient({
                       <Bell className="size-4" />
                       Notifications
                     </span>
-                    {notifCount > 0 && (
+                    {unseenCount > 0 && (
                       <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
-                        {formatUnreadCount(notifCount)}
+                        {formatUnreadCount(unseenCount)}
                       </span>
                     )}
                   </Link>
 
-                  {/* My Profile */}
                   <Link
                     href="/profile"
                     onClick={() => setMobileMenuOpen(false)}
@@ -537,23 +695,12 @@ export function NavbarClient({
                     My Profile
                   </Link>
 
-                  {/* Post a Listing */}
-                  <Link
-                    href="/listings/new"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
-                  >
-                    <Plus className="size-4" />
-                    Post a Listing
-                  </Link>
-
                   <div className="h-px bg-border" />
 
-                  {/* Sign Out */}
                   <Button
                     variant="outline"
                     className="w-full text-destructive hover:text-destructive"
-                    onClick={handleSignOut}
+                    onClick={async () => { setMobileMenuOpen(false); await signOut(); }}
                   >
                     <SignOut className="size-4" />
                     Sign Out
@@ -562,10 +709,7 @@ export function NavbarClient({
               ) : (
                 <Button
                   className="w-full"
-                  onClick={() => {
-                    signInWithGoogle();
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => { signInWithGoogle(); setMobileMenuOpen(false); }}
                 >
                   <UserIcon className="size-4" />
                   Login with Google

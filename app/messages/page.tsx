@@ -10,7 +10,7 @@ import {
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ conversation?: string; listing?: string; seller?: string }>;
+  searchParams: Promise<{ conversation?: string; listing?: string; seller?: string; request?: string; requester?: string }>;
 }) {
   // ── Auth gate ────────────────────────────────────────────────────────
   const supabase = await createClient();
@@ -39,6 +39,30 @@ export default async function MessagesPage({
       const { data: newConv } = await supabase
         .from("conversations")
         .insert({ listing_id: params.listing, buyer_id: user.id, seller_id: params.seller })
+        .select("id")
+        .single();
+      if (newConv) redirect(`/messages?conversation=${newConv.id}`);
+    }
+  }
+
+  // ── Handle ?request=&requester= → create/find request conversation ──
+  if (params.request && params.requester) {
+    if (params.requester === user.id) redirect("/messages"); // Can't message yourself
+
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("request_id", params.request)
+      .eq("buyer_id", user.id)
+      .eq("seller_id", params.requester)
+      .maybeSingle();
+
+    if (existing) {
+      redirect(`/messages?conversation=${existing.id}`);
+    } else {
+      const { data: newConv } = await supabase
+        .from("conversations")
+        .insert({ request_id: params.request, buyer_id: user.id, seller_id: params.requester })
         .select("id")
         .single();
       if (newConv) redirect(`/messages?conversation=${newConv.id}`);

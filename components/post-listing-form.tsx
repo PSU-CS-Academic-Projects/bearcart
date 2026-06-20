@@ -8,7 +8,6 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ConditionSelector } from "@/components/condition-selector";
 import { ListingTypeSelector } from "@/components/listing-type-selector";
-import { TagsInput } from "@/components/tags-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,38 +18,32 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Camera, ListBullets, MapPin, Eye, PaperPlaneTilt, CaretLeft, CaretRight,
-  SpinnerGap, Buildings,
+  Camera, ListBullets, Eye, PaperPlaneTilt, CaretLeft, CaretRight,
+  SpinnerGap,
 } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { createListing } from "@/lib/actions/listings";
+import {
+  formatCurrencyInput,
+  formatPeso,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const categories = [
-  { value: "books", label: "Books" },
+  { value: "accessories", label: "Accessories" },
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "food", label: "Food" },
-  { value: "supplies", label: "Supplies" },
+  { value: "school supplies", label: "School Supplies" },
   { value: "services", label: "Services" },
   { value: "others", label: "Others" },
 ];
 
-const meetupLocations = [
-  "Library", "Cafeteria", "Main Building Lobby", "Covered Court", "Department Office",
-];
-
-const weekDays = [
-  { value: "mon", label: "Mon" },
-  { value: "tue", label: "Tue" },
-  { value: "wed", label: "Wed" },
-  { value: "thu", label: "Thu" },
-  { value: "fri", label: "Fri" },
-  { value: "sat", label: "Sat" },
-];
 
 const TITLE_MAX = 100;
 const DESC_MAX = 500;
@@ -66,11 +59,6 @@ interface FormData {
   price: string;
   negotiable: boolean;
   description: string;
-  tags: string[];
-  meetupLocations: string[];
-  availableDays: string[];
-  timeFrom: string;
-  timeTo: string;
 }
 
 interface FormErrors {
@@ -86,8 +74,7 @@ interface FormErrors {
 const steps = [
   { id: 1, label: "Photos", icon: Camera },
   { id: 2, label: "Details", icon: ListBullets },
-  { id: 3, label: "Meetup", icon: MapPin },
-  { id: 4, label: "Review", icon: Eye },
+  { id: 3, label: "Review", icon: Eye },
 ];
 
 // ─── Field IDs for focus-on-error ─────────────────────────────────────────────
@@ -134,8 +121,7 @@ export function PostListingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     photos: [], title: "", category: "", condition: "", listingType: "for-sale",
-    price: "", negotiable: false, description: "", tags: [],
-    meetupLocations: [], availableDays: [], timeFrom: "09:00", timeTo: "17:00",
+    price: "", negotiable: false, description: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -150,14 +136,6 @@ export function PostListingForm() {
     }
   };
 
-  const toggleArrayField = <K extends keyof FormData>(field: K, value: string) => {
-    const currentArray = formData[field] as string[];
-    const newArray = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    updateField(field, newArray as FormData[K]);
-  };
-
   // ── Validation ──────────────────────────────────────────────────────────
 
   const validateAll = useCallback((): boolean => {
@@ -168,7 +146,11 @@ export function PostListingForm() {
     if (!formData.category) newErrors.category = "Please select a category";
     if (!formData.condition) newErrors.condition = "Please select a condition";
     if (!formData.listingType) newErrors.listingType = "Please select a listing type";
-    if (formData.listingType === "for-sale" && !formData.price) newErrors.price = "Price is required";
+    if (formData.listingType === "for-sale") {
+      const priceNum = parseCurrencyInput(formData.price);
+      if (priceNum === null) newErrors.price = "Price is required";
+      else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
+    }
     if (!formData.description.trim()) newErrors.description = "Description is required";
     else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     setErrors(newErrors);
@@ -188,7 +170,11 @@ export function PostListingForm() {
       if (!formData.category) newErrors.category = "Please select a category";
       if (!formData.condition) newErrors.condition = "Please select a condition";
       if (!formData.listingType) newErrors.listingType = "Please select a listing type";
-      if (formData.listingType === "for-sale" && !formData.price) newErrors.price = "Price is required";
+      if (formData.listingType === "for-sale") {
+        const priceNum = parseCurrencyInput(formData.price);
+        if (priceNum === null) newErrors.price = "Price is required";
+        else if (priceNum < 1) newErrors.price = "Price must be at least ₱1";
+      }
       if (!formData.description.trim()) newErrors.description = "Description is required";
       else if (formData.description.length > DESC_MAX) newErrors.description = `Description must be ${DESC_MAX} characters or less`;
     }
@@ -215,7 +201,7 @@ export function PostListingForm() {
 
   // ── Step Navigation ───────────────────────────────────────────────────
 
-  const handleNext = () => { if (validateStep(currentStep)) setCurrentStep((prev) => Math.min(prev + 1, 4)); };
+  const handleNext = () => { if (validateStep(currentStep)) setCurrentStep((prev) => Math.min(prev + 1, 3)); };
   const handlePrev = () => { setCurrentStep((prev) => Math.max(prev - 1, 1)); };
 
   // ── Submit ────────────────────────────────────────────────────────────
@@ -233,7 +219,7 @@ export function PostListingForm() {
             if (!formData.category) e.push("category");
             if (!formData.condition) e.push("condition");
             if (!formData.listingType) e.push("listingType");
-            if (formData.listingType === "for-sale" && !formData.price) e.push("price");
+            if (formData.listingType === "for-sale" && !parseCurrencyInput(formData.price)) e.push("price");
             if (!formData.description.trim()) e.push("description");
             return e;
           })();
@@ -247,22 +233,17 @@ export function PostListingForm() {
         new: "new", "like-new": "like_new", good: "good", fair: "fair", poor: "poor",
       };
 
-      // Build tags with meetup locations
-      const meetupTags = formData.meetupLocations.map((loc) => `meetup:${loc}`);
-      const allTags = [...formData.tags, ...meetupTags];
-
       const result = await createListing({
         title: formData.title.trim(),
         description: formData.description.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: parseCurrencyInput(formData.price) ?? 0,
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionMap[formData.condition] ?? "good",
-        tags: allTags,
         photos: formData.photos,
       });
       toast.success("Listing posted successfully!");
-      router.push(`/listings/${result.id}`);
+      router.push(`/listings/${result.slug ?? result.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post listing";
       // Check if it's a partial failure (listing created but images failed)
@@ -280,7 +261,7 @@ export function PostListingForm() {
 
   const photosSection = (
     <div id="photo-upload-zone">
-      <PhotoUpload
+      <PhotoUpload 
         photos={formData.photos}
         onPhotosChange={(photos) => updateField("photos", photos)}
         error={errors.photos}
@@ -297,7 +278,7 @@ export function PostListingForm() {
         <Label htmlFor="desktop-title">Title <span className="text-destructive">*</span></Label>
         <Input
           id="desktop-title"
-          placeholder="e.g. Calculus Textbook 10th Edition"
+          placeholder="e.g. Scientific Calculator"
           value={formData.title}
           onChange={(e) => updateField("title", e.target.value)}
           maxLength={TITLE_MAX}
@@ -346,10 +327,24 @@ export function PostListingForm() {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
             <Input
               id="desktop-price"
-              type="number"
-              placeholder="0.00"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 500"
               value={formData.price}
-              onChange={(e) => updateField("price", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => updateField("price", formatCurrencyInput(e.target.value))}
               className={cn("pl-7", errors.price && "border-destructive")}
               disabled={submitting}
             />
@@ -367,7 +362,7 @@ export function PostListingForm() {
         <Label htmlFor="desktop-description">Description <span className="text-destructive">*</span></Label>
         <Textarea
           id="desktop-description"
-          placeholder="Describe your item..."
+          placeholder="Describe your listing..."
           value={formData.description}
           onChange={(e) => updateField("description", e.target.value)}
           maxLength={DESC_MAX}
@@ -378,82 +373,6 @@ export function PostListingForm() {
         <div className="flex justify-between">
           {errors.description ? <p className="text-sm text-destructive">{errors.description}</p> : <span />}
           <CharCounter current={formData.description.length} max={DESC_MAX} />
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagsInput
-          tags={formData.tags}
-          onTagsChange={(tags) => updateField("tags", tags)}
-          placeholder="Add tags and press Enter"
-          maxTags={5}
-          maxTagLength={20}
-          disabled={submitting}
-        />
-      </div>
-    </div>
-  );
-
-  const meetupSection = (
-    <div className="space-y-6">
-
-      {/* Meetup Spots */}
-      <div className="space-y-3">
-        <Label className="flex items-center gap-2">
-          <Buildings className="size-4 text-primary" />
-          Preferred Meetup Spots on PSU Campus
-        </Label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {meetupLocations.map((loc) => (
-            <div key={loc} className="flex items-center gap-2">
-              <Checkbox
-                id={`location-${loc}`}
-                checked={formData.meetupLocations.includes(loc)}
-                onCheckedChange={() => toggleArrayField("meetupLocations", loc)}
-                disabled={submitting}
-              />
-              <Label htmlFor={`location-${loc}`} className="text-sm font-normal">{loc}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Available Days */}
-      <div className="space-y-3">
-        <Label>Available Days</Label>
-        <div className="flex flex-wrap gap-2">
-          {weekDays.map((day) => (
-            <button
-              key={day.value}
-              type="button"
-              onClick={() => toggleArrayField("availableDays", day.value)}
-              disabled={submitting}
-              className={cn(
-                "rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50",
-                formData.availableDays.includes(day.value)
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:border-primary hover:bg-muted"
-              )}
-            >
-              {day.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Available Time */}
-      <div className="space-y-3">
-        <Label>Available Time</Label>
-        <div className="flex max-w-sm items-center gap-3">
-          <div className="flex-1">
-            <Input id="desktop-timeFrom" type="time" value={formData.timeFrom} onChange={(e) => updateField("timeFrom", e.target.value)} disabled={submitting} />
-          </div>
-          <span className="text-muted-foreground">to</span>
-          <div className="flex-1">
-            <Input id="desktop-timeTo" type="time" value={formData.timeTo} onChange={(e) => updateField("timeTo", e.target.value)} disabled={submitting} />
-          </div>
         </div>
       </div>
     </div>
@@ -474,7 +393,7 @@ export function PostListingForm() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-foreground">{formData.title || "Untitled Listing"}</h3>
           <p className="text-xl font-bold text-primary">
-            ₱{formData.price || "0"}
+            {formatPeso(parseCurrencyInput(formData.price) ?? 0)}
             {formData.negotiable && <span className="ml-2 text-sm font-normal text-muted-foreground">(Negotiable)</span>}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -482,24 +401,9 @@ export function PostListingForm() {
             {formData.condition && <span className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground">{formData.condition.charAt(0).toUpperCase() + formData.condition.slice(1).replace("-", " ")}</span>}
           </div>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{formData.description || "No description provided."}</p>
-          {formData.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {formData.tags.map((tag) => (
-                <span key={tag} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">#{tag}</span>
-              ))}
-            </div>
-          )}
-          {formData.meetupLocations.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="text-xs font-medium text-foreground">Meetup:</span>
-              {formData.meetupLocations.map((loc) => (
-                <span key={loc} className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">{loc}</span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
-      <p className="text-center text-xs text-muted-foreground">By posting you agree to PalMart&apos;s community guidelines</p>
+      <p className="text-center text-xs text-muted-foreground">By posting you agree to Bearcart&apos;s community guidelines</p>
     </div>
   );
 
@@ -510,7 +414,7 @@ export function PostListingForm() {
       type={isMobile ? "button" : "submit"}
       onClick={isMobile ? handleSubmit : undefined}
       disabled={submitting}
-      className="flex-1 sm:flex-none"
+      className="w-fit"
     >
       {submitting ? (
         <>
@@ -528,7 +432,7 @@ export function PostListingForm() {
 
   // ── Mobile: Multi-step form ───────────────────────────────────────────
 
-  const progress = (currentStep / 4) * 100;
+  const progress = (currentStep / 3) * 100;
 
   if (isMobile) {
     return (
@@ -558,7 +462,7 @@ export function PostListingForm() {
           <div className="p-4">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div><h2 className="text-lg font-semibold text-foreground">Add Photos</h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
+                <div><h2 className="text-lg font-semibold text-foreground">Add Photos <span className="text-destructive">*</span></h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
                 {photosSection}
               </div>
             )}
@@ -568,13 +472,7 @@ export function PostListingForm() {
                 {detailsSection}
               </div>
             )}
-            {currentStep === 3 && (
-              <div className="space-y-4">
-                <div><h2 className="text-lg font-semibold text-foreground">Meetup Preferences</h2><p className="text-sm text-muted-foreground">Set your preferred meetup spots and schedule</p></div>
-                {meetupSection}
-              </div>
-            )}
-            {currentStep === 4 && reviewSection}
+            {currentStep === 3 && reviewSection}
           </div>
 
           {/* Mobile Navigation Buttons */}
@@ -585,7 +483,7 @@ export function PostListingForm() {
                   <CaretLeft className="size-4" />Back
                 </Button>
               )}
-              {currentStep < 4 ? (
+              {currentStep < 3 ? (
                 <Button onClick={handleNext} className="flex-1" disabled={submitting}>
                   Next<CaretRight className="size-4" />
                 </Button>
@@ -606,7 +504,12 @@ export function PostListingForm() {
       <main className="flex-1">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
-            <Breadcrumb items={[{ label: "Post a Listing" }]} />
+            <Breadcrumb
+              items={[
+                { label: "Listings", href: "/listings" },
+                { label: "New" },
+              ]}
+            />
             <h1 className="mt-4 text-2xl font-bold text-foreground">Post a Listing</h1>
             <p className="text-muted-foreground">Fill in the details of your item</p>
           </div>
@@ -618,7 +521,7 @@ export function PostListingForm() {
           >
             {/* Photos */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos</h2></div>
+              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos <span className="text-destructive">*</span></h2></div>
               {photosSection}
             </section>
             <div className="h-px bg-border" />
@@ -627,22 +530,14 @@ export function PostListingForm() {
             <section className="space-y-6">
               <div className="flex items-center gap-2"><ListBullets className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Listing Details</h2></div>
               {detailsSection}
-            </section>
-            <div className="h-px bg-border" />
-
-            {/* Meetup */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-2"><MapPin className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Meetup Preferences</h2></div>
-              {meetupSection}
-            </section>
-            <div className="h-px bg-border" />
+            </section>  
 
             {/* Submit */}
             <section className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                 {submitButton}
               </div>
-              <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to PalMart&apos;s community guidelines</p>
+              <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to Bearcart&apos;s community guidelines</p>
             </section>
           </form>
         </div>

@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Messages — PalMart",
-  description: "Chat with buyers and sellers on PalMart, the campus marketplace for Palawan State University.",
+  title: "Messages - BearCart",
+  description: "Chat with buyers and sellers on BearCart, the campus marketplace for Palawan State University.",
 };
 
 export default function MessagesLayout({

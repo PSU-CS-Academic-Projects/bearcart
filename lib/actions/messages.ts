@@ -2,28 +2,42 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { sendMessageNotificationEmail } from "@/lib/email";
+import { moderateImageOrThrow } from "@/lib/moderation";
+import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ConversationWithDetails {
   id: string;
   listing_id: string | null;
+  request_id: string | null;
   buyer_id: string;
   seller_id: string;
   last_message: string | null;
   last_message_at: string | null;
+  last_message_sender_id: string | null;
   created_at: string;
   archived_by_buyer: boolean;
   archived_by_seller: boolean;
   listing: {
     id: string;
+    slug?: string;
     title: string;
     price: number;
     status: string;
-    listing_images: { image_url: string; is_cover: boolean }[];
+    listing_images: { image_url: string; is_cover: boolean; order: number }[];
   } | null;
-  buyer: { id: string; full_name: string; avatar_url: string | null; role: string };
-  seller: { id: string; full_name: string; avatar_url: string | null; role: string };
+  request: {
+    id: string;
+    title: string;
+    budget_min: number | null;
+    budget_max: number | null;
+    status: string;
+    request_images: { image_url: string; order: number }[];
+  } | null;
+  buyer: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
+  seller: { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string };
   unreadCount?: number;
 }
 
@@ -36,6 +50,7 @@ export interface MessageRow {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  deleted_at: string | null;
 }
 
 // ─── GET CONVERSATIONS ────────────────────────────────────────────────────────
@@ -48,11 +63,12 @@ export async function getConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
-      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
-      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
     .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.false),and(seller_id.eq.${user.id},archived_by_seller.eq.false)`)
     .order("last_message_at", { ascending: false, nullsFirst: false });
@@ -75,6 +91,42 @@ export async function getConversations() {
   );
 
   return { conversations: enriched as unknown as ConversationWithDetails[], currentUserId: user.id };
+}
+
+// ─── GET SINGLE CONVERSATION (for realtime new-conversation hydration) ─────────
+
+export async function getConversationById(
+  conversationId: string
+): Promise<ConversationWithDetails | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .select(`
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
+      archived_by_buyer, archived_by_seller,
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
+    `)
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  // RLS guarantees the row is only returned to a participant, but double-check
+  if (data.buyer_id !== user.id && data.seller_id !== user.id) return null;
+
+  const { count } = await supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .neq("sender_id", user.id)
+    .eq("is_read", false);
+
+  return { ...data, unreadCount: count ?? 0 } as unknown as ConversationWithDetails;
 }
 
 // ─── GET OR CREATE CONVERSATION ───────────────────────────────────────────────
@@ -100,6 +152,40 @@ export async function getOrCreateConversation(listingId: string, sellerId: strin
   const { data: newConv, error } = await supabase
     .from("conversations")
     .insert({ listing_id: listingId, buyer_id: user.id, seller_id: sellerId })
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Failed to create conversation: ${error.message}`);
+  return newConv.id;
+}
+
+// ─── GET OR CREATE REQUEST CONVERSATION ───────────────────────────────────────
+
+/**
+ * Opens (or finds) a conversation about a REQUEST. The request poster
+ * (requester) is modelled as the "seller" — the owner of the post — and the
+ * person clicking "I Have This" is the "buyer", mirroring the listing flow.
+ */
+export async function getOrCreateRequestConversation(requestId: string, requesterId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  if (user.id === requesterId) throw new Error("Cannot message yourself");
+
+  // Check if conversation already exists for this request between these two users
+  const { data: existing } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("request_id", requestId)
+    .eq("buyer_id", user.id)
+    .eq("seller_id", requesterId)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  const { data: newConv, error } = await supabase
+    .from("conversations")
+    .insert({ request_id: requestId, buyer_id: user.id, seller_id: requesterId })
     .select("id")
     .single();
 
@@ -133,6 +219,21 @@ export async function getMessages(conversationId: string) {
   return { messages: (data ?? []) as MessageRow[], currentUserId: user.id };
 }
 
+// ─── MARK CONVERSATION READ (lightweight, for live messages in open chat) ──────
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from("messages")
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .neq("sender_id", user.id)
+    .eq("is_read", false);
+}
+
 // ─── SEND MESSAGE ─────────────────────────────────────────────────────────────
 
 const NOTIFICATION_DELAY_MS = 60 * 1000;        // 1 minute — give recipient a chance to read first
@@ -146,6 +247,14 @@ export async function sendMessage(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Rate limit: 20 messages per minute per user.
+  await enforceRateLimit("messages", `user:${user.id}`);
+
+  const { data: banRow } = await supabase.from("users").select("ban_type").eq("id", user.id).single();
+  if (banRow?.ban_type === "chat" || banRow?.ban_type === "full") {
+    throw new Error("Your account is banned from sending messages.");
+  }
 
   const trimmed = content.trim();
   const cleanImageUrl = imageUrl?.trim() || null;
@@ -175,7 +284,7 @@ export async function sendMessage(
 
   await supabase
     .from("conversations")
-    .update({ last_message: preview, last_message_at: new Date().toISOString() })
+    .update({ last_message: preview, last_message_at: new Date().toISOString(), last_message_sender_id: user.id })
     .eq("id", conversationId);
 
   // ─── Email Notification (bidirectional, delayed, throttled) ───────────────
@@ -230,6 +339,7 @@ export async function sendMessage(
         .select(`
           buyer_id, seller_id, last_notified_at,
           listing:listings ( title, price ),
+          request:requests ( title, budget_min, budget_max ),
           buyer:users!conversations_buyer_id_fkey ( id, first_name, full_name, email ),
           seller:users!conversations_seller_id_fkey ( id, first_name, full_name, email )
         `)
@@ -256,6 +366,7 @@ export async function sendMessage(
         email: string | null;
       } | null;
       const listing = conv.listing as unknown as { title: string; price: number } | null;
+      const request = conv.request as unknown as { title: string; budget_min: number | null; budget_max: number | null } | null;
 
       if (!buyer || !seller) return;
 
@@ -265,12 +376,22 @@ export async function sendMessage(
 
       if (!receiver.email) return;
 
-      const senderFull = sender.full_name?.trim() || "PalMart user";
-      const senderFirst = sender.first_name?.trim() || senderFull.split(/\s+/)[0] || "PalMart user";
+      const senderFull = sender.full_name?.trim() || "BearCart user";
+      const senderFirst = sender.first_name?.trim() || senderFull.split(/\s+/)[0] || "BearCart user";
       const receiverFirst =
         receiver.first_name?.trim() ||
         receiver.full_name?.trim()?.split(/\s+/)[0] ||
         "there";
+
+      // ── Resolve post context (listing or request) for the email ──────────
+      const contextType: "listing" | "request" = request && !listing ? "request" : "listing";
+      const contextTitle = listing?.title ?? request?.title ?? null;
+      // For requests, surface the budget (prefer max) as the price line.
+      const contextPrice = listing
+        ? listing.price
+        : request
+          ? (request.budget_max ?? request.budget_min ?? null)
+          : null;
 
       // ── Send the email ───────────────────────────────────────────────────
       await sendMessageNotificationEmail({
@@ -278,8 +399,9 @@ export async function sendMessage(
         receiverFirstName: receiverFirst,
         senderFullName: senderFull,
         senderFirstName: senderFirst,
-        listingTitle: listing?.title ?? null,
-        listingPrice: listing?.price ?? null,
+        contextType,
+        listingTitle: contextTitle,
+        listingPrice: contextPrice,
         messagePreview,
         conversationId,
       });
@@ -320,13 +442,17 @@ export async function uploadMessageImage(
     throw new Error("Not a participant of this conversation");
   }
 
-  // Parse the base64 data URL — accept jpeg, png, webp, gif
-  const match = base64Data.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/);
+  // Rate limit: 10 image uploads per minute per user.
+  await enforceRateLimit("imageUpload", `user:${user.id}`);
+
+  // Moderate before uploading — throws if flagged
+  await moderateImageOrThrow(base64Data);
+
+  // Parse the base64 data URL — accept jpeg, png, webp
+  const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
   if (!match) {
-    throw new Error("Invalid image format. Only JPG, PNG, WEBP, and GIF are allowed.");
+    throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
   }
-  const mimeType = match[1];
-  const extension = match[2] === "jpeg" ? "jpg" : match[2];
   const rawBase64 = match[3];
 
   const binaryString = atob(rawBase64);
@@ -339,14 +465,16 @@ export async function uploadMessageImage(
     throw new Error("Image is larger than the 5MB limit.");
   }
 
-  // Path: message-images/<conversation_id>/<message_uuid>/<filename>
+  // Flatten transparency → white and convert to WebP before storing.
+  const processed = await processToWebp(bytes, { quality: 85 });
+
+  // Path: message-images/<conversation_id>/<message_uuid>/image.webp
   const messageUuid = crypto.randomUUID();
-  const filename = `image.${extension}`;
-  const filePath = `${conversationId}/${messageUuid}/${filename}`;
+  const filePath = `${conversationId}/${messageUuid}/image.webp`;
 
   const { error } = await supabase.storage
     .from("message-images")
-    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
+    .upload(filePath, processed, { contentType: "image/webp", upsert: false });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
@@ -355,6 +483,46 @@ export async function uploadMessageImage(
     .getPublicUrl(filePath);
 
   return urlData.publicUrl;
+}
+
+// ─── DELETE MESSAGE ───────────────────────────────────────────────────────────
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: msg } = await supabase
+    .from("messages")
+    .select("sender_id, conversation_id, created_at")
+    .eq("id", messageId)
+    .single();
+
+  if (!msg) throw new Error("Message not found");
+  if (msg.sender_id !== user.id) throw new Error("Cannot delete another user's message");
+
+  const { error } = await supabase
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId);
+
+  if (error) throw new Error(`Failed to delete message: ${error.message}`);
+
+  // If this was the latest message in the conversation, update the preview
+  const { data: newerMsg } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", msg.conversation_id)
+    .gt("created_at", msg.created_at)
+    .limit(1)
+    .maybeSingle();
+
+  if (!newerMsg) {
+    await supabase
+      .from("conversations")
+      .update({ last_message: "Message deleted", last_message_sender_id: user.id })
+      .eq("id", msg.conversation_id);
+  }
 }
 
 // ─── ARCHIVE / UNARCHIVE CONVERSATION ────────────────────────────────────────
@@ -398,11 +566,12 @@ export async function getArchivedConversations() {
   const { data, error } = await supabase
     .from("conversations")
     .select(`
-      id, listing_id, buyer_id, seller_id, last_message, last_message_at, created_at,
+      id, listing_id, request_id, buyer_id, seller_id, last_message, last_message_at, last_message_sender_id, created_at,
       archived_by_buyer, archived_by_seller,
-      listing:listings ( id, title, price, status, listing_images ( image_url, is_cover ) ),
-      buyer:users!conversations_buyer_id_fkey ( id, full_name, avatar_url, role ),
-      seller:users!conversations_seller_id_fkey ( id, full_name, avatar_url, role )
+      listing:listings ( id, slug, title, price, status, listing_images ( image_url, is_cover, "order" ) ),
+      request:requests ( id, title, budget_min, budget_max, status, request_images ( image_url, "order" ) ),
+      buyer:users!conversations_buyer_id_fkey ( id, slug, full_name, avatar_url, role ),
+      seller:users!conversations_seller_id_fkey ( id, slug, full_name, avatar_url, role )
     `)
     .or(`and(buyer_id.eq.${user.id},archived_by_buyer.eq.true),and(seller_id.eq.${user.id},archived_by_seller.eq.true)`)
     .order("last_message_at", { ascending: false, nullsFirst: false });
@@ -439,12 +608,13 @@ export async function getUnreadMessageCount() {
 
   if (!convos || convos.length === 0) return 0;
 
-  const { count } = await supabase
+// Count distinct conversations that have at least one unread message from the other person.
+  const { data } = await supabase
     .from("messages")
-    .select("id", { count: "exact", head: true })
-    .in("conversation_id", convos.map(c => c.id))
+    .select("conversation_id")
+    .in("conversation_id", convos.map((c) => c.id))
     .neq("sender_id", user.id)
     .eq("is_read", false);
 
-  return count ?? 0;
+  return new Set((data ?? []).map((m) => m.conversation_id)).size;
 }

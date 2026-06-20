@@ -9,6 +9,7 @@ import { toast } from "sonner";
 interface RequestActionsProps {
   requestId: string;
   requesterId: string;
+  requesterSlug?: string;
   currentUserId: string | null;
   isAvailable: boolean;
 }
@@ -16,6 +17,7 @@ interface RequestActionsProps {
 export function RequestActions({
   requestId,
   requesterId,
+  requesterSlug,
   currentUserId,
   isAvailable,
 }: RequestActionsProps) {
@@ -46,8 +48,7 @@ export function RequestActions({
       router.push(`/auth/login?returnTo=/requests/${requestId}`);
       return;
     }
-    toast.info("Visit the requester's profile to start a conversation");
-    router.push(`/profile/${requesterId}`);
+      router.push(`/messages?request=${requestId}&requester=${requesterId}`);
   };
 
   return (

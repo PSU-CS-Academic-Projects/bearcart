@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { FiltersSidebar, MobileFiltersSheet } from "@/components/filters-sidebar";
 import { getListings } from "@/lib/actions/listings";
 import { formatTimeAgo, getCoverImage, getSellerName, formatCondition } from "@/lib/listing-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
 import { Storefront, Plus } from "@phosphor-icons/react/dist/ssr";
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
@@ -52,10 +53,11 @@ export async function LandingListingsSection({ showHeader = true }: { showHeader
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {listings.map((listing) => (
+              {listings.map((listing, index) => (
                 <ListingCard
                   key={listing.id}
                   id={listing.id}
+                  slug={listing.slug ?? listing.id}
                   title={listing.title}
                   price={listing.price}
                   category={listing.category}
@@ -63,7 +65,10 @@ export async function LandingListingsSection({ showHeader = true }: { showHeader
                   sellerName={getSellerName(listing)}
                   sellerAvatar={listing.seller?.avatar_url ?? ""}
                   timePosted={formatTimeAgo(listing.created_at)}
+                  createdAt={listing.created_at}
+                  updatedAt={listing.updated_at}
                   imageUrl={getCoverImage(listing)}
+                  priority={index < 3}
                 />
               ))}
             </div>
@@ -121,9 +126,11 @@ export async function ListingsSection() {
                       category={listing.category}
                       condition={formatCondition(listing.condition)}
                       sellerName={getSellerName(listing)}
-                      sellerAvatar={listing.seller?.avatar_url ?? ""}
+                      sellerAvatar={toStorageUrl(listing.seller?.avatar_url ?? "")}
                       timePosted={formatTimeAgo(listing.created_at)}
-                      imageUrl={getCoverImage(listing)}
+                      createdAt={listing.created_at}
+                      updatedAt={listing.updated_at}
+                      imageUrl={toStorageUrl(getCoverImage(listing))}
                     />
                   ))}
                 </div>

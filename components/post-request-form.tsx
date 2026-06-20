@@ -17,14 +17,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaperPlaneTilt, SpinnerGap } from "@phosphor-icons/react";
+import { PaperPlaneTiltIcon, SpinnerGapIcon, CameraIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { createRequest, type RequestUrgency } from "@/lib/actions/requests";
+import {
+  formatCurrencyInput,
+  parseCurrencyInput,
+  shouldBlockCurrencyKey,
+} from "@/lib/currency";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { value: "Books", label: "Books" },
+  { value: "Accessories", label: "Accessories" },
   { value: "Electronics", label: "Electronics" },
   { value: "Clothing", label: "Clothing" },
   { value: "Food", label: "Food" },
@@ -33,10 +38,10 @@ const CATEGORIES = [
   { value: "Others", label: "Others" },
 ];
 
-const URGENCIES: { value: RequestUrgency; label: string; description: string; dot: string }[] = [
-  { value: "not_urgent", label: "Flexible", description: "No rush, whenever", dot: "bg-emerald-500" },
-  { value: "moderate", label: "Need Soon", description: "Within the next week", dot: "bg-amber-500" },
-  { value: "urgent", label: "Urgent", description: "ASAP — exams or deadline", dot: "bg-red-500" },
+const URGENCIES: { value: RequestUrgency; label: string }[] = [
+  { value: "not_urgent", label: "Flexible" },
+  { value: "moderate", label: "Need Soon" },
+  { value: "urgent", label: "Urgent" },
 ];
 
 const TITLE_MAX = 100;
@@ -52,6 +57,16 @@ interface FormErrors {
   budget?: string;
   urgency?: string;
 }
+
+// ─── Field IDs for focus-on-error ─────────────────────────────────────────────
+
+const FIELD_IDS: Record<keyof FormErrors, string> = {
+  title: "req-title-section",
+  category: "req-category-section",
+  description: "req-desc-section",
+  budget: "req-budget-section",
+  urgency: "req-urgency-section",
+};
 
 // ─── Char Counter ─────────────────────────────────────────────────────────────
 
@@ -79,12 +94,26 @@ export function PostRequestForm() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [budgetMin, setBudgetMin] = useState("");
-  const [budgetMax, setBudgetMax] = useState("");
+  const [budget, setBudget] = useState("");
   const [urgency, setUrgency] = useState<RequestUrgency>("not_urgent");
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const validate = useCallback((): boolean => {
+  const focusFirstError = useCallback((errorKeys: string[]) => {
+    const order: (keyof FormErrors)[] = ["title", "category", "description", "budget", "urgency"];
+    for (const key of order) {
+      if (errorKeys.includes(key)) {
+        const el = document.getElementById(FIELD_IDS[key]);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          const input = el.querySelector("input, textarea, button, [tabindex]");
+          if (input instanceof HTMLElement) input.focus();
+          return;
+        }
+      }
+    }
+  }, []);
+
+  const validate = useCallback((): FormErrors => {
     const next: FormErrors = {};
 
     if (!title.trim()) next.title = "Tell us what you're looking for";
@@ -92,44 +121,41 @@ export function PostRequestForm() {
 
     if (!category) next.category = "Please select a category";
 
-    if (description.length > DESC_MAX) {
+    if (!description.trim()) {
+      next.description = "Please add some details about what you're looking for";
+    } else if (description.length > DESC_MAX) {
       next.description = `Description must be ${DESC_MAX} characters or less`;
     }
 
-    const minNum = budgetMin ? parseFloat(budgetMin) : null;
-    const maxNum = budgetMax ? parseFloat(budgetMax) : null;
-    if (minNum !== null && minNum < 0) next.budget = "Minimum budget cannot be negative";
-    else if (maxNum !== null && maxNum < 0) next.budget = "Maximum budget cannot be negative";
-    else if (minNum !== null && maxNum !== null && minNum > maxNum) {
-      next.budget = "Minimum must be less than or equal to maximum";
-    }
+    const budgetNum = parseCurrencyInput(budget);
+    if (budgetNum !== null && budgetNum < 1) next.budget = "Budget must be at least ₱1";
 
     setErrors(next);
-    return Object.keys(next).length === 0;
-  }, [title, category, description, budgetMin, budgetMax]);
+    return next;
+  }, [title, category, description, budget]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) {
-      toast.error("Please fix the errors in the form");
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setTimeout(() => focusFirstError(Object.keys(validationErrors)), 50);
       return;
     }
 
     setSubmitting(true);
     try {
-      const minNum = budgetMin ? parseFloat(budgetMin) : null;
-      const maxNum = budgetMax ? parseFloat(budgetMax) : null;
-      const result = await createRequest({
+      const budgetNum = parseCurrencyInput(budget);
+      await createRequest({
         title: title.trim(),
         description: description.trim(),
         category,
-        budget_min: minNum,
-        budget_max: maxNum,
+        budget_min: budgetNum,
+        budget_max: null,
         urgency,
         photos,
       });
       toast.success("Request posted successfully!");
-      router.push(`/requests/${result.id}`);
+      router.push("/requests");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post request";
       toast.error(message);
@@ -140,22 +166,26 @@ export function PostRequestForm() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex-1">
-        <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mx-auto max-w-3xl px-4 py-8">
           {/* Breadcrumb + Header */}
           <div className="mb-8">
             <Breadcrumb
               items={[
-                { label: "Looking For", href: "/requests" },
+                { label: "Requests", href: "/requests" },
                 { label: "New" },
               ]}
             />
             <h1 className="mt-4 text-2xl font-bold text-foreground">Post a Request</h1>
-            <p className="text-muted-foreground">Tell the community what you&apos;re looking for</p>
+            <p className="text-muted-foreground">Tell the campus what you&apos;re looking for</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Photos (optional) */}
             <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CameraIcon className="size-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Photos</h2>
+              </div>
               <div>
                 <Label>Photos (optional)</Label>
                 <p className="text-xs text-muted-foreground">
@@ -173,13 +203,13 @@ export function PostRequestForm() {
             <div className="h-px bg-border" />
 
             {/* Title */}
-            <div className="space-y-2">
+            <div id="req-title-section" className="space-y-2">
               <Label htmlFor="req-title">
                 What are you looking for? <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="req-title"
-                placeholder="e.g. Calculus Textbook 10th Edition by James Stewart"
+                placeholder="e.g. Looking for a used calculator"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={TITLE_MAX}
@@ -197,7 +227,7 @@ export function PostRequestForm() {
             </div>
 
             {/* Category */}
-            <div className="space-y-2">
+            <div id="req-category-section" className="space-y-2">
               <Label>
                 Category <span className="text-destructive">*</span>
               </Label>
@@ -220,75 +250,67 @@ export function PostRequestForm() {
               )}
             </div>
 
-            {/* Description */}
+            {/* Description + Budget */}
             <div className="space-y-2">
-              <Label htmlFor="req-desc">Add more details (optional)</Label>
-              <Textarea
-                id="req-desc"
-                placeholder="Describe exactly what you need — edition, color, size, condition you'll accept, etc."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={DESC_MAX}
-                rows={4}
-                disabled={submitting}
-                className={cn(errors.description && "border-destructive")}
-              />
-              <div className="flex justify-between">
-                {errors.description ? (
-                  <p className="text-sm text-destructive">{errors.description}</p>
-                ) : (
-                  <span />
-                )}
-                <CharCounter current={description.length} max={DESC_MAX} />
+              <div id="req-desc-section" className="space-y-2">
+                <Label htmlFor="req-desc">
+                  Add more details <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="req-desc"
+                  placeholder="Describe exactly what you need - model, color, size, condition you'll accept, etc."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={DESC_MAX}
+                 rows={4}
+                  disabled={submitting}
+                  className={cn(errors.description && "border-destructive")}
+                />
+                <div className="flex justify-between">
+                  {errors.description ? (
+                    <p className="text-sm text-destructive">{errors.description}</p>
+                  ) : (
+                    <span />
+                  )}
+                  <CharCounter current={description.length} max={DESC_MAX} />
+                </div>
               </div>
-            </div>
 
-            {/* Budget */}
-            <div className="space-y-2">
-              <Label>Budget Range (optional)</Label>
-              <p className="text-xs text-muted-foreground">Leave empty if flexible</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="From"
-                      value={budgetMin}
-                      onChange={(e) => setBudgetMin(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
+              <div id="req-budget-section" className="space-y-2">
+                <Label>Budget (optional)</Label>
+                <div className="relative max-w-xs">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 500"
+                    value={budget}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey || e.altKey) return;
+                      if (
+                        shouldBlockCurrencyKey(
+                          e.key,
+                          e.currentTarget.value,
+                          e.currentTarget.selectionStart,
+                          e.currentTarget.selectionEnd
+                        )
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => setBudget(formatCurrencyInput(e.target.value))}
+                    disabled={submitting}
+                    className={cn("pl-7", errors.budget && "border-destructive")}
+                  />
                 </div>
-                <span className="text-muted-foreground">to</span>
-                <div className="flex-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      ₱
-                    </span>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="To"
-                      value={budgetMax}
-                      onChange={(e) => setBudgetMax(e.target.value)}
-                      disabled={submitting}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
+                {errors.budget && (
+                  <p className="text-sm text-destructive">{errors.budget}</p>
+                )}
               </div>
-              {errors.budget && (
-                <p className="text-sm text-destructive">{errors.budget}</p>
-              )}
             </div>
 
             {/* Urgency */}
-            <div className="space-y-2">
+            <div id="req-urgency-section" className="space-y-2">
               <Label>
                 Urgency <span className="text-destructive">*</span>
               </Label>
@@ -302,50 +324,50 @@ export function PostRequestForm() {
                       onClick={() => setUrgency(u.value)}
                       disabled={submitting}
                       className={cn(
-                        "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors",
+                        "flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground transition-colors",
                         active
-                          ? "border-primary bg-primary/5"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : "border-border hover:bg-accent/50",
                         submitting && "opacity-50"
                       )}
                     >
-                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <span className={cn("size-2.5 rounded-full", u.dot)} />
-                        {u.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {u.description}
-                      </span>
+                      <span className={cn(
+                        "size-2.5 rounded-full border-2",
+                        active ? "border-primary bg-primary" : "border-gray-300 bg-transparent"
+                      )} />
+                      {u.label}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="h-px bg-border" />
-
             {/* Submit */}
-            <Button
-              type="submit"
-              size="lg"
-              disabled={submitting}
-              className="w-full"
-            >
-              {submitting ? (
-                <>
-                  <SpinnerGap className="size-4 animate-spin" />
-                  Posting your request...
-                </>
-              ) : (
-                <>
-                  <PaperPlaneTilt className="size-4" />
-                  Post Request
-                </>
-              )}
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              By posting you agree to PalMart&apos;s community guidelines
-            </p>
+            <section className="space-y-4">
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={submitting}
+                  className="w-fit"
+                >
+                  {submitting ? (
+                    <>
+                      <SpinnerGapIcon className="size-4 animate-spin" />
+                      Posting your request...
+                    </>
+                  ) : (
+                    <>
+                      <PaperPlaneTiltIcon className="size-4" />
+                      Post Request
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-center text-xs text-muted-foreground sm:text-right">
+                By posting you agree to Bearcart&apos;s community guidelines
+              </p>
+            </section>
           </form>
         </div>
       </main>

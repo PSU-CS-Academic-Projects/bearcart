@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 export async function signInWithGoogle() {
     try {
         const redirectUrl = `${window.location.origin}/auth/callback`
-        console.log('SSO redirect URL:', redirectUrl)
 
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
@@ -22,7 +21,6 @@ export async function signInWithGoogle() {
             toast.error(`Login error: ${error.message}`)
             alert(`Login error: ${error.message}`)
         } else {
-            console.log('OAuth response:', data)
             // If signInWithOAuth didn't auto-redirect, manually redirect
             if (data?.url) {
                 window.location.href = data.url

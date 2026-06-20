@@ -2,9 +2,19 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { randomUUID } from "crypto";
+import { validateAndSanitize } from "@/lib/image-validation";
+import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit } from "@/lib/ratelimit";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
  * Uploads a base64-encoded image to a Supabase Storage bucket.
+ * Validates magic bytes (file-type) and re-encodes through Sharp to strip
+ * any embedded malicious payload. Accepts JPEG, PNG, and WebP only.
  * Returns the public URL of the uploaded image.
  */
 export async function uploadImage(
@@ -13,44 +23,25 @@ export async function uploadImage(
   folder?: string
 ): Promise<string> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Extract mime type and raw data from base64 string
-  const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
-  if (!match) throw new Error("Invalid image format. Only JPEG, PNG, and WebP are allowed.");
+  // Rate limit: 10 image uploads per minute per ID.
+  await enforceRateLimit("imageUpload", `user:${user.id}`);
 
-  const mimeType = match[1];
-  const extension = match[2] === "jpeg" ? "jpg" : match[2];
-  const rawBase64 = match[3];
+  const { bytes, mimeType, extension } = await validateAndSanitize(base64Data);
 
-  // Convert base64 to Uint8Array
-  const binaryString = atob(rawBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-
-  // Build the file path
   const fileId = randomUUID();
   const prefix = folder ?? user.id;
   const filePath = `${prefix}/${fileId}.${extension}`;
 
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(filePath, bytes, {
-      contentType: mimeType,
-      upsert: false,
-    });
+    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
-  const { data: urlData } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(filePath);
-
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return urlData.publicUrl;
 }
 
@@ -62,18 +53,14 @@ export async function deleteImage(
   publicUrl: string
 ): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Extract the file path from the public URL
   const bucketUrl = `/storage/v1/object/public/${bucket}/`;
   const idx = publicUrl.indexOf(bucketUrl);
   if (idx === -1) throw new Error("Invalid URL for this bucket");
 
   const filePath = decodeURIComponent(publicUrl.slice(idx + bucketUrl.length));
-
   const { error } = await supabase.storage.from(bucket).remove([filePath]);
   if (error) throw new Error(`Delete failed: ${error.message}`);
 }

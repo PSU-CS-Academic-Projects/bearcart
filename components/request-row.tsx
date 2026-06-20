@@ -1,55 +1,97 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  GraduationCap,
-  Wrench,
-  DotsThree,
-  Package,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  PackageIcon,
+  PencilSimpleIcon,
+  CheckIcon,
+  XCircleIcon,
+  CaretDownIcon,
+  XIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  FlagIcon,
+  ProhibitIcon,
+  ArrowCounterClockwiseIcon,
+  Trash,
+  HandWavingIcon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { ReportDialog } from "@/components/report-dialog";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import {
   getRequesterShortName,
   formatBudget,
+  hasPositiveBudget,
   urgencyLabel,
-  getRequestCoverImage,
+  getRequestImageUrls,
 } from "@/lib/request-helpers";
+import { toStorageUrl } from "@/lib/storage-url";
+import { markRequestFulfilled, closeRequest, deleteRequest } from "@/lib/actions/requests";
+import { reportRequest } from "@/lib/actions/reports";
+import {
+  adminRestoreRequest,
+  adminTakedownRequest,
+} from "@/lib/actions/admin";
 import type { RequestRow as RequestRowType, RequestUrgency } from "@/lib/actions/requests";
+import { toast } from "sonner";
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr";
 
 // ─── Category Icon Lookup ─────────────────────────────────────────────────────
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Books: Book,
-  Electronics: Desktop,
-  Clothing: TShirt,
-  Food: Hamburger,
-  "School Supplies": GraduationCap,
-  Services: Wrench,
-  Others: DotsThree,
+  Accessories: HandbagIcon,
+  Electronics: LaptopIcon,
+
+  Clothing: TShirtIcon,
+  Food: HamburgerIcon,
+  "School Supplies": BackpackIcon,
+  Services: WrenchIcon,
+  Others: DotsThreeIcon,
 };
 
 function categoryIconFor(category: string): React.ComponentType<{ className?: string }> {
-  // Exact match first, fall back to lowercase comparison, fall back to Package
   if (CATEGORY_ICONS[category]) return CATEGORY_ICONS[category];
   const found = Object.entries(CATEGORY_ICONS).find(
     ([k]) => k.toLowerCase() === category.toLowerCase()
   );
-  return found ? found[1] : Package;
+  return found ? found[1] : PackageIcon;
 }
 
 // ─── Urgency Badge ────────────────────────────────────────────────────────────
 
 const URGENCY_STYLES: Record<RequestUrgency, string> = {
-  not_urgent: "bg-muted text-muted-foreground",
-  moderate: "bg-amber-tint text-foreground",
-  urgent: "bg-destructive/10 text-destructive",
+  not_urgent: "bg-muted text-muted-foreground",       
+  moderate: "bg-orange-50 text-orange-500 border border-orange-200", 
+  urgent: "bg-red-50 text-amber-800 border border-red-200",
 };
 
 function UrgencyBadge({ urgency }: { urgency: RequestUrgency }) {
@@ -69,12 +111,10 @@ function UrgencyBadge({ urgency }: { urgency: RequestUrgency }) {
 
 interface RequestRowProps {
   request: RequestRowType;
-  /** ID of the current logged-in user, or null */
   currentUserId: string | null;
-  /** Variant changes the right action; default shows "I Have This" */
   variant?: "default" | "owner";
-  /** Custom right-side action node (used by profile page) */
   rightAction?: React.ReactNode;
+  isAdmin?: boolean;
 }
 
 export function RequestRow({
@@ -82,67 +122,180 @@ export function RequestRow({
   currentUserId,
   variant = "default",
   rightAction,
+  isAdmin = false,
 }: RequestRowProps) {
   const router = useRouter();
   const Icon = categoryIconFor(request.category);
   const isOwn = currentUserId === request.requester_id;
-  const cover = getRequestCoverImage(request);
+  const images = getRequestImageUrls(request);
+  const cover = images[0] ?? "";
+  const hasMultiple = images.length > 1;
+  const hasDescription = !!(request.description?.trim());
 
-  const handleRowClick = () => {
-    router.push(`/requests/${request.id}`);
+  const [expanded, setExpanded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+  const [confirmAction, setConfirmAction] = useState<"fulfilled" | "closed" | "delete" | null>(null);
+  const [acting, setActing] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [adminConfirm, setAdminConfirm] = useState<"restore" | "takedown" | null>(null);
+  const [takedownReason, setTakedownReason] = useState("");
+
+  const canReport = !!currentUserId && !isOwn && !isAdmin; // && !request.is_delisted, test first
+  // Admin take-down only applies to other people's requests. Restore stays
+  // available for any delisted request (incl. an admin's own auto-delisted one).
+  const canTakedown = isAdmin && !isOwn;
+  const showMenu = canReport || (isAdmin && (request.is_delisted || !isOwn));
+
+  const showPrevImage = () =>
+    setActiveImage((i) => (i - 1 + images.length) % images.length);
+  const showNextImage = () =>
+    setActiveImage((i) => (i + 1) % images.length);
+
+  const openLightbox = () => {
+    setActiveImage(0);
+    setLightboxOpen(true);
+  };
+
+  // Lightbox keyboard controls: Escape closes, ←/→ navigate between images.
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+      else if (e.key === "ArrowLeft") showPrevImage();
+      else if (e.key === "ArrowRight") showNextImage();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, images.length]);
+
+  const runAdminAction = async () => {
+    if (!adminConfirm) return;
+    setActing(true);
+    try {
+      if (adminConfirm === "restore") {
+        await adminRestoreRequest(request.id);
+        toast.success("Request restored.");
+      } else {
+        if (!takedownReason.trim()) { toast.error("A reason is required."); setActing(false); return; }
+        await adminTakedownRequest(request.id, takedownReason.trim());
+        toast.success("Request permanently taken down.");
+      }
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setActing(false);
+      setAdminConfirm(null);
+      setTakedownReason("");
+    }
   };
 
   const handleIHaveThis = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentUserId) {
-      router.push(`/auth/login?returnTo=/requests/${request.id}`);
+      router.push("/auth/login?returnTo=/requests");
       return;
     }
-    router.push(`/requests/${request.id}`);
+    // Open (or create) a conversation with the request poster, same as
+    // messaging a seller about a listing.
+    router.push(`/messages?request=${request.id}&requester=${request.requester_id}`);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/requests/${request.id}/edit`);
+    router.push(`/requests/${request.slug}/edit`);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    setActing(true);
+    try {
+      if (confirmAction === "fulfilled") {
+        await markRequestFulfilled(request.id);
+        toast.success("Request marked as fulfilled!");
+      } else if (confirmAction === "delete") {
+        await deleteRequest(request.id);
+        toast.success("Request deleted.");
+      } else {
+        await closeRequest(request.id);
+        toast.success("Request closed.");
+      }
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setActing(false);
+      setConfirmAction(null);
+    }
   };
 
   return (
     <div
-      role="link"
-      tabIndex={0}
-      onClick={handleRowClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleRowClick();
-        }
-      }}
-      className="group flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/50 sm:gap-4 sm:px-5 sm:py-4"
+      className={cn(
+        "group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30 sm:gap-4 sm:px-5 sm:py-4",
+        hasDescription && "cursor-pointer select-none"
+      )}
+      onClick={hasDescription ? () => setExpanded((prev) => !prev) : undefined}
     >
-      {/* Left section: image thumbnail */}
+      {/* Left: image thumbnail / lightbox trigger */}
       <div className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted sm:size-20">
         {cover ? (
-          <Image
-            src={cover}
-            alt={request.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 64px, 80px"
-          />
+          <button
+            type="button"
+            aria-label={
+              hasMultiple
+                ? `View ${images.length} images for ${request.title}`
+                : `View image for ${request.title}`
+            }
+            onClick={(e) => { e.stopPropagation(); openLightbox(); }}
+            className="absolute inset-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Image
+              src={toStorageUrl(cover)}
+              alt={request.title}
+              fill
+              unoptimized
+              className="object-cover transition-transform hover:scale-105"
+              sizes="(max-width: 640px) 64px, 80px"
+            />
+            {hasMultiple && (
+              <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                +{images.length - 1}
+              </span>
+            )}
+          </button>
         ) : (
-          <Icon className="size-8 text-muted-foreground opacity-50 sm:size-10" />
+          <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
         )}
       </div>
 
-      {/* Right section: content & actions */}
+      {/* Right: content & actions */}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        
-        {/* Title + Urgency */}
-        <div className="flex flex-wrap items-center gap-2">
-          <UrgencyBadge urgency={request.urgency} />
-          <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground transition-colors group-hover:text-primary">
-            {request.title}
-          </h3>
+
+        {/* Title + Urgency + expand caret */}
+        <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <UrgencyBadge urgency={request.urgency} />
+            <h3 className="line-clamp-1 min-w-0 text-base font-medium text-foreground">
+              {request.title}
+            </h3>
+            {request.is_delisted && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                <ProhibitIcon className="size-3" />
+                Delisted
+              </span>
+            )}
+          </div>
+          {hasDescription && (
+            <CaretDownIcon
+              className={cn(
+                "size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                expanded && "rotate-180"
+              )}
+            />
+          )}
         </div>
 
         {/* Metadata */}
@@ -155,10 +308,30 @@ export function RequestRow({
             <Icon className="size-3.5" />
             {request.category}
           </span>
+          {hasPositiveBudget(request.budget_min, request.budget_max) && (
+            <>
+              <span>&middot;</span>
+              <span>Budget: {formatBudget(request.budget_min, request.budget_max)}</span>
+            </>
+          )}
           <span>&middot;</span>
-          <span>{formatBudget(request.budget_min, request.budget_max)}</span>
-          <span>&middot;</span>
-          <span>{formatTimeAgo(request.created_at)}</span>
+          <span
+            title={new Date(
+              (request as { updated_at?: string }).updated_at &&
+              Math.abs(new Date((request as { updated_at?: string }).updated_at!).getTime() - new Date(request.created_at).getTime()) > 60000
+                ? (request as { updated_at?: string }).updated_at!
+                : request.created_at
+            ).toLocaleString("en-PH", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          >
+            {formatTimeAgo(request.created_at)}
+          </span>
         </p>
 
         {/* Action row */}
@@ -166,13 +339,24 @@ export function RequestRow({
           {rightAction ? (
             <div onClick={(e) => e.stopPropagation()}>{rightAction}</div>
           ) : variant === "owner" || isOwn ? (
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              Edit
-            </button>
+            <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={handleEdit}>
+                <PencilSimpleIcon className="size-3" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("fulfilled"); }}>
+                <CheckIcon className="size-3 text-primary" />
+                Fulfilled
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs" onClick={(e) => { e.stopPropagation(); setConfirmAction("closed"); }}>
+                <XCircleIcon className="size-3 text-muted-foreground" />
+                Close
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-3 text-xs text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmAction("delete"); }}>
+                <TrashIcon className="size-3" />
+                Delete
+              </Button>
+            </div>
           ) : (
             <Button
               type="button"
@@ -181,11 +365,228 @@ export function RequestRow({
               onClick={handleIHaveThis}
               className="h-7 px-3 text-xs"
             >
+             <HandWavingIcon className="size-4" />
               I Have This
             </Button>
           )}
+
+          {showMenu && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More options"
+                    className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <DotsThreeIcon className="size-4" weight="bold" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="right" className="w-44 z-40" >
+                  {canReport && (
+                    <DropdownMenuItem onClick={() => setReportOpen(true)}>
+                      <FlagIcon className="size-4" />
+                      Report request
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && request.is_delisted && (
+                    <DropdownMenuItem onClick={() => setAdminConfirm("restore")}>
+                      <ArrowCounterClockwiseIcon className="size-4" />
+                      Restore (admin)
+                    </DropdownMenuItem>
+                  )}
+                  {canTakedown && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setAdminConfirm("takedown")}
+                    >
+                      <TrashIcon className="size-4" />
+                      Take down (admin)
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
+
+        {/* Expandable description */}
+        {hasDescription && (
+          <div
+            className="grid transition-all duration-200 ease-in-out"
+            style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <p className="pb-1 pt-2 text-sm leading-relaxed text-muted-foreground">
+                {request.description}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Report dialog */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <ReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          targetType="request"
+          onConfirm={(reason, details) => reportRequest(request.id, reason, details)}
+        />
+      </div>
+
+      {/* Admin moderation confirmation */}
+      <AlertDialog open={!!adminConfirm} onOpenChange={(o) => { if (!o) { setAdminConfirm(null); setTakedownReason(""); } }}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {adminConfirm === "restore" && "Restore this request?"}
+              {adminConfirm === "takedown" && "Permanently take down this request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {adminConfirm === "restore" && "It will become visible to everyone again. The requester is notified."}
+              {adminConfirm === "takedown" && "This permanently removes the request for everyone, including the requester. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {adminConfirm === "takedown" && (
+            <div className="space-y-1.5">
+              <Textarea
+                placeholder="Reason for takedown (required, sent to the requester)…"
+                value={takedownReason}
+                onChange={(e) => setTakedownReason(e.target.value.slice(0, 300))}
+                rows={3}
+                maxLength={300}
+              />
+              <p className={`text-right text-xs ${takedownReason.length >= 300 ? "text-destructive" : "text-muted-foreground"}`}>
+                {takedownReason.length}/300
+              </p>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={acting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); runAdminAction(); }}
+              disabled={acting || (adminConfirm === "takedown" && !takedownReason.trim())}
+              className={adminConfirm === "takedown" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {adminConfirm === "restore" && "Restore"}
+              {adminConfirm === "takedown" && "Take Down"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Owner action confirmation */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(o) => { if (!o) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "fulfilled" ? "Mark as fulfilled?" : confirmAction === "delete" ? "Delete this request?" : "Close this request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "fulfilled"
+                ? "This marks the request as completed and removes it from the public list."
+                : confirmAction === "delete"
+                ? "Are you sure you want to delete this request? This cannot be undone."
+                : "This closes the request without marking it as fulfilled."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={acting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmAction}
+              disabled={acting}
+              className={confirmAction === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {confirmAction === "fulfilled" ? "Mark as Fulfilled" : confirmAction === "delete" ? "Delete" : "Close Request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Image lightbox */}
+      {lightboxOpen && images.length > 0 && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+        >
+          {/* Close */}
+          <button
+            type="button"
+            aria-label="Close image"
+            onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
+            className="absolute right-4 top-4 z-10 flex size-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <XIcon className="size-5" />
+          </button>
+
+          {/* Prev */}
+          {hasMultiple && (
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
+              className="absolute left-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:left-4"
+            >
+              <CaretLeftIcon className="size-6" />
+            </button>
+          )}
+
+          {/* Image */}
+          <div
+            className="relative flex max-h-[90vh] max-w-[90vw] items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={toStorageUrl(images[activeImage])}
+              alt={`${request.title} — image ${activeImage + 1} of ${images.length}`}
+              className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            />
+          </div>
+
+          {/* Next */}
+          {hasMultiple && (
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={(e) => { e.stopPropagation(); showNextImage(); }}
+              className="absolute right-2 top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 sm:right-4"
+            >
+              <CaretRightIcon className="size-6" />
+            </button>
+          )}
+
+          {/* Dots + counter */}
+          {hasMultiple && (
+            <div
+              className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Go to image ${i + 1}`}
+                    aria-current={i === activeImage}
+                    onClick={(e) => { e.stopPropagation(); setActiveImage(i); }}
+                    className={cn(
+                      "size-2 rounded-full transition-colors",
+                      i === activeImage ? "bg-white" : "bg-white/40 hover:bg-white/60"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-medium tabular-nums text-white/90">
+                {activeImage + 1} / {images.length}
+              </span>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -195,11 +596,8 @@ export function RequestRow({
 export function RequestRowSkeleton() {
   return (
     <div className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
-      {/* Thumbnail skeleton */}
       <div className="size-16 shrink-0 animate-pulse rounded-md bg-muted sm:size-20" />
-      
-      {/* Content skeleton */}
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <div className="h-5 w-16 animate-pulse rounded bg-muted" />
           <div className="h-5 w-3/5 animate-pulse rounded bg-muted" />
