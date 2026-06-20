@@ -2,51 +2,12 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { randomUUID } from "crypto";
-import { fileTypeFromBuffer } from "file-type";
+import { validateAndSanitize } from "@/lib/image-validation";
 import { processToWebp } from "@/lib/image-processing";
 import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function base64ToBuffer(base64Data: string): Buffer {
-  // Strip the data-URI prefix if present (data:<mime>;base64,<data>)
-  const commaIdx = base64Data.indexOf(",");
-  const raw = commaIdx !== -1 ? base64Data.slice(commaIdx + 1) : base64Data;
-  return Buffer.from(raw, "base64");
-}
-
-/**
- * Validates the real MIME type from magic bytes, then runs the image through
- * Sharp: flattens transparency onto white and re-encodes to WebP (which also
- * strips any embedded metadata / polyglot payload).
- * Returns { bytes, mimeType, extension } for the processed image.
- */
-async function validateAndSanitize(
-  base64Data: string
-): Promise<{ bytes: Buffer; mimeType: string; extension: string }> {
-  const raw = base64ToBuffer(base64Data);
-
-  // ── Magic-byte check ─────────────────────────────────────────────────
-  const detected = await fileTypeFromBuffer(raw);
-  if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
-    throw new Error(
-      `Invalid file type${detected ? ` (${detected.mime})` : ""}. Only JPEG, PNG, and WebP images are allowed.`
-    );
-  }
-
-  // ── Flatten transparency → white, re-encode to WebP ──────────────────
-  const bytes = await processToWebp(raw, { quality: 85 });
-
-  return { bytes, mimeType: "image/webp", extension: "webp" };
-}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

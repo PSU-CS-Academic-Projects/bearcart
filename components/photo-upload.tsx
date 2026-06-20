@@ -14,20 +14,46 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 // Reads the first 12 bytes of a file and returns the actual MIME type.
 // This catches files renamed with a different extension (e.g. a GIF saved as .jpg).
 
-function detectMimeFromBytes(file: File): Promise<string | null> {
+interface DetectedImage {
+  mime: string;
+  label: string;
+}
+
+function detectMimeFromBytes(file: File): Promise<DetectedImage | null> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const buf = new Uint8Array(e.target!.result as ArrayBuffer);
+
       // JPEG: FF D8 FF
-      if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return resolve("image/jpeg");
+      if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF)
+        return resolve({ mime: "image/jpeg", label: "JPEG" });
+
       // PNG: 89 50 4E 47 0D 0A 1A 0A
-      if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return resolve("image/png");
+      if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47)
+        return resolve({ mime: "image/png", label: "PNG" });
+
       // WebP: RIFF????WEBP
       if (
         buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
         buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
-      ) return resolve("image/webp");
+      ) return resolve({ mime: "image/webp", label: "WebP" });
+
+      // GIF: 47 49 46 38 ("GIF8")
+      if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38)
+        return resolve({ mime: "image/gif", label: "GIF" });
+
+      // BMP: 42 4D ("BM")
+      if (buf[0] === 0x42 && buf[1] === 0x4D)
+        return resolve({ mime: "image/bmp", label: "BMP" });
+
+      // ISO-BMFF based formats (AVIF / HEIC): ????ftyp????
+      if (buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) {
+        const brand = String.fromCharCode(buf[8], buf[9], buf[10], buf[11]);
+        if (brand === "avif" || brand === "avis") return resolve({ mime: "image/avif", label: "AVIF" });
+        if (["heic", "heix", "mif1", "msf1"].includes(brand)) return resolve({ mime: "image/heic", label: "HEIC" });
+      }
+
       resolve(null);
     };
     reader.onerror = () => resolve(null);
@@ -68,18 +94,29 @@ export function PhotoUpload({
       const errors: string[] = [];
       const validFiles: File[] = [];
 
-      for (const file of files) {
-        // Extension check
-        const ext = "." + (file.name.split(".").pop()?.toLowerCase() ?? "");
-        if (!ALLOWED_EXTENSIONS.includes(ext)) {
-          errors.push(`"${file.name}" - Only JPG, JPEG, PNG, and WEBP files are allowed`);
-          continue;
-        }
+   const ALLOWED_LABEL = "JPG, JPEG, PNG, or WEBP";
 
-        // Magic byte check — catches files renamed with a wrong extension
-        const actualType = await detectMimeFromBytes(file);
-        if (!actualType || !ALLOWED_TYPES.includes(actualType)) {
-          errors.push(`"${file.name}" - Only JPG, JPEG, PNG, and WEBP files are allowed`);
+      for (const file of files) {
+        const ext = "." + (file.name.split(".").pop()?.toLowerCase() ?? "");
+        const extClaimsAllowed = ALLOWED_EXTENSIONS.includes(ext);
+
+        // Always check real bytes first — this is the source of truth.
+        const detected = await detectMimeFromBytes(file);
+        const isAllowed = detected !== null && ALLOWED_TYPES.includes(detected.mime);
+
+        if (!isAllowed) {
+          if (detected && extClaimsAllowed) {
+            // Case 2: extension claims an allowed type, but the real content disagrees (renamed file).
+            errors.push(
+              `"${file.name}" - This file is actually  .${detected.label}, even though it's named with a ${ext} extension. Please upload a ${ALLOWED_LABEL} file.`
+            );
+          } else if (detected) {
+            // Case 1: genuinely an unsupported format, and we know what it is.
+            errors.push(`"${file.name}" - ${detected.label} files aren't supported. Please upload a ${ALLOWED_LABEL} file.`);
+          } else {
+            // Couldn't identify the bytes at all.
+            errors.push(`"${file.name}" isn't a supported image. Please upload a ${ALLOWED_LABEL} file.`);
+          }
           continue;
         }
 

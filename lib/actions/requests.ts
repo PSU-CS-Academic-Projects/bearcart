@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 import { logActivity, type ActivityLogType } from "@/lib/activity-log";
-import { processToWebp } from "@/lib/image-processing";
+import { validateAndSanitize, base64ToBuffer } from "@/lib/image-validation";
 import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -75,29 +75,21 @@ async function uploadRequestImage(
   // Rate limit: 10 image uploads per minute per ID.
   await enforceRateLimit("imageUpload", `user:${requesterId}`);
 
-  const match = base64Data.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
-  if (!match) throw new Error("Invalid image format. Only JPG, JPEG, PNG, and WEBP are allowed.");
-
-  const rawBase64 = match[3];
-
-  const binaryString = atob(rawBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  if (bytes.byteLength > MAX_IMAGE_SIZE_BYTES) {
+  // Size check first, before any processing.
+  const raw = base64ToBuffer(base64Data);
+  if (raw.byteLength > MAX_IMAGE_SIZE_BYTES) {
     throw new Error("Image is larger than the 5MB limit.");
   }
 
-  // Flatten transparency → white and convert to WebP before storing.
-  const processed = await processToWebp(bytes, { quality: 85 });
+  // Magic-byte format check + flatten transparency → white + convert to WebP.
+  const { bytes, mimeType, extension } = await validateAndSanitize(base64Data);
 
   const fileId = crypto.randomUUID();
-  const filePath = `${requesterId}/${requestId}/${fileId}.webp`;
+  const filePath = `${requesterId}/${requestId}/${fileId}.${extension}`;
 
   const { error } = await supabase.storage
     .from("request_images")
-    .upload(filePath, processed, { contentType: "image/webp", upsert: false });
+    .upload(filePath, bytes, { contentType: mimeType, upsert: false });
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
   const { data: urlData } = supabase.storage.from("request_images").getPublicUrl(filePath);
