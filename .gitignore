@@ -19,6 +19,9 @@ skills-lock.json
 # Environment variables
 .env*.local
 
+
+package-lock.json
+
 # Common ignores
 node_modules
 .next/
