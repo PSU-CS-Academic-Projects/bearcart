@@ -303,12 +303,31 @@ function DocModal({
   onClose: () => void;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Check on mount too, in case the content is short enough to not need scrolling.
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    if (el.scrollHeight <= el.clientHeight) {
+      setScrolledToBottom(true);
+    }
+  }, []);
+
+  const handleScroll = () => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const reachedBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 10; // small buffer
+    if (reachedBottom) setScrolledToBottom(true);
+  };
 
   return (
     <div
@@ -330,7 +349,7 @@ function DocModal({
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto px-6 py-5">
+        <div ref={bodyRef} onScroll={handleScroll} className="overflow-y-auto px-6 py-5">
           <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground/80">
             {content}
           </pre>
@@ -338,7 +357,7 @@ function DocModal({
 
         {/* Footer */}
         <div className="border-t px-6 py-4">
-          <Button className="w-full" onClick={onClose}>
+          <Button className="w-full" onClick={onClose} disabled={!scrolledToBottom}>
             Done Reading
           </Button>
         </div>

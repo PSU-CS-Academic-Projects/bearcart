@@ -134,22 +134,19 @@ export default function SetupPage() {
     // this upsert ends up INSERTING a fresh row the NOT-NULL slug column would
     // be violatedd so generate one here when the row has none yet.
     const { data: existing } = await supabase
-      .from("users")
-      .select("slug")
-      .eq("id", user.id)
-      .maybeSingle();
+    .from("users")
+    .select("slug")
+    .eq("id", user.id)
+    .maybeSingle();
 
     const upsertData: Record<string, unknown> = {
-      id: user.id,
-      full_name: fullName,
-      email: user.email,
-      role,
-      college,
-    };
-
-    if (!existing?.slug) {
-      upsertData.slug = await buildUserSlug(user, fullName);
-    }
+    id: user.id,
+    full_name: fullName,
+    email: user.email,
+    role,
+    college,
+    slug: existing?.slug ?? (await buildUserSlug(user, fullName)),
+  };
 
     const { error } = await supabase
       .from("users")

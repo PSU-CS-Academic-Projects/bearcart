@@ -81,7 +81,7 @@ function emailShell({ body, preheader }: LayoutSection): string {
           <!-- Footer -->
           <tr>
             <td style="padding:20px 28px;background-color:${BRAND.wash};border-top:1px solid ${BRAND.border};text-align:center;">
-              <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">BearCart · PalSU Exclusive</p>
+              <p style="margin:0 0 4px;font-size:12px;color:${BRAND.muted};font-weight:500;">BearCart · PalSU Tiniguiban</p>
               <p style="margin:0;font-size:11px;color:${BRAND.muted};line-height:1.6;">
                 This is an automated email - please do not reply.<br />
                 &copy; ${new Date().getFullYear()} BearCart - Palawan State University Marketplace
