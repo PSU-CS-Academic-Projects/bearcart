@@ -3,10 +3,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
-  Calendar,
-  GraduationCap,
-  User,
+  CalendarIcon,
+  StudentIcon,
+  UserIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 import { getRequesterFullName } from "@/lib/request-helpers";
@@ -32,7 +33,7 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
           <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
             {requester.avatar_url ? (
               <Image
-                src={requester.avatar_url}
+                src={toStorageUrl(requester.avatar_url)}
                 alt={displayName}
                 fill
                 unoptimized
@@ -40,14 +41,14 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
               />
             ) : (
               <span className="text-lg font-semibold text-muted-foreground">
-                {initials || <User className="size-6" />}
+                {initials || <UserIcon className="size-6" />}
               </span>
             )}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate font-semibold text-foreground">{displayName}</h3>
             <Badge variant="secondary" className="mt-1">
-              {requester.role === "student" ? "PSU Student" : "PSU Faculty"}
+              {requester.role === "student" ? "Student" : "Faculty"}
             </Badge>
           </div>
         </div>
@@ -55,18 +56,18 @@ export function RequesterInfoCard({ requester }: RequesterInfoCardProps) {
         <div className="space-y-2 border-y py-4">
           {requester.college && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <GraduationCap className="size-4 shrink-0 text-primary" />
+              <StudentIcon className="size-4 shrink-0 text-primary" />
               <span className="truncate">{requester.college}</span>
             </div>
           )}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="size-4 shrink-0 text-primary" />
+            <CalendarIcon className="size-4 shrink-0 text-primary" />
             <span>Member since {formatTimeAgo(requester.created_at)}</span>
           </div>
         </div>
 
         <Button variant="outline" asChild className="w-full">
-          <Link href={`/profile/${requester.id}`}>View Profile</Link>
+          <Link href={`/profile/${requester.slug ?? requester.id}`}>View Profile</Link>
         </Button>
       </div>
     </Card>

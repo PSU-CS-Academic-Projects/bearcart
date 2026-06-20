@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { NotificationsClient } from "@/components/notifications-client";
 import { createClient } from "@/lib/supabase-server";
-import { getAllNotifications } from "@/lib/actions/notifications";
+import { getAllNotifications, markAllNotificationsSeen } from "@/lib/actions/notifications";
 
 export default async function NotificationsPage({
   searchParams,
@@ -13,6 +13,8 @@ export default async function NotificationsPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login?returnTo=/notifications");
+
+  await markAllNotificationsSeen();
 
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);

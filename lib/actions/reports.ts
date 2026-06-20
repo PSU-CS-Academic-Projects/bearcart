@@ -7,6 +7,7 @@ import {
 } from "@/lib/email";
 import { REPORT_DETAILS_MAX, type ReportTargetType } from "@/lib/report-constants";
 import { logActivity } from "@/lib/activity-log";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Report reasons / constants / target-type live in lib/report-constants.ts so
@@ -23,6 +24,10 @@ async function createReport(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("You must be logged in to report.");
+
+  // Rate limit: 10 reports per hour per ID.
+  await enforceRateLimit("reports", `user:${user.id}`);
+
   if (!reason || !reason.trim()) throw new Error("Please select a reason.");
 
   const cleanDetails = details?.trim().slice(0, REPORT_DETAILS_MAX) || null;

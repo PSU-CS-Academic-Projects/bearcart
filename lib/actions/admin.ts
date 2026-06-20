@@ -8,6 +8,7 @@ import {
   sendPostTakedownEmail,
   sendAccountWarnedEmail,
   sendAccountBannedEmail,
+  sendAccountUnbannedEmail,
 } from "@/lib/email";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export type ActivityType =
   | "listing_takedown"
   | "request_takedown"
   | "user_banned"
+  | "user_unbanned"
   | "user_warned"
   | "message_deleted";
 
@@ -73,6 +75,7 @@ export interface ReportInfo {
 
 export interface ReportedPost {
   id: string;
+  slug?: string;
   title: string;
   ownerId: string;
   ownerName: string | null;
@@ -101,6 +104,7 @@ export interface ReportedMessage {
 
 export interface AdminUserRow {
   id: string;
+  slug?: string;
   full_name: string;
   email: string;
   avatar_url: string | null;
@@ -177,21 +181,14 @@ export async function getAdminOverviewStats(): Promise<AdminOverviewStats> {
 export async function getPlatformStats(): Promise<PlatformStats> {
   const { supabase } = await requireAdmin();
 
-  const headCount = async (table: string) => {
-    const { count } = await supabase.from(table).select("id", { count: "exact", head: true });
-    return count ?? 0;
-  };
-
-  const [totalUsers, totalListings, totalRequests] = await Promise.all([
-    headCount("users"),
-    headCount("listings"),
-    headCount("requests"),
+  const [totalUsers, totalListings, totalRequests, totalSold] = await Promise.all([
+    supabase.from("users").select("id", { count: "exact", head: true }).is("deleted_at", null).then(r => r.count ?? 0),
+    supabase.from("listings").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_delisted", false).in("status", ["available", "reserved"]).then(r => r.count ?? 0),
+    supabase.from("requests").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("is_delisted", false).eq("status", "open").then(r => r.count ?? 0),
+    supabase.from("listings").select("id", { count: "exact", head: true }).eq("status", "sold").then(r => r.count ?? 0),
   ]);
 
-  const { count: totalSold } = await supabase
-    .from("listings").select("id", { count: "exact", head: true }).eq("status", "sold");
-
-  return { totalUsers, totalListings, totalRequests, totalSold: totalSold ?? 0 };
+  return { totalUsers, totalListings, totalRequests, totalSold };
 }
 
 // ─── Recent activity feed ─────────────────────────────────────────────────────
@@ -218,6 +215,7 @@ function describeLogActivity(type: string, actorName: string | null, title: stri
     case "listing_takedown": return `Listing "${t}" was taken down by ${who}${reasonSuffix}`;
     case "request_takedown": return `Request "${t}" was taken down by ${who}${reasonSuffix}`;
     case "user_banned": return `${t} was banned by ${who}`;
+    case "user_unbanned": return `${t}'s ban was lifted by ${who}`;
     case "user_warned": return `${t} was warned by ${who}`;
     case "message_deleted": return `A message was deleted by ${who}`;
     default: return "Activity";
@@ -230,11 +228,11 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
   // Creation events come straight from the base tables (reliable + historical);
   // action / status events come from the activity_log audit table.
   const [users, listings, requests, reports, logs] = await Promise.all([
-    supabase.from("users").select("id, full_name, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(12),
-    supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(12),
-    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(20),
+    supabase.from("users").select("id, full_name, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("listings").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("requests").select("id, title, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(50),
+    supabase.from("reports").select("id, target_type, created_at").order("created_at", { ascending: false }).limit(50),
+    supabase.from("activity_log").select("type, actor_name, target_type, target_id, target_title, detail, created_at").order("created_at", { ascending: false }).limit(50),
   ]);
 
   const raw: RawActivity[] = [];
@@ -264,20 +262,20 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
   const top = raw
     .filter((i) => !!i.timestamp)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 10);
+    .slice(0, 50);
 
-  // Resolve which listing/request targets still exist → only link to live items.
+  // Resolve which listing/request/user targets still exist → only link to live items, using slugs.
   const listingIds = [...new Set(top.filter((i) => i.targetKind === "listing" && i.targetId).map((i) => i.targetId as string))];
-  const requestIds = [...new Set(top.filter((i) => i.targetKind === "request" && i.targetId).map((i) => i.targetId as string))];
-  const aliveListings = new Set<string>();
-  const aliveRequests = new Set<string>();
+  const userIds = [...new Set(top.filter((i) => i.targetKind === "user" && i.targetId).map((i) => i.targetId as string))];
+  const listingSlugMap = new Map<string, string>();
+  const userSlugMap = new Map<string, string>();
   if (listingIds.length) {
-    const { data } = await supabase.from("listings").select("id").in("id", listingIds).is("deleted_at", null);
-    for (const r of data ?? []) aliveListings.add(r.id);
+    const { data } = await supabase.from("listings").select("id, slug").in("id", listingIds).is("deleted_at", null);
+    for (const r of data ?? []) listingSlugMap.set(r.id, r.slug ?? r.id);
   }
-  if (requestIds.length) {
-    const { data } = await supabase.from("requests").select("id").in("id", requestIds).is("deleted_at", null);
-    for (const r of data ?? []) aliveRequests.add(r.id);
+  if (userIds.length) {
+    const { data } = await supabase.from("users").select("id, slug").in("id", userIds).is("deleted_at", null);
+    for (const r of data ?? []) userSlugMap.set(r.id, r.slug ?? r.id);
   }
 
   return top.map((i) => {
@@ -285,12 +283,12 @@ export async function getRecentActivity(): Promise<ActivityItem[]> {
     let jumpToReported = false;
     if (i.targetKind === "report") {
       jumpToReported = true;
-    } else if (i.targetKind === "user" && i.targetId) {
-      href = `/profile/${i.targetId}`;
-    } else if (i.targetKind === "listing" && i.targetId && aliveListings.has(i.targetId)) {
-      href = `/listings/${i.targetId}`;
-    } else if (i.targetKind === "request" && i.targetId && aliveRequests.has(i.targetId)) {
-      href = `/requests/${i.targetId}`;
+    } else if (i.targetKind === "user" && i.targetId && userSlugMap.has(i.targetId)) {
+      href = `/profile/${userSlugMap.get(i.targetId)}`;
+    } else if (i.targetKind === "listing" && i.targetId && listingSlugMap.has(i.targetId)) {
+      href = `/listings/${listingSlugMap.get(i.targetId)}`;
+    } else if (i.targetKind === "request" && i.targetId) {
+      href = `/requests`;
     }
     return { type: i.type, description: i.description, timestamp: i.timestamp, href, jumpToReported };
   });
@@ -338,30 +336,49 @@ async function buildReportedPosts(
 ): Promise<ReportedPost[]> {
   const { supabase } = await requireAdmin();
 
-  // Only surface items that still have at least one open (unresolved) report.
-  const { data: reps } = await supabase
-    .from("reports")
-    .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
-    .eq("target_type", targetType)
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
-
-  if (!reps || reps.length === 0) return [];
-
-  const ids = [...new Set(reps.map((r) => r.target_id))];
-
   const table = targetType === "listing" ? "listings" : "requests";
   const ownerFk = targetType === "listing"
     ? "seller:users!listings_seller_id_fkey(full_name)"
     : "requester:users!requests_requester_id_fkey(full_name)";
   const ownerCol = targetType === "listing" ? "seller_id" : "requester_id";
   const imageSel = targetType === "listing"
-    ? "listing_images(image_url, is_cover)"
-    : "request_images(image_url)";
+    ? "listing_images(image_url, is_cover, \"order\")"
+    : "request_images(image_url, \"order\")";
+
+  // The moderation queue must surface two kinds of items:
+  //   1. Anything with an open (unresolved) report — the report needs review.
+  //   2. Anything currently delisted but not taken down — even if its reports
+  //      are already 'reviewed' (delisting flips them) or it was delisted
+  //      manually with no reports at all. Otherwise an admin has no way to
+  //      restore or take down a delisted post from the dashboard.
+  const [{ data: reps }, { data: delistedPosts }] = await Promise.all([
+    supabase
+      .from("reports")
+      .select("target_id, reason, details, created_at, status, reporter:users!reports_reporter_id_fkey(full_name)")
+      .eq("target_type", targetType)
+      .in("status", ["open", "reviewed"])
+      .order("created_at", { ascending: false }),
+    supabase
+      .from(table)
+      .select("id")
+      .eq("is_delisted", true)
+      .is("deleted_at", null),
+  ]);
+
+  const allReps = reps ?? [];
+  // Reports that still need attention drive inclusion on their own.
+  const openReps = allReps.filter((r) => r.status === "open");
+
+  const ids = [...new Set([
+    ...openReps.map((r) => r.target_id),
+    ...(delistedPosts ?? []).map((p) => p.id as string),
+  ])];
+
+  if (ids.length === 0) return [];
 
   const { data: posts } = await supabase
     .from(table)
-    .select(`id, title, ${ownerCol}, is_delisted, deleted_at, ${ownerFk}, ${imageSel}`)
+    .select(`id, slug, title, ${ownerCol}, is_delisted, deleted_at, ${ownerFk}, ${imageSel}`)
     .in("id", ids);
 
   const byId = new Map((posts ?? []).map((p) => [p.id as string, p]));
@@ -377,13 +394,17 @@ async function buildReportedPosts(
     })
     .map((id) => {
     const post = byId.get(id) as Record<string, unknown> | undefined;
-    const postReports = reps.filter((r) => r.target_id === id);
+    // Show open + reviewed reports (reviewed = the ones that triggered delisting).
+    // A manually-delisted post with no reports shows an empty report list.
+    const postReports = allReps.filter((r) => r.target_id === id);
     const owner = post?.[targetType === "listing" ? "seller" : "requester"] as { full_name?: string } | null;
-    const images = (post?.[targetType === "listing" ? "listing_images" : "request_images"] ?? []) as { image_url: string; is_cover?: boolean }[];
-    const thumb = images.find((i) => i.is_cover)?.image_url ?? images[0]?.image_url ?? null;
+    const images = (post?.[targetType === "listing" ? "listing_images" : "request_images"] ?? []) as { image_url: string; is_cover?: boolean; order?: number }[];
+    const sortedImages = [...images].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const thumb = images.find((i) => i.is_cover)?.image_url ?? sortedImages[0]?.image_url ?? null;
 
     return {
       id,
+      slug: (post?.slug as string | undefined),
       title: (post?.title as string) ?? "(deleted)",
       ownerId: (post?.[ownerCol] as string) ?? "",
       ownerName: owner?.full_name ?? null,
@@ -641,7 +662,7 @@ export async function searchAdminUsers(query: string): Promise<AdminUserRow[]> {
   const { supabase } = await requireAdmin();
   let q = supabase
     .from("users")
-    .select("id, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
+    .select("id, slug, full_name, email, avatar_url, role, is_admin, ban_type, warning_count, created_at")
     .is("deleted_at", null)
     .order("full_name", { ascending: true })
     .limit(200);
@@ -731,11 +752,37 @@ export async function banUser(targetId: string, banType: Exclude<BanType, "none"
 }
 
 export async function unbanUser(targetId: string) {
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
+  const target = await requireNonAdminTarget(supabase, targetId);
+
   const { error } = await supabase.from("users").update({
     ban_type: "none", banned_at: null, ban_reason: null,
   }).eq("id", targetId);
   if (error) throw new Error(`Failed to lift ban: ${error.message}`);
+
+  // In-app notification (mirrors ban/warn).
+  await supabase.from("notifications").insert({
+    user_id: targetId, type: "account_unbanned",
+    title: "Your account restriction has been lifted",
+    body: "An admin has removed the restriction on your account. You have full access again.",
+  });
+
+  // Email 
+  if (target.email) {
+    try {
+      await sendAccountUnbannedEmail({ toEmail: target.email, firstName: target.first_name ?? "there" });
+    } catch (err) { console.error("[admin] unban email error:", err); }
+  }
+
+  // Audit
+  await logActivity({
+    type: "user_unbanned",
+    actorId: userId,
+    actorName: await getActorName(supabase, userId),
+    targetType: "user",
+    targetId,
+    targetTitle: target.full_name ?? null,
+  });
 }
 
 export async function promoteToAdmin(targetId: string) {

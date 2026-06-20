@@ -5,6 +5,7 @@ import { uploadImage, deleteImage } from "./storage";
 import { MAX_CURRENCY_AMOUNT } from "@/lib/currency";
 import { moderateTextOrThrow, moderateImagesOrThrow } from "@/lib/moderation";
 import { logActivity } from "@/lib/activity-log";
+import { enforceRateLimit, getClientIp } from "@/lib/ratelimit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,7 +16,6 @@ export interface CreateListingInput {
   is_negotiable: boolean;
   category: string;
   condition: "new" | "like_new" | "good" | "fair" | "poor";
-  tags: string[];
   /** Base64-encoded images from the photo upload component */
   photos: string[];
 }
@@ -39,6 +39,7 @@ export interface ListingFilters {
 
 export interface ListingWithImages {
   id: string;
+  slug: string;
   seller_id: string;
   title: string;
   description: string | null;
@@ -53,7 +54,7 @@ export interface ListingWithImages {
   created_at: string;
   updated_at: string;
   listing_images: { id: string; image_url: string; is_cover: boolean; order: number }[];
-  seller: { id: string; full_name: string; avatar_url: string | null; role: string; college: string | null; created_at: string };
+  seller: { id: string; slug: string; full_name: string; avatar_url: string | null; role: string; college: string | null; created_at: string };
 }
 
 export interface PostModerationState {
@@ -89,6 +90,9 @@ export async function createListing(input: CreateListingInput) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  // Rate limit: 5 new listings per minute per ID.
+  await enforceRateLimit("postListing", `user:${user.id}`);
+
   if (input.photos.length === 0) throw new Error("At least one photo is required");
   if (input.price < 1) throw new Error("Price must be at least ₱1");
   if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
@@ -100,14 +104,24 @@ export async function createListing(input: CreateListingInput) {
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
-    ...(input.tags.length > 0 ? [{ label: "tags", value: input.tags.join(", ") }] : []),
   ]);
   await moderateImagesOrThrow(input.photos);
 
-  // 1. Insert the listing row
+  // 1. Generate the listng ID + slug up front so the slug is set on insert
+  //    (the slug column is NOT NULL).
+  const listingId = crypto.randomUUID();
+  const baseSlug =
+    input.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-+/g, "-") || "listing";
+  const slug = `${baseSlug}-${listingId.slice(0, 6)}`;
+
   const { data: listing, error: listingError } = await supabase
     .from("listings")
     .insert({
+      id: listingId,
       seller_id: user.id,
       title: input.title,
       description: input.description,
@@ -115,7 +129,7 @@ export async function createListing(input: CreateListingInput) {
       is_negotiable: input.is_negotiable,
       category: input.category,
       condition: input.condition,
-      tags: input.tags.length > 0 ? input.tags : null,
+      slug,
     })
     .select("id")
     .single();
@@ -143,7 +157,7 @@ export async function createListing(input: CreateListingInput) {
     console.error("Failed to insert listing_images:", imagesError.message);
   }
 
-  return { id: listing.id };
+  return { id: listing.id, slug };
 }
 
 // ─── READ (list) ──────────────────────────────────────────────────────────────
@@ -175,14 +189,20 @@ export async function getListings(filters: ListingFilters = {}) {
         ? filters.condition.split(",").map((c) => c.trim()).filter(Boolean)
         : [];
 
+  // Rate limit text searches (30/min per IP). Plain browsing/pagination is not
+  // limited — only an actual search query counts.
+  if (search && search.trim()) {
+    await enforceRateLimit("search", `ip:${await getClientIp()}`);
+  }
+
   let query = supabase
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
     `,
       { count: "exact" }
     )
@@ -198,7 +218,8 @@ export async function getListings(filters: ListingFilters = {}) {
   if (activeCategories.length === 1) {
     query = query.ilike("category", activeCategories[0]);
   } else if (activeCategories.length > 1) {
-    query = query.in("category", activeCategories);
+    const orFilter = activeCategories.map((c) => `category.ilike.${c}`).join(",");
+    query = query.or(orFilter);
   }
   if (resolvedConditions.length === 1) {
     query = query.eq("condition", resolvedConditions[0]);
@@ -245,7 +266,37 @@ export async function getListings(filters: ListingFilters = {}) {
   };
 }
 
-// ─── READ (single) ───────────────────────────────────────────────────────────
+// ─── READ (single by slug — canonical) ───────────────────────────────────────
+
+export async function getListingBySlug(slug: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("listings")
+    .select(
+      `
+      id, slug, seller_id, title, description, price, is_negotiable,
+      category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
+      listing_images ( id, image_url, is_cover, order ),
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
+    `
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`Listing fetch error: ${error.message}`);
+  if (!data) return null;
+
+  supabase
+    .from("listings")
+    .update({ views_count: (data.views_count ?? 0) + 1 })
+    .eq("id", data.id)
+    .then();
+
+  return data as unknown as ListingWithImages;
+}
+
+// ─── READ (single by ID — kept for edit page & internal use) ─────────────────
 
 export async function getListingById(id: string) {
   const supabase = await createClient();
@@ -254,10 +305,10 @@ export async function getListingById(id: string) {
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url, role, college, created_at )
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url, role, college, created_at )
     `
     )
     .eq("id", id)
@@ -285,11 +336,20 @@ export async function getListingById(id: string) {
 export async function getListingsBySeller(sellerId: string, status?: string) {
   const supabase = await createClient();
 
+  // Delisted listings are only visible to their owner and to admins. Everyone
+  // else (e.g. visitors browsing a public profile) must not see them.
+  const { data: { user } } = await supabase.auth.getUser();
+  let canSeeDelisted = !!user && user.id === sellerId;
+  if (user && !canSeeDelisted) {
+    const { data: viewer } = await supabase.from("users").select("is_admin").eq("id", user.id).single();
+    canSeeDelisted = !!viewer?.is_admin;
+  }
+
   let query = supabase
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, is_delisted, tags, views_count, created_at, updated_at,
       listing_images ( id, image_url, is_cover, order )
     `
@@ -297,6 +357,10 @@ export async function getListingsBySeller(sellerId: string, status?: string) {
     .eq("seller_id", sellerId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  if (!canSeeDelisted) {
+    query = query.eq("is_delisted", false);
+  }
 
   if (status) {
     query = query.eq("status", status);
@@ -390,13 +454,13 @@ export interface UpdateListingInput {
   is_negotiable: boolean;
   category: string;
   condition: "new" | "like_new" | "good" | "fair" | "poor";
-  tags: string[];
-  /** Existing image URLs to keep (in the new order) */
-  existingPhotos: string[];
+  /**
+   * Full photo list in final display order. Existing photos are http(s) URLs,
+   * newly added photos are base64 data URLs. Position 0 becomes the cover.
+   */
+  orderedPhotos: string[];
   /** Image IDs that were removed by the user */
   removedImageIds: string[];
-  /** New base64-encoded images to upload */
-  newPhotos: string[];
 }
 
 export async function updateListing(input: UpdateListingInput) {
@@ -421,13 +485,14 @@ export async function updateListing(input: UpdateListingInput) {
   if (input.price < 1) throw new Error("Price must be at least ₱1");
   if (input.price > MAX_CURRENCY_AMOUNT) throw new Error("Price cannot exceed ₱999,999");
 
+  const newPhotos = input.orderedPhotos.filter((p) => p.startsWith("data:"));
+
   // 0. Content moderation — text plus any newly added images.
   await moderateTextOrThrow([
     { label: "title", value: input.title },
     { label: "description", value: input.description },
-    ...(input.tags.length > 0 ? [{ label: "tags", value: input.tags.join(", ") }] : []),
   ]);
-  await moderateImagesOrThrow(input.newPhotos);
+  await moderateImagesOrThrow(newPhotos);
 
   // 1. Update listing fields
   const { error: updateError } = await supabase
@@ -439,7 +504,6 @@ export async function updateListing(input: UpdateListingInput) {
       is_negotiable: input.is_negotiable,
       category: input.category,
       condition: input.condition,
-      tags: input.tags.length > 0 ? input.tags : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.listingId)
@@ -473,31 +537,46 @@ export async function updateListing(input: UpdateListingInput) {
       .in("id", input.removedImageIds);
   }
 
-  // 3. Upload new photos
-  const newImageRows: { listing_id: string; image_url: string; is_cover: boolean; order: number }[] = [];
-  const startOrder = input.existingPhotos.length;
-
-  for (let i = 0; i < input.newPhotos.length; i++) {
-    try {
-      const imageUrl = await uploadImage("listing-images", input.newPhotos[i], `${user.id}/${input.listingId}`);
-      newImageRows.push({
-        listing_id: input.listingId,
-        image_url: imageUrl,
-        is_cover: false, // Will be updated in step 4
-        order: startOrder + i,
-      });
-    } catch (err) {
-      console.error(`Failed to upload new photo ${i}:`, err);
+  // 3. Upload new photos, mapping each base64 entry to its uploaded URL while
+  //    preserving the caller's interleaved display order.
+  const resolvedUrls: string[] = [];
+  for (const photo of input.orderedPhotos) {
+    if (photo.startsWith("data:")) {
+      try {
+        const imageUrl = await uploadImage("listing-images", photo, `${user.id}/${input.listingId}`);
+        resolvedUrls.push(imageUrl);
+      } catch (err) {
+        console.error("Failed to upload new photo:", err);
+      }
+    } else {
+      resolvedUrls.push(photo);
     }
   }
+
+  // Insert rows for the freshly uploaded images (existing rows are reordered below).
+  const { data: existingRows } = await supabase
+    .from("listing_images")
+    .select("id, image_url")
+    .eq("listing_id", input.listingId);
+  const existingUrls = new Set((existingRows ?? []).map((r) => r.image_url));
+
+  const newImageRows = resolvedUrls
+    .map((url, index) => ({ url, index }))
+    .filter(({ url }) => !existingUrls.has(url))
+    .map(({ url, index }) => ({
+      listing_id: input.listingId,
+      image_url: url,
+      is_cover: index === 0,
+      order: index,
+    }));
 
   if (newImageRows.length > 0) {
     await supabase.from("listing_images").insert(newImageRows);
   }
 
-  // 4. Update order and is_cover for all remaining images
-  // existingPhotos are URLs in their new order position
-  // We need to find image IDs by URL and update their order
+  // 4. Update order + is_cover for ALL images from their position in the final
+  //    ordered list. Position 0 is the cover; anything not in the list (should
+  //    not happen) sinks to the end and loses cover status.
   const { data: allImages } = await supabase
     .from("listing_images")
     .select("id, image_url")
@@ -505,18 +584,11 @@ export async function updateListing(input: UpdateListingInput) {
 
   if (allImages) {
     const updatePromises = allImages.map((img) => {
-      // Find position: check existing photos first, then new uploads
-      let order = input.existingPhotos.indexOf(img.image_url);
-      if (order === -1) {
-        // Might be a newly uploaded image
-        const newIdx = newImageRows.findIndex((r) => r.image_url === img.image_url);
-        if (newIdx !== -1) order = startOrder + newIdx;
-      }
-      if (order === -1) order = 999; // Fallback
-
+      const order = resolvedUrls.indexOf(img.image_url);
+      const finalOrder = order === -1 ? 999 : order;
       return supabase
         .from("listing_images")
-        .update({ order, is_cover: order === 0 })
+        .update({ order: finalOrder, is_cover: finalOrder === 0 })
         .eq("id", img.id);
     });
 
@@ -537,14 +609,15 @@ export async function deleteListing(listingId: string) {
 export async function getRelatedListings(listingId: string, sellerId: string, limit = 4) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from("listings")
     .select(
       `
-      id, title, price, category, condition, created_at,
+      id, slug, title, price, category, condition, created_at,
       listing_images ( id, image_url, is_cover, order ),
-      seller:users!listings_seller_id_fkey ( id, full_name, avatar_url )
-    `
+      seller:users!listings_seller_id_fkey ( id, slug, full_name, avatar_url )
+    `,
+      { count: "exact" }
     )
     .eq("seller_id", sellerId)
     .eq("status", "available")
@@ -553,6 +626,6 @@ export async function getRelatedListings(listingId: string, sellerId: string, li
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) return [];
-  return data ?? [];
+  if (error) return { listings: [], total: 0 };
+  return { listings: data ?? [], total: count ?? 0 };
 }

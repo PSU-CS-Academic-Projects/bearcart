@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { reportMessage } from "@/lib/actions/reports";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +40,6 @@ import {
   ChatCircleDots,
   SpinnerGap,
   WarningCircle,
-  ShoppingBag,
   DotsThree,
   ProhibitInset,
   Flag,
@@ -77,11 +77,12 @@ interface ChatWindowProps {
   showBackButton?: boolean;
   sending?: boolean;
   onMarkAsSold?: () => void;
+  onMarkAsFulfilled?: () => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -146,6 +147,24 @@ function getListingStatusBadge(status: string) {
   }
 }
 
+function getRequestStatusBadge(status: string) {
+  switch (status) {
+    case "fulfilled":
+      return <Badge className="bg-emerald-100 text-emerald-800">Fulfilled</Badge>;
+    case "closed":
+      return <Badge variant="secondary">Closed</Badge>;
+    default:
+      return <Badge className="bg-primary/10 text-primary">Open</Badge>;
+  }
+}
+
+function formatBudgetRange(min: number | null, max: number | null): string | null {
+  if (min != null && max != null) return `Budget: ${formatListingPrice(min)} – ${formatListingPrice(max)}`;
+  if (min != null) return `Budget: ${formatListingPrice(min)}`;
+  if (max != null) return `Budget: ${formatListingPrice(max)}`;
+  return null;
+}
+
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -167,6 +186,7 @@ export function ChatWindow({
   showBackButton = false,
   sending = false,
   onMarkAsSold,
+  onMarkAsFulfilled,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -231,7 +251,7 @@ export function ChatWindow({
     if (!file) return;
 
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setImageError("Only JPG, PNG, WEBP, or GIF images are allowed.");
+      setImageError("Only JPG, JPEG, PNG, or WEBP images are allowed.");
       e.target.value = "";
       return;
     }
@@ -276,8 +296,11 @@ export function ChatWindow({
   }
 
   const listing = conversation.listing;
+  const request = conversation.request;
   const isSeller = conversation.iAmSeller;
   const isListingGone = listing?.status === "deleted";
+  // For requests the poster (owner) is modelled as the "seller".
+  const isRequestOwner = conversation.iAmSeller;
 
   return (
     <div className="flex h-full flex-col">
@@ -291,11 +314,11 @@ export function ChatWindow({
         )}
 
         {/* Other user avatar */}
-        <Link href={`/profile/${conversation.otherUser.id}`} className="relative shrink-0">
+        <Link href={`/profile/${conversation.otherUser.slug ?? conversation.otherUser.id}`} className="relative shrink-0">
           <div className="relative size-10 overflow-hidden rounded-full bg-muted">
             {conversation.otherUser.avatar ? (
               <Image
-                src={conversation.otherUser.avatar}
+                src={toStorageUrl(conversation.otherUser.avatar)}
                 alt={conversation.otherUser.name}
                 fill
                 className="object-cover"
@@ -319,13 +342,13 @@ export function ChatWindow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
-              href={`/profile/${conversation.otherUser.id}`}
+              href={`/profile/${conversation.otherUser.slug ?? conversation.otherUser.id}`}
               className="font-semibold text-foreground hover:underline"
             >
               {conversation.otherUser.name}
             </Link>
             <Badge variant="secondary" className="text-xs">
-              PSU {conversation.otherUser.role}
+              {conversation.otherUser.role}
             </Badge>
           </div>
           <span className={`text-xs ${isOtherUserOnline ? "text-emerald-600" : "text-muted-foreground"}`}>
@@ -352,7 +375,7 @@ export function ChatWindow({
                     className="shrink-0 cursor-pointer"
                     aria-label="View listing image">
                     <Image
-                      src={listing.thumbnail}
+                      src={toStorageUrl(listing.thumbnail)}
                       alt={listing.title}
                       width={56}
                       height={56}
@@ -362,7 +385,7 @@ export function ChatWindow({
                   </button>
                 ) : (
                   <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <ShoppingBag className="size-6 text-muted-foreground/60" />
+                    <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -378,7 +401,7 @@ export function ChatWindow({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button asChild variant="ghost" size="sm">
-                    <Link href={`/listings/${listing.id}`}>View Listing</Link>
+                    <Link href={`/listings/${listing.slug ?? listing.id}`}>View Listing</Link>
                   </Button>
                   {isSeller && listing.status === "available" && onMarkAsSold && (
                     <Button variant="outline" size="sm" onClick={onMarkAsSold}>
@@ -389,6 +412,63 @@ export function ChatWindow({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Request Context Card ─────────────────────────────────── */}
+      {request && (
+        <div className="border-b">
+          <div className="bg-accent/50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              {request.thumbnail ? (
+                <button
+                  type="button"
+                  onClick={() => setLightboxUrl(request.thumbnail)}
+                  className="shrink-0 cursor-pointer"
+                  aria-label="View request image">
+                  <Image
+                    src={toStorageUrl(request.thumbnail)}
+                    alt={request.title}
+                    width={56}
+                    height={56}
+                    unoptimized
+                    className="size-14 shrink-0 rounded-lg object-cover transition-opacity hover:opacity-80"
+                  />
+                </button>
+              ) : (
+                <div className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <Image src="/bearcart-placeholder.svg" alt="" width={64} height={64} className="opacity-40" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Request
+                </p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {request.title}
+                </p>
+                {formatBudgetRange(request.budgetMin, request.budgetMax) && (
+                  <p className="text-sm font-semibold text-primary">
+                    {formatBudgetRange(request.budgetMin, request.budgetMax)}
+                  </p>
+                )}
+                <div className="mt-1">
+                  {getRequestStatusBadge(request.status)}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/requests">View Requests</Link>
+                </Button>
+                {isRequestOwner && request.status === "open" && onMarkAsFulfilled && (
+                  <Button variant="outline" size="sm" onClick={onMarkAsFulfilled}>
+                    <CheckCircle className="size-4" />
+                    Mark as Fulfilled
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -504,7 +584,7 @@ export function ChatWindow({
                                 ) : (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img
-                                    src={message.imageUrl ?? ""}
+                                    src={toStorageUrl(message.imageUrl ?? "")}
                                     alt="Sent image"
                                     className="block h-auto w-full max-w-[200px] object-cover transition-opacity hover:opacity-90 sm:max-w-[200px]"
                                     loading="lazy"
@@ -591,7 +671,7 @@ export function ChatWindow({
             <div className="relative inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={pendingImage.dataUrl}
+                src={toStorageUrl(pendingImage.dataUrl)}
                 alt="Pending attachment"
                 className="h-24 w-24 rounded-lg border object-cover"
               />
@@ -678,7 +758,7 @@ export function ChatWindow({
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxUrl}
+            src={toStorageUrl(lightboxUrl)}
             alt="Full size"
             className="max-h-full max-w-full object-contain"
             onClick={(e) => e.stopPropagation()}

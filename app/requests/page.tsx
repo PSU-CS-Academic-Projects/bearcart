@@ -11,7 +11,8 @@ import {
 } from "@/components/requests-filters";
 import { RequestRow, RequestRowSkeleton } from "@/components/request-row";
 import { Pagination } from "@/components/pagination";
-import { getRequests, type RequestFilters } from "@/lib/actions/requests";
+import { SortSelect } from "@/components/sort-select";
+import { getRequests, type RequestFilters, type RequestSort } from "@/lib/actions/requests";
 import { isCurrentUserAdmin } from "@/lib/actions/admin";
 import { createClient } from "@/lib/supabase-server";
 import { parseCurrencyInput } from "@/lib/currency";
@@ -139,7 +140,7 @@ async function RequestsList({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Requests — BearCart",
+  title: "Requests - BearCart",
 };
 
 export default async function RequestsPage({ searchParams }: PageProps) {
@@ -162,17 +163,9 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               Requests
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Help PSU students and faculty find what they need
+              Help fellow Bearcats get what they need
             </p>
           </div>
-          {isLoggedIn && (
-            <Button asChild>
-              <Link href="/requests/new">
-                <Plus className="size-4" />
-                Post a Request
-              </Link>
-            </Button>
-          )}
         </div>
 
         {/* Top Controls */}

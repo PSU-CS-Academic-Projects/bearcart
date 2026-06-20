@@ -44,7 +44,7 @@ export function HomeTabs({ listingsTab, requestsTab }: HomeTabsProps) {
         </div>
         {tab === "requests" && (
           <p className="mt-1.5 text-center text-sm text-muted-foreground">
-            Buyers looking for specific items — if you have what they need, reach out directly.
+            Buyers looking for specific items - if you have what they need, reach out directly.
           </p>
         )}
       </div>

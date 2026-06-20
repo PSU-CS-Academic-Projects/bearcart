@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 interface ListingActionsProps {
   listingId: string;
+  listingSlug?: string;
   sellerId: string;
   /** The currently logged-in user's ID, or null if not logged in */
   currentUserId: string | null;
@@ -19,6 +20,7 @@ interface ListingActionsProps {
 
 export function ListingActions({
   listingId,
+  listingSlug,
   sellerId,
   currentUserId,
   initialSaved,
@@ -77,7 +79,7 @@ export function ListingActions({
       <div className="hidden flex-col gap-2 lg:flex">
         {isOwnListing ? (
           <Button className="h-9 w-full" asChild>
-            <a href={`/listings/${listingId}/edit`}>
+            <a href={`/listings/${listingSlug ?? listingId}/edit`}>
               <PencilSimple className="size-4" />
               Edit Listing
             </a>
@@ -141,7 +143,7 @@ export function ListingActions({
           </Button>
           {isOwnListing ? (
             <Button className="h-9 flex-1" asChild>
-              <a href={`/listings/${listingId}/edit`}>
+              <a href={`/listings/${listingSlug ?? listingId}/edit`}>
                 <PencilSimple className="size-4" />
                 Edit Listing
               </a>

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
+import { jakarta } from "@/lib/fonts";
 import {
   EnvelopeIcon,
   MapPinIcon,
   PhoneIcon,
-  FacebookLogoIcon,
-  InstagramLogoIcon,
-  TiktokLogoIcon,
+  //FacebookLogoIcon,
+  //InstagramLogoIcon,
+  //TiktokLogoIcon,
 } from "@phosphor-icons/react/dist/ssr";
 
 const quickLinks = [
@@ -16,11 +17,13 @@ const quickLinks = [
 ];
 
 const categories = [
-  { name: "Books", href: "/listings?category=Books" },
+  { name: "Accessories", href: "/listings?category=Accessories" },
   { name: "Electronics", href: "/listings?category=Electronics" },
   { name: "Clothing", href: "/listings?category=Clothing" },
   { name: "Food", href: "/listings?category=Food" },
   { name: "Services", href: "/listings?category=Services" },
+  { name: "School Supplies", href: "/listings?category=School%20Supplies" },
+  { name: "Others", href: "/listings?category=Others" },
 ];
 
 export function Footer() {
@@ -31,15 +34,15 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center gap-2">
-              <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
-              <span className="text-xl font-bold text-foreground">BearCart</span>
+              <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} className="size-14" />
+              <span className={`${jakarta.className} text-xl font-bold text-foreground`}>BearCart</span>
             </Link>
             <p className="mb-4 text-sm text-muted-foreground">
-              The official campus marketplace for Palawan State University.
+              A campus marketplace for Palawan State University.
               Safely buy, sell, and trade with fellow students and faculty
               members.
-            </p>
-            <div className="flex items-center gap-3">
+          </p>
+            {/* <div className="flex items-center gap-3">
               <a
                 href="#"
                 className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -61,7 +64,7 @@ export function Footer() {
               >
                 <TiktokLogoIcon className="size-4" />
               </a>
-            </div>
+            </div> */}
           </div>
 
           {/* Quick Links */}
@@ -102,12 +105,17 @@ export function Footer() {
           <div>
             <h3 className="mb-4 font-semibold text-foreground">Contact Us</h3>
             <ul className="flex flex-col gap-3">
-              <li className="flex items-start gap-2 text-sm text-muted-foreground">
+             <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPinIcon className="mt-0.5 size-4 shrink-0" />
-                <span>
+                  <a
+                  href="https://maps.google.com/?q=Palawan+State+University,+Tiniguiban+Heights,+Puerto+Princesa+City,+Palawan+5300"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary"
+                >
                   Palawan State University, Tiniguiban Heights, Puerto Princesa
                   City, Palawan 5300
-                </span>
+                </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
                 <EnvelopeIcon className="size-4 shrink-0" />
@@ -133,13 +141,13 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-4">
               <Link
-                href="/privacy"
+                href="/privacy-policy"
                 className="text-sm text-muted-foreground hover:text-primary"
               >
                 Privacy Policy
               </Link>
               <Link
-                href="/terms"
+                href="/terms-of-service"
                 className="text-sm text-muted-foreground hover:text-primary"
               >
                 Terms of Service

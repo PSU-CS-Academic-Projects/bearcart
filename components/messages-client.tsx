@@ -19,8 +19,20 @@ import {
   type MessageRow,
 } from "@/lib/actions/messages";
 import { supabase } from "@/lib/supabase";
+import { toStorageUrl } from "@/lib/storage-url";
 import { updateListingStatus } from "@/lib/actions/listings";
+import { markRequestFulfilled } from "@/lib/actions/requests";
 import { MarkAsSoldDialog } from "@/components/mark-as-sold-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -58,29 +70,44 @@ function mapConversation(
 ): Conversation {
   const isCurrentBuyer = conv.buyer_id === currentUserId;
   const otherUser = isCurrentBuyer
-    ? (conv.seller as { id: string; full_name: string; avatar_url: string | null; role: string })
-    : (conv.buyer as { id: string; full_name: string; avatar_url: string | null; role: string });
+    ? (conv.seller as { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string })
+    : (conv.buyer as { id: string; slug?: string; full_name: string; avatar_url: string | null; role: string });
 
   const listing = conv.listing as {
-    id: string; title: string; price: number; status: string;
-    listing_images: { image_url: string; is_cover: boolean }[];
+    id: string; slug?: string; title: string; price: number; status: string;
+    listing_images: { image_url: string; is_cover: boolean; order: number }[];
   } | null;
 
-  const coverImg = listing?.listing_images?.find((i) => i.is_cover)?.image_url
-    ?? listing?.listing_images?.[0]?.image_url ?? "";
+  const request = conv.request as {
+    id: string; title: string; budget_min: number | null; budget_max: number | null; status: string;
+    request_images: { image_url: string; order: number }[];
+  } | null;
+
+  const sortedListingImages = [...(listing?.listing_images ?? [])].sort((a, b) => a.order - b.order);
+  const coverImg = toStorageUrl(
+    listing?.listing_images?.find((i) => i.is_cover)?.image_url
+      ?? sortedListingImages[0]?.image_url ?? ""
+  );
+  const requestCover = toStorageUrl(
+    [...(request?.request_images ?? [])].sort((a, b) => a.order - b.order)[0]?.image_url ?? ""
+  );
 
   return {
     id: conv.id,
     iAmSeller: !isCurrentBuyer,
     otherUser: {
       id: otherUser.id,
+      slug: otherUser.slug,
       name: otherUser.full_name,
       avatar: otherUser.avatar_url ?? "",
       role: otherUser.role === "faculty" ? "Faculty" : "Student",
       isOnline: false,
     },
     listing: listing
-      ? { id: listing.id, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
+      ? { id: listing.id, slug: listing.slug, title: listing.title, thumbnail: coverImg, price: listing.price, status: listing.status }
+      : undefined,
+    request: request
+      ? { id: request.id, title: request.title, thumbnail: requestCover, budgetMin: request.budget_min, budgetMax: request.budget_max, status: request.status }
       : undefined,
     lastMessage: buildPreview(
       conv.last_message,
@@ -136,6 +163,7 @@ export function MessagesClient({
   const [sending, setSending] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [markSoldListingId, setMarkSoldListingId] = useState<string | null>(null);
+  const [markFulfilledRequestId, setMarkFulfilledRequestId] = useState<string | null>(null);
 
   // Refs mirror state so the single persistent realtime channel reads fresh
   // values inside its handlers without re-subscribing on every change.
@@ -356,7 +384,27 @@ export function MessagesClient({
           setArchivedConversations(patchStatus);
         }
       )
-      .subscribe();
+      // ── Request status changed (e.g. marked as fulfilled) ───────────
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "requests" },
+        (payload) => {
+          const updated = payload.new as { id: string; status: string };
+          const patchStatus = (convs: Conversation[]) =>
+            convs.map((c) =>
+              c.request?.id === updated.id
+                ? { ...c, request: { ...c.request!, status: updated.status } }
+                : c
+            );
+          setConversations(patchStatus);
+          setArchivedConversations(patchStatus);
+        }
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`[messages] realtime channel ${status} — live updates disabled.`);
+        }
+      });
 
     return () => { supabase.removeChannel(channel); };
   }, [currentUserId]);
@@ -493,7 +541,9 @@ export function MessagesClient({
         }));
       }
       toast.error(
-        image
+        err instanceof Error
+          ? err.message
+          : image
           ? "Failed to send image. Please try again."
           : "Failed to send message. Please try again."
       );
@@ -562,6 +612,28 @@ export function MessagesClient({
     setArchivedConversations(bump);
     toast.success("Listing marked as sold!");
     setMarkSoldListingId(null);
+  };
+
+  // ── Mark as Fulfilled (from chat) ──────────────────────────────────
+
+  const handleMarkFulfilledFromChat = async () => {
+    if (!markFulfilledRequestId) return;
+    const requestId = markFulfilledRequestId;
+    try {
+      await markRequestFulfilled(requestId);
+      const bump = (convs: Conversation[]) =>
+        convs.map((c) =>
+          c.request?.id === requestId
+            ? { ...c, request: { ...c.request!, status: "fulfilled" } }
+            : c
+        );
+      setConversations(bump);
+      setArchivedConversations(bump);
+      toast.success("Request marked as fulfilled!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to mark as fulfilled");
+    }
+    setMarkFulfilledRequestId(null);
   };
 
   // ── Back handler (mobile) ──────────────────────────────────────────
@@ -658,6 +730,11 @@ export function MessagesClient({
               ? () => setMarkSoldListingId(selectedConversation.listing!.id)
               : undefined
           }
+          onMarkAsFulfilled={
+            selectedConversation?.iAmSeller && selectedConversation.request?.status === "open"
+              ? () => setMarkFulfilledRequestId(selectedConversation.request!.id)
+              : undefined
+          }
         />
         <MarkAsSoldDialog
           open={!!markSoldListingId}
@@ -666,6 +743,25 @@ export function MessagesClient({
           onConfirm={handleMarkSoldFromChat}
           showBuyerSelector={false}
         />
+        <AlertDialog
+          open={!!markFulfilledRequestId}
+          onOpenChange={(o) => { if (!o) setMarkFulfilledRequestId(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Mark as Fulfilled?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to mark this request as fulfilled? It will be hidden from the requests page.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleMarkFulfilledFromChat}>
+                Yes, Mark as Fulfilled
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </main>
   );

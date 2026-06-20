@@ -4,7 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { PostRequestForm } from "@/components/post-request-form";
 
 export const metadata = {
-  title: "Post a Request — BearCart",
+  title: "Post a Request - BearCart",
 };
 
 export default async function PostRequestPage() {

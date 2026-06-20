@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  MagnifyingGlassIcon,
-  TagIcon,
-  MapPinIcon,
-  ShieldCheckIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon, } from "@phosphor-icons/react/dist/ssr";
 
 export function HeroSection() {
   return (
@@ -14,14 +15,11 @@ export function HeroSection() {
         <div className="flex flex-col md:flex-row md:items-start gap-10 md:gap-16">
 
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-bold text-[#C85F00] uppercase tracking-widest block mb-5">
-              BearCart
-            </span>
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4 leading-[1.15]">
               The campus marketplace for PalSU Bearcats.
             </h1>
             <p className="text-base text-gray-500 mb-8 leading-relaxed max-w-md">
-              Buy and sell within the PalSU community — meet safely on campus, no shipping, no hassle. Need something? Post a request and let your fellow Bearcats find it.
+              Buy and sell within the PalSU community - meet safely on campus, no shipping, no hassle. Need something? Post a request and let your fellow Bearcats find it.
             </p>
             <div className="flex flex-wrap gap-3 mb-7">
               <a
@@ -63,57 +61,36 @@ export function HeroSection() {
 
           {/* Right: category grid */}
           <div className="w-full md:w-52 shrink-0">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+            <p className="text-xs font-bold text-[#C85F00] uppercase tracking-widest block mb-5">
               Browse by category
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <a href="/listings?category=books" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
-                <span className="text-xs font-semibold text-gray-800 leading-tight">Books</span>
+              <a href="/listings?category=Accessories" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <HandbagIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
+                <span className="text-xs font-semibold text-gray-800 leading-tight">Accessories</span>
               </a>
               <a href="/listings?category=electronics" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <path d="M8 21h8M12 17v4" />
-                </svg>
+                <LaptopIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Electronics</span>
               </a>
               <a href="/listings?category=clothing" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z" />
-                </svg>
+                <TShirtIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Clothing</span>
               </a>
               <a href="/listings?category=food" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
-                  <path d="M7 2v20" />
-                  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
-                </svg>
+                <HamburgerIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Food</span>
               </a>
-              <a href="/listings?category=supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  <path d="m15 5 4 4" />
-                </svg>
+              <a href="/listings?category=school supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+                <BackpackIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
               </a>
               <a href="/listings?category=services" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                </svg>
+                <WrenchIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Services</span>
               </a>
               <a href="/listings?category=others" className="group col-span-2 flex flex-row items-center gap-2.5 px-3 py-2.5 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors">
-                  <circle cx="5" cy="12" r="1" />
-                  <circle cx="12" cy="12" r="1" />
-                  <circle cx="19" cy="12" r="1" />
-                </svg>
+                <DotsThreeIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800">Others</span>
               </a>
             </div>

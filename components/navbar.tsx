@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase-server";
+import { createClient, getCurrentUser } from "@/lib/supabase-server";
 import { getUnreadMessageCount } from "@/lib/actions/messages";
 import {
   getRecentNotifications,
-  getUnreadNotificationCount,
+  getUnseenNotificationCount,
   type NotificationRow,
 } from "@/lib/actions/notifications";
 import { NavbarClient } from "@/components/navbar-client";
@@ -22,9 +22,11 @@ export interface NavbarUser {
 // ─── Server Component ─────────────────────────────────────────────────────────
 
 export async function Navbar() {
-  // Auth + user profile fetch
+  // Auth + user profile fetch. getCurrentUser() is request-memoized, so this
+  // shares the JWT validation with the rest of the render instead of making
+  // its own network round-trip.
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const authUser = await getCurrentUser();
 
   let navbarUser: NavbarUser | null = null;
   let initialUnreadCount = 0;
@@ -44,13 +46,13 @@ export async function Navbar() {
     }
 
     // Fetch initial counts and notifications in parallel
-    const [unreadMsgs, unreadNotifs, recentNotifs] = await Promise.all([
+    const [unreadMsgs, unseenNotifs, recentNotifs] = await Promise.all([
       getUnreadMessageCount(),
-      getUnreadNotificationCount(),
+      getUnseenNotificationCount(),
       getRecentNotifications(10),
     ]);
     initialUnreadCount = unreadMsgs;
-    initialNotificationCount = unreadNotifs;
+    initialNotificationCount = unseenNotifs;
     initialNotifications = recentNotifs;
   }
 

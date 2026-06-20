@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   Dialog,
   DialogContent,
@@ -113,7 +114,7 @@ export function MarkAsSoldDialog({
                     >
                       {c.avatar ? (
                         <Image
-                          src={c.avatar}
+                          src={toStorageUrl(c.avatar)}
                           alt={c.name}
                           width={24}
                           height={24}

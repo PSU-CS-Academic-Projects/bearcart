@@ -40,17 +40,9 @@ export async function RequestsSection() {
           <div>
             <h2 className="text-2xl font-bold text-foreground">Requests</h2>
             <p className="text-muted-foreground">
-              Help PSU students and faculty find what they need
+              Help PalSU students and faculty find what they need
             </p>
           </div>
-          {user && (
-            <Button asChild>
-              <Link href="/requests/new">
-                <Plus className="size-4" />
-                Post a Request
-              </Link>
-            </Button>
-          )}
         </div>
 
         {requests.length === 0 ? (

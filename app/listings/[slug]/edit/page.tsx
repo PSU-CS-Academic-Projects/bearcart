@@ -3,53 +3,52 @@ import { Navbar } from "@/components/navbar";
 import { EditListingForm } from "@/components/edit-listing-form";
 import { createClient } from "@/lib/supabase-server";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
-// ─── Page (Server Component) ─────────────────────────────────────────────────
-
 export default async function EditListingPage({ params }: PageProps) {
-  const { id } = await params;
+  const { slug } = await params;
 
-  // ── Auth Gate ─────────────────────────────────────────────────────────
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/auth/login?returnTo=/listings/${id}/edit`);
+    redirect(`/auth/login?returnTo=/listings/${slug}/edit`);
   }
 
-  // ── Fetch Listing ─────────────────────────────────────────────────────
+  // Accept either a slug or a legacy UUID
+  const col = UUID_RE.test(slug) ? "id" : "slug";
   const { data: listing, error } = await supabase
     .from("listings")
     .select(
       `
-      id, seller_id, title, description, price, is_negotiable,
+      id, slug, seller_id, title, description, price, is_negotiable,
       category, condition, status, tags, views_count,
       created_at, updated_at,
       listing_images ( id, image_url, is_cover, order )
     `
     )
-    .eq("id", id)
+    .eq(col, slug)
     .maybeSingle();
 
   if (error?.message?.includes("invalid input syntax") || !listing) {
     notFound();
   }
 
-  // ── Ownership Check ───────────────────────────────────────────────────
-  if (listing.seller_id !== user.id) {
-    redirect(`/listings/${id}`);
+  // UUID backward-compat: redirect to canonical slug URL
+  if (UUID_RE.test(slug) && listing.slug) {
+    redirect(`/listings/${listing.slug}/edit`);
   }
 
-  // ── Status Check (can't edit sold/deleted) ────────────────────────────
+  if (listing.seller_id !== user.id) {
+    redirect(`/listings/${listing.slug}`);
+  }
+
   if (listing.status === "sold" || listing.status === "deleted") {
-    redirect(`/listings/${id}`);
+    redirect(`/listings/${listing.slug}`);
   }
 
   // ── Sort images by order ──────────────────────────────────────────────
@@ -63,6 +62,7 @@ export default async function EditListingPage({ params }: PageProps) {
       <EditListingForm
         listing={{
           id: listing.id,
+          slug: listing.slug,
           title: listing.title,
           description: listing.description ?? "",
           price: listing.price,
@@ -70,7 +70,6 @@ export default async function EditListingPage({ params }: PageProps) {
           category: listing.category,
           condition: listing.condition,
           status: listing.status,
-          tags: listing.tags ?? [],
           images: sortedImages.map((img: { id: string; image_url: string; is_cover: boolean; order: number }) => ({
             id: img.id,
             url: img.image_url,

@@ -53,8 +53,14 @@ export function urgencyLabel(urgency: RequestUrgency): string {
   }
 }
 
+/** All request image URLs ordered by their `order` column (cover first). */
+export function getRequestImageUrls(request: RequestRow): string[] {
+  return [...(request.request_images ?? [])]
+    .sort((a, b) => a.order - b.order)
+    .map((img) => img.image_url);
+}
+
 /** Pick the first image URL (lowest order) from a request, or empty string. */
 export function getRequestCoverImage(request: RequestRow): string {
-  const sorted = [...(request.request_images ?? [])].sort((a, b) => a.order - b.order);
-  return sorted[0]?.image_url ?? "";
+  return getRequestImageUrls(request)[0] ?? "";
 }

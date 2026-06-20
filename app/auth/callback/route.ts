@@ -26,17 +26,18 @@ export async function GET(request: Request) {
         // Use the same authenticated client to query the users table.
         const { data: userData } = await supabase
             .from('users')
-            .select('college')
+            .select('college, terms_accepted')
             .eq('id', data.user.id)
             .single()
 
         const needsSetup = !userData?.college
+        const needsConsent = !needsSetup && !userData?.terms_accepted
 
-        // If user needs onboarding, go to setup first (then returnTo after setup)
-        // Otherwise, go directly to the returnTo destination
         return NextResponse.redirect(
             needsSetup
                 ? `${origin}/setup?returnTo=${encodeURIComponent(returnTo)}`
+                : needsConsent
+                ? `${origin}/consent?returnTo=${encodeURIComponent(returnTo)}`
                 : `${origin}${returnTo}`
         )
     }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag } from "@phosphor-icons/react/dist/ssr";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,11 +21,14 @@ import { formatListingPrice } from "@/lib/listing-helpers";
 
 interface ProfileListingCardProps {
   id: string;
+  slug?: string;
   title: string;
   price: number;
   category: string;
   condition: string;
   timePosted: string;
+  createdAt: string;
+  updatedAt?: string;
   imageUrl: string;
   variant: "active" | "sold" | "saved";
   dateSold?: string;
@@ -38,11 +41,14 @@ interface ProfileListingCardProps {
 
 export function ProfileListingCard({
   id,
+  slug,
   title,
   price,
   category,
   condition,
   timePosted,
+  createdAt,
+  updatedAt,
   imageUrl,
   variant,
   dateSold,
@@ -52,16 +58,21 @@ export function ProfileListingCard({
   onDelete,
   onRemoveSaved,
 }: ProfileListingCardProps) {
+
+  const wasUpdated =
+    updatedAt && Math.abs(new Date(updatedAt).getTime() - new Date(createdAt).getTime()) > 60000;
+
+  const tooltipDate = wasUpdated ? updatedAt : createdAt;
+  const tooltipLabel = wasUpdated ? "Updated" : "Posted";
+  
   return (
-    <Link href={`/listings/${id}`} className="group block">
-      <article className="overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
+    <Link href={`/listings/${slug ?? id}`} className="group block">
+      <article className="animate-in fade-in duration-300 overflow-hidden rounded-sm border border-[oklch(0.88_0_0)] bg-white shadow-sm group-hover:shadow-md">
         <div className="relative aspect-square overflow-hidden bg-[oklch(0.96_0_0)]">
           {imageUrl ? (
-            <Image src={imageUrl} alt={title} fill unoptimized className="object-cover" />
+            <Image src={toStorageUrl(imageUrl)} alt={title} fill unoptimized className="object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center">
-              <ShoppingBag className="size-12 text-[oklch(0.75_0_0)]" />
-            </div>
+            <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
           )}
 
           {/* Category badge */}
@@ -82,9 +93,9 @@ export function ProfileListingCard({
 
           {/* Delisted badge */}
           {isDelisted && (
-            <div className="absolute left-2 bottom-2 z-10">
-              <span className="rounded-sm bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                Delisted
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span className="rounded-sm bg-white px-3 py-1 text-sm font-bold text-[oklch(0.2_0_0)]">
+                DELISTED
               </span>
             </div>
           )}
@@ -101,7 +112,7 @@ export function ProfileListingCard({
                     <DotsThreeVertical className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-40">
                   {onEdit && (
                     <DropdownMenuItem onClick={onEdit}>
                       <PencilSimple className="size-4" />
@@ -150,7 +161,21 @@ export function ProfileListingCard({
           <h3 className="mt-1 line-clamp-2 min-h-[2lh] text-sm font-medium text-[oklch(0.2_0_0)]">
             {title}
           </h3>
-          <p className="mt-1.5 text-xs text-[oklch(0.5_0_0)]">
+         <p 
+            className="mt-1.5 text-xs text-[oklch(0.5_0_0)]"
+            title={
+              variant === "sold" && dateSold 
+                ? undefined 
+                : `${tooltipLabel} ${new Date(tooltipDate).toLocaleString("en-PH", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}`
+            }
+          >
             {variant === "sold" && dateSold ? `Sold ${dateSold}` : timePosted} · {condition}
           </p>
         </div>

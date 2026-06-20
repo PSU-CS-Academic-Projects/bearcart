@@ -8,7 +8,6 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ConditionSelector } from "@/components/condition-selector";
 import { ListingTypeSelector } from "@/components/listing-type-selector";
-import { TagsInput } from "@/components/tags-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,11 +35,11 @@ import { cn } from "@/lib/utils";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const categories = [
-  { value: "books", label: "Books" },
+  { value: "accessories", label: "Accessories" },
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "food", label: "Food" },
-  { value: "supplies", label: "Supplies" },
+  { value: "school supplies", label: "School Supplies" },
   { value: "services", label: "Services" },
   { value: "others", label: "Others" },
 ];
@@ -60,7 +59,6 @@ interface FormData {
   price: string;
   negotiable: boolean;
   description: string;
-  tags: string[];
 }
 
 interface FormErrors {
@@ -123,7 +121,7 @@ export function PostListingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     photos: [], title: "", category: "", condition: "", listingType: "for-sale",
-    price: "", negotiable: false, description: "", tags: [],
+    price: "", negotiable: false, description: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -242,11 +240,10 @@ export function PostListingForm() {
         is_negotiable: formData.negotiable,
         category: formData.category,
         condition: conditionMap[formData.condition] ?? "good",
-        tags: formData.tags,
         photos: formData.photos,
       });
       toast.success("Listing posted successfully!");
-      router.push(`/listings/${result.id}`);
+      router.push(`/listings/${result.slug ?? result.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post listing";
       // Check if it's a partial failure (listing created but images failed)
@@ -264,7 +261,7 @@ export function PostListingForm() {
 
   const photosSection = (
     <div id="photo-upload-zone">
-      <PhotoUpload
+      <PhotoUpload 
         photos={formData.photos}
         onPhotosChange={(photos) => updateField("photos", photos)}
         error={errors.photos}
@@ -281,7 +278,7 @@ export function PostListingForm() {
         <Label htmlFor="desktop-title">Title <span className="text-destructive">*</span></Label>
         <Input
           id="desktop-title"
-          placeholder="e.g. Calculus Textbook 10th Edition"
+          placeholder="e.g. Scientific Calculator"
           value={formData.title}
           onChange={(e) => updateField("title", e.target.value)}
           maxLength={TITLE_MAX}
@@ -365,7 +362,7 @@ export function PostListingForm() {
         <Label htmlFor="desktop-description">Description <span className="text-destructive">*</span></Label>
         <Textarea
           id="desktop-description"
-          placeholder="Describe your item..."
+          placeholder="Describe your listing..."
           value={formData.description}
           onChange={(e) => updateField("description", e.target.value)}
           maxLength={DESC_MAX}
@@ -377,19 +374,6 @@ export function PostListingForm() {
           {errors.description ? <p className="text-sm text-destructive">{errors.description}</p> : <span />}
           <CharCounter current={formData.description.length} max={DESC_MAX} />
         </div>
-      </div>
-
-      {/* Tags */}
-      <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagsInput
-          tags={formData.tags}
-          onTagsChange={(tags) => updateField("tags", tags)}
-          placeholder="Add tags and press Enter"
-          maxTags={5}
-          maxTagLength={20}
-          disabled={submitting}
-        />
       </div>
     </div>
   );
@@ -417,14 +401,6 @@ export function PostListingForm() {
             {formData.condition && <span className="rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground">{formData.condition.charAt(0).toUpperCase() + formData.condition.slice(1).replace("-", " ")}</span>}
           </div>
           <p className="whitespace-pre-wrap text-sm text-muted-foreground">{formData.description || "No description provided."}</p>
-          {formData.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {formData.tags.map((tag) => (
-                <span key={tag} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">#{tag}</span>
-              ))}
-            </div>
-          )}
-
         </div>
       </div>
       <p className="text-center text-xs text-muted-foreground">By posting you agree to Bearcart&apos;s community guidelines</p>
@@ -438,7 +414,7 @@ export function PostListingForm() {
       type={isMobile ? "button" : "submit"}
       onClick={isMobile ? handleSubmit : undefined}
       disabled={submitting}
-      className="flex-1 sm:flex-none"
+      className="w-fit"
     >
       {submitting ? (
         <>
@@ -486,7 +462,7 @@ export function PostListingForm() {
           <div className="p-4">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div><h2 className="text-lg font-semibold text-foreground">Add Photos</h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
+                <div><h2 className="text-lg font-semibold text-foreground">Add Photos <span className="text-destructive">*</span></h2><p className="text-sm text-muted-foreground">Upload up to 5 photos of your item</p></div>
                 {photosSection}
               </div>
             )}
@@ -528,7 +504,12 @@ export function PostListingForm() {
       <main className="flex-1">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="mb-8">
-            <Breadcrumb items={[{ label: "Post a Listing" }]} />
+            <Breadcrumb
+              items={[
+                { label: "Listings", href: "/listings" },
+                { label: "New" },
+              ]}
+            />
             <h1 className="mt-4 text-2xl font-bold text-foreground">Post a Listing</h1>
             <p className="text-muted-foreground">Fill in the details of your item</p>
           </div>
@@ -540,7 +521,7 @@ export function PostListingForm() {
           >
             {/* Photos */}
             <section className="space-y-4">
-              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos</h2></div>
+              <div className="flex items-center gap-2"><Camera className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Photos <span className="text-destructive">*</span></h2></div>
               {photosSection}
             </section>
             <div className="h-px bg-border" />
@@ -549,12 +530,11 @@ export function PostListingForm() {
             <section className="space-y-6">
               <div className="flex items-center gap-2"><ListBullets className="size-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Listing Details</h2></div>
               {detailsSection}
-            </section>
-            <div className="h-px bg-border" />
+            </section>  
 
             {/* Submit */}
             <section className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <div className="flex flex-col items-end gap-3 sm:flex-row sm:justify-end">
                 {submitButton}
               </div>
               <p className="text-center text-xs text-muted-foreground sm:text-right">By posting you agree to Bearcart&apos;s community guidelines</p>

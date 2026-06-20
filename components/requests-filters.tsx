@@ -15,16 +15,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  GraduationCap,
-  Wrench,
-  DotsThree,
-  Faders,
-  Trash,
-  X,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  BackpackIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
+  TrashIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import {
   formatCurrencyInput,
@@ -36,13 +36,13 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Books", icon: Book },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "School Supplies", icon: GraduationCap },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+  { name: "Accessories", icon: HandbagIcon },
+  { name: "Electronics", icon: LaptopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: BackpackIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
 const URGENCIES = [
@@ -191,7 +191,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => set({ search: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -202,7 +202,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => removeCategory(cat)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
@@ -213,7 +213,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => removeUrgency(u)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
@@ -224,7 +224,7 @@ export function RequestActiveFilterBadges() {
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -303,80 +303,46 @@ function FiltersContent() {
 
       {/* Budget */}
       <div>
-        <h3 className="mb-3 font-semibold text-foreground">Budget Range</h3>
+        <h3 className="mb-3 font-semibold text-foreground">Budget</h3>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
-            const min = fd.get("min") as string;
             const max = fd.get("max") as string;
-            const minValue = parseCurrencyInput(min);
             const maxValue = parseCurrencyInput(max);
             set({
-              min: minValue !== null && minValue > 0 ? String(minValue) : null,
               max: maxValue !== null && maxValue > 0 ? String(maxValue) : null,
             });
           }}
           className="flex flex-col gap-3"
         >
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Label htmlFor="req-min" className="sr-only">Min budget</Label>
-              <Input
-                id="req-min"
-                name="min"
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 500"
-                defaultValue={formatCurrencyInput(minBudget)}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey || e.metaKey || e.altKey) return;
-                  if (
-                    shouldBlockCurrencyKey(
-                      e.key,
-                      e.currentTarget.value,
-                      e.currentTarget.selectionStart,
-                      e.currentTarget.selectionEnd
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(e) => {
-                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
-                }}
-                className="h-9 text-sm"
-              />
-            </div>
-            <span className="text-muted-foreground">–</span>
-            <div className="flex-1">
-              <Label htmlFor="req-max" className="sr-only">Max budget</Label>
-              <Input
-                id="req-max"
-                name="max"
-                type="text"
-                inputMode="numeric"
-                placeholder="e.g. 500"
-                defaultValue={formatCurrencyInput(maxBudget)}
-                onKeyDown={(e) => {
-                  if (e.ctrlKey || e.metaKey || e.altKey) return;
-                  if (
-                    shouldBlockCurrencyKey(
-                      e.key,
-                      e.currentTarget.value,
-                      e.currentTarget.selectionStart,
-                      e.currentTarget.selectionEnd
-                    )
-                  ) {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={(e) => {
-                  e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
-                }}
-                className="h-9 text-sm"
-              />
-            </div>
+          <div>
+            <Label htmlFor="req-max" className="sr-only">Max budget</Label>
+            <Input
+              id="req-max"
+              name="max"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 500"
+              defaultValue={formatCurrencyInput(maxBudget)}
+              onKeyDown={(e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                if (
+                  shouldBlockCurrencyKey(
+                    e.key,
+                    e.currentTarget.value,
+                    e.currentTarget.selectionStart,
+                    e.currentTarget.selectionEnd
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                e.currentTarget.value = formatCurrencyInput(e.currentTarget.value);
+              }}
+              className="h-9 text-sm"
+            />
           </div>
           <Button type="submit" variant="outline" size="sm" className="w-full">
             Apply Budget
@@ -387,7 +353,7 @@ function FiltersContent() {
       {/* Clear */}
       {hasActiveFilters && (
         <Button variant="outline" className="mt-2" onClick={clearAll}>
-          <Trash className="size-4" />
+          <TrashIcon className="size-4" />
           Clear All Filters
         </Button>
       )}
@@ -406,7 +372,7 @@ export function RequestsFiltersSidebar({ className }: RequestsFiltersProps) {
     <aside className={className}>
       <div className="sticky top-24 rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -422,14 +388,14 @@ export function RequestsMobileFiltersSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

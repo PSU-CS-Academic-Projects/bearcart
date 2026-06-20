@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from 'sonner'
+import Script from 'next/script'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -9,8 +10,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'BearCart - PalSU Bearcats Marketplace',
-  description: 'Buy, sell, and trade within Palawan State University campus. The official marketplace for PSU students and faculty.',
-  generator: 'v0.app',
+  description: 'Buy, sell, and trade within Palawan State University main campus. A marketplace for PalSU students and faculty.',
   icons: {
     icon: [
       {
@@ -44,12 +44,9 @@ export default function RootLayout({
     <html lang="en" className="bg-background">
       <body className="font-sans antialiased">
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" closeButton />
         {process.env.NODE_ENV === 'production' && <Analytics />}
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+      </body>
     </html>
   )
 }

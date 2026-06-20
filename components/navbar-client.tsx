@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { jakarta } from "@/lib/fonts";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,6 @@ import {
   User as UserIcon,
   SignOut,
   ChatCircle,
-  ListBullets,
   Plus,
   Bell,
   ShieldCheck,
@@ -36,7 +36,12 @@ import { signInWithGoogle, signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { NavbarUser } from "@/components/navbar";
 import { NotificationsBell } from "@/components/notifications-bell";
-import type { NotificationRow } from "@/lib/actions/notifications";
+import { getRecentNotifications, getUnseenNotificationCount, type NotificationRow } from "@/lib/actions/notifications";
+import { searchPeople } from "@/lib/actions/profile";
+import { toStorageUrl } from "@/lib/storage-url";
+
+
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +49,7 @@ type SearchMode = "items" | "people";
 
 interface PersonResult {
   id: string;
+  slug?: string | null;
   full_name: string;
   first_name: string | null;
   last_name: string | null;
@@ -86,14 +92,14 @@ function PeopleDropdownContent({
       {results.map((person) => (
         <Link
           key={person.id}
-          href={`/profile/${person.id}`}
+          href={`/profile/${person.slug ?? person.id}`}
           onClick={onSelect}
           className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent"
         >
           <div className="flex items-center gap-3">
             {person.avatar_url ? (
               <Image
-                src={person.avatar_url}
+                src={toStorageUrl(person.avatar_url)}
                 alt={person.full_name}
                 width={32}
                 height={32}
@@ -108,7 +114,7 @@ function PeopleDropdownContent({
             <span className="text-sm font-medium text-foreground">{person.full_name}</span>
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">
-            {person.postCount} {person.postCount === 1 ? "post" : "posts"}
+            {person.postCount} {person.postCount === 1 ? "listing" : "listings"}
           </span>
         </Link>
       ))}
@@ -172,7 +178,7 @@ function AvatarImage({ user }: { user: NavbarUser }) {
   if (user.avatar_url) {
     return (
       <Image
-        src={user.avatar_url}
+        src={toStorageUrl(user.avatar_url)}
         alt={user.full_name}
         width={32}
         height={32}
@@ -192,7 +198,7 @@ function AvatarImage({ user }: { user: NavbarUser }) {
 
 function ProfileDropdown({ user }: { user: NavbarUser }) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -202,7 +208,7 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DropdownMenuLabel className="flex flex-col gap-0.5 pb-2">
           <span className="text-sm font-semibold leading-tight">{user.full_name}</span>
           <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
@@ -214,20 +220,6 @@ function ProfileDropdown({ user }: { user: NavbarUser }) {
           <Link href="/profile" className="flex cursor-pointer items-center gap-2">
             <UserIcon className="size-4" />
             My Profile
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="flex cursor-pointer items-center gap-2">
-            <ListBullets className="size-4" />
-            My Listings
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem asChild>
-          <Link href="/post" className="flex cursor-pointer items-center gap-2">
-            <Plus className="size-4" />
-            Create a Post
           </Link>
         </DropdownMenuItem>
 
@@ -289,7 +281,12 @@ export function NavbarClient({
   // ── Other state ────────────────────────────────────────────────────────
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [notifCount, setNotifCount] = useState(initialNotificationCount);
+  // Notification realtime state lives here as the single source of truth and is
+  // shared with <NotificationsBell> via props. This lets the whole navbar use
+  // ONE realtime channel instead of the bell and the navbar each opening their
+  // own subscription to the notifications table.
+  const [notifications, setNotifications] = useState<NotificationRow[]>(initialNotifications);
+  const [unseenCount, setUnseenCount] = useState(initialNotificationCount);
 
   const desktopSearchRef = useRef<HTMLDivElement>(null);
 
@@ -304,33 +301,9 @@ export function NavbarClient({
 
     setPeopleLoading(true);
     const timer = setTimeout(async () => {
-      const { data: users } = await supabase
-        .from("users")
-        .select("id, full_name, first_name, last_name, avatar_url")
-        .ilike("full_name", `%${peopleQuery}%`)
-        .is("deleted_at", null)
-        .limit(6);
-
-      if (!users || users.length === 0) {
-        setPeopleResults([]);
-        setShowPeopleDropdown(true);
-        setPeopleLoading(false);
-        return;
-      }
-
-      const ids = users.map((u) => u.id);
-      const { data: listings } = await supabase
-        .from("listings")
-        .select("seller_id")
-        .in("seller_id", ids)
-        .is("deleted_at", null);
-
-      const countMap: Record<string, number> = {};
-      for (const l of listings ?? []) {
-        countMap[l.seller_id] = (countMap[l.seller_id] ?? 0) + 1;
-      }
-
-      setPeopleResults(users.map((u) => ({ ...u, postCount: countMap[u.id] ?? 0 })));
+      // server-side — guests get an empty list even if they reach this code.
+      const results = await searchPeople(peopleQuery).catch(() => []);
+      setPeopleResults(results);
       setShowPeopleDropdown(true);
       setPeopleLoading(false);
     }, 200);
@@ -349,26 +322,7 @@ export function NavbarClient({
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  // ── Realtime: notifications ────────────────────────────────────────────
   const userId = user?.id;
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`navbar-notifications:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        () => setNotifCount((c) => c + 1))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
-        async () => {
-          const { count } = await supabase
-            .from("notifications")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .eq("is_read", false);
-          setNotifCount(count ?? 0);
-        })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
 
   // ── Recompute unread conversation count ─────────────────────────────────
   // Counts distinct conversations with at least one unread message from the other person,
@@ -390,11 +344,36 @@ export function NavbarClient({
     } catch { /* non-critical */ }
   }, []);
 
-  // ── Realtime: messages ─────────────────────────────────────────────────
+  //  Refresh the shared notification list + exact unseen count 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const [fresh, count] = await Promise.all([
+        getRecentNotifications(10),
+        getUnseenNotificationCount(),
+      ]);
+      setNotifications(fresh);
+      setUnseenCount(count);
+    } catch { /* non-critical */ }
+  }, []);
+
+  //  Realtime: ONE channel for both notifications and messages 
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel(`navbar-messages:${userId}`)
+      .channel(`navbar-realtime:${userId}`)
+      // ── Notifications ──
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const newNotif = payload.new as NotificationRow;
+          if (newNotif.type === "new_message") return;
+          setNotifications((prev) =>
+            prev.some((n) => n.id === newNotif.id) ? prev : [newNotif, ...prev].slice(0, 10)
+          );
+          setUnseenCount((c) => c + 1);
+        })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        () => { refreshNotifications(); })
+      // ── Messages ──
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" },
         async (payload) => {
           const msg = payload.new as { sender_id: string; is_read: boolean; conversation_id: string };
@@ -416,7 +395,7 @@ export function NavbarClient({
         () => refetchUnreadCount(userId))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [userId, refetchUnreadCount]);
+  }, [userId, refetchUnreadCount, refreshNotifications]);
 
   useEffect(() => {
     if (!userId) return;
@@ -465,8 +444,10 @@ export function NavbarClient({
 
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image src="/bearcart.svg" alt="BearCart logo" width={48} height={48} className="size-12" />
-          <span className="text-xl font-bold text-foreground">BearCart</span>
+          <Image src="/bearcart.svg" alt="BearCart logo" width={56} height={56} priority className="size-14" />
+          <span className={`${jakarta.className} text-xl font-bold tracking-tight`}>
+            BearCart
+          </span>
         </Link>
 
         {/* ── Desktop Search ────────────────────────────────────────── */}
@@ -476,7 +457,8 @@ export function NavbarClient({
         >
           <div ref={desktopSearchRef} className="relative w-full max-w-xl">
             <div className="flex min-w-0 w-full items-center rounded-lg border bg-background px-2">
-              <ModeToggle mode={searchMode} onToggle={handleModeToggle} />
+              {/* People search is for logged-in users only — guests only see item search. */}
+              {user && <ModeToggle mode={searchMode} onToggle={handleModeToggle} />}
               <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
                 <MagnifyingGlass className="size-4 shrink-0 text-muted-foreground" />
                 {searchMode === "items" ? (
@@ -532,9 +514,11 @@ export function NavbarClient({
               </Button>
               <MessagesIcon count={unreadCount} />
               <NotificationsBell
-                userId={user.id}
-                initialUnreadCount={initialNotificationCount}
-                initialNotifications={initialNotifications}
+                notifications={notifications}
+                setNotifications={setNotifications}
+                unseenCount={unseenCount}
+                setUnseenCount={setUnseenCount}
+                refresh={refreshNotifications}
               />
               <ProfileDropdown user={user} />
             </>
@@ -569,31 +553,33 @@ export function NavbarClient({
             <div className="mt-6 flex flex-col gap-4">
               {/* Mobile Search */}
               <form onSubmit={handleSearchSubmit} className="flex flex-col gap-2">
-                {/* Mode toggle */}
-                <div className="flex rounded-lg border bg-background">
-                  <button
-                    type="button"
-                    onClick={() => handleModeToggle("items")}
-                    className={`flex-1 rounded-l-lg py-2 text-xs font-medium transition-colors ${
-                      searchMode === "items"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Items
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModeToggle("people")}
-                    className={`flex-1 rounded-r-lg py-2 text-xs font-medium transition-colors ${
-                      searchMode === "people"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    People
-                  </button>
-                </div>
+                {/* Mode toggle — people search is for logged-in users only. */}
+                {user && (
+                  <div className="flex rounded-lg border bg-background">
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("items")}
+                      className={`flex-1 rounded-l-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "items"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Items
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModeToggle("people")}
+                      className={`flex-1 rounded-r-lg py-2 text-xs font-medium transition-colors ${
+                        searchMode === "people"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      People
+                    </button>
+                  </div>
+                )}
 
                 {/* Search input */}
                 <div className="flex items-center gap-2 rounded-lg border bg-background px-3">
@@ -655,7 +641,7 @@ export function NavbarClient({
                   <div className="flex items-center gap-3 rounded-lg bg-accent/50 px-3 py-3">
                     <div className="relative size-10 shrink-0 overflow-hidden rounded-full">
                       {user.avatar_url ? (
-                        <Image src={user.avatar_url} alt={user.full_name} fill unoptimized className="object-cover ring-2 ring-primary/30" />
+                        <Image src={toStorageUrl(user.avatar_url)} alt={user.full_name} fill unoptimized sizes="40px" className="object-cover ring-2 ring-primary/30" />
                       ) : (
                         <span className="flex size-full items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
                           {getInitials(user)}
@@ -693,9 +679,9 @@ export function NavbarClient({
                       <Bell className="size-4" />
                       Notifications
                     </span>
-                    {notifCount > 0 && (
+                    {unseenCount > 0 && (
                       <span className="flex min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-5 text-white">
-                        {formatUnreadCount(notifCount)}
+                        {formatUnreadCount(unseenCount)}
                       </span>
                     )}
                   </Link>
@@ -707,15 +693,6 @@ export function NavbarClient({
                   >
                     <UserIcon className="size-4" />
                     My Profile
-                  </Link>
-
-                  <Link
-                    href={pathname.startsWith("/requests") ? "/post?type=request" : "/post?type=listing"}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
-                  >
-                    <Plus className="size-4" />
-                    Create a Post
                   </Link>
 
                   <div className="h-px bg-border" />

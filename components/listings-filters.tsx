@@ -15,17 +15,17 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Book,
-  Desktop,
-  TShirt,
-  Hamburger,
-  Package,
-  Wrench,
-  DotsThree,
-  Faders,
-  Trash,
-  GraduationCap,
-  X,
+  HandbagIcon,
+  LaptopIcon,
+  TShirtIcon,
+  HamburgerIcon,
+  PackageIcon,
+  WrenchIcon,
+  DotsThreeIcon,
+  FadersIcon,
+  TrashIcon,
+  BackpackIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import {
   formatCurrencyInput,
@@ -37,13 +37,13 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { name: "Books", icon: Book },
-  { name: "Electronics", icon: Desktop },
-  { name: "Clothing", icon: TShirt },
-  { name: "Food", icon: Hamburger },
-  { name: "School Supplies", icon: GraduationCap },
-  { name: "Services", icon: Wrench },
-  { name: "Others", icon: DotsThree },
+  { name: "Accessories", icon: HandbagIcon },
+  { name: "Electronics", icon: LaptopIcon },
+  { name: "Clothing", icon: TShirtIcon },
+  { name: "Food", icon: HamburgerIcon },
+  { name: "School Supplies", icon: BackpackIcon },
+  { name: "Services", icon: WrenchIcon },
+  { name: "Others", icon: DotsThreeIcon },
 ];
 
 const CONDITIONS = [
@@ -196,7 +196,7 @@ export function ActiveFilterBadges() {
             onClick={() => set({ search: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -207,8 +207,8 @@ export function ActiveFilterBadges() {
             onClick={() => removeCategory(cat)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
-          </button>
+            <XIcon className="size-3" />
+          </button>                     
         </Badge>
       ))}
       {conditions.map((cond) => (
@@ -218,7 +218,7 @@ export function ActiveFilterBadges() {
             onClick={() => removeCondition(cond)}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       ))}
@@ -229,7 +229,7 @@ export function ActiveFilterBadges() {
             onClick={() => set({ min: null, max: null })}
             className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
           >
-            <X className="size-3" />
+            <XIcon className="size-3" />
           </button>
         </Badge>
       )}
@@ -332,7 +332,7 @@ function FiltersContent() {
                 name="min"
                 type="text"
                 inputMode="numeric"
-                placeholder="e.g. 500"
+                placeholder="e.g. 100"
                 defaultValue={formatCurrencyInput(minPrice)}
                 onKeyDown={(e) => {
                   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -392,7 +392,7 @@ function FiltersContent() {
       {/* Clear Filters */}
       {hasActiveFilters && (
         <Button variant="outline" className="mt-2" onClick={clearAll}>
-          <Trash className="size-4" />
+          <TrashIcon className="size-4" />
           Clear All Filters
         </Button>
       )}
@@ -411,7 +411,7 @@ export function ListingsFiltersSidebar({ className }: ListingsFiltersProps) {
     <aside className={className}>
       <div className="sticky top-24 rounded-xl border bg-card p-5">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-          <Faders className="size-5" />
+          <FadersIcon className="size-5" />
           Filters
         </h2>
         <FiltersContent />
@@ -427,14 +427,14 @@ export function ListingsMobileFiltersSheet() {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" className="lg:hidden">
-          <Faders className="size-4" />
+          <FadersIcon className="size-4" />
           Filters
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Faders className="size-5" />
+            <FadersIcon className="size-5" />
             Filters
           </SheetTitle>
         </SheetHeader>

@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toStorageUrl } from "@/lib/storage-url";
 import {
   Flag, Package, Prohibit, ArrowCounterClockwise, Trash,
   Warning, ShieldCheck,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/listing-helpers";
+import { formatTime, formatExactTime } from "@/lib/format-time";
 import {
   adminRestoreListing, adminTakedownListing,
   adminRestoreRequest, adminTakedownRequest,
@@ -34,10 +36,30 @@ import {
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 
 /**
- * Relative timestamps ("2 hours ago") differ between the server render and the
+ * Locale/timezone-dependent timestamps differ between the server render and the
  * client hydration moment, which trips a hydration mismatch. Render them only
  * after mount so server and first client paint agree (empty), then fill in.
+ *
+ * Shows the compact label (formatTime) with the full exact timestamp on hover
+ * (title) — admins can see precision in this audit feed even when the label is
+ * relative/short.
  */
+function EventTime({ iso, className }: { iso: string; className?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const date = new Date(iso);
+  return (
+    <span
+      className={className}
+      title={mounted ? formatExactTime(date) : undefined}
+      suppressHydrationWarning
+    >
+      {mounted ? formatTime(date) : ""}
+    </span>
+  );
+}
+
+/** Relative "5h ago" timestamp, used in the reported-content lists. */
 function TimeAgo({ iso, className }: { iso: string; className?: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -61,7 +83,7 @@ function MiniAvatar({ src, name, size = 28 }: { src: string | null; name: string
   if (src) {
     return (
       <Image
-        src={src}
+        src={toStorageUrl(src)}
         alt={name ?? ""}
         width={size}
         height={size}
@@ -92,7 +114,7 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
         aria-label={`View image for ${title}`}
       >
         <Image
-          src={src}
+          src={toStorageUrl(src)}
           alt={title}
           width={44}
           height={44}
@@ -103,8 +125,8 @@ function MiniThumbnail({ src, title, onOpen }: { src: string | null; title: stri
     );
   }
   return (
-    <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-muted" style={{ width: 44, height: 44 }}>
-      <Package className="size-5 text-muted-foreground/50" />
+    <span className="relative inline-flex shrink-0 overflow-hidden rounded-md bg-muted" style={{ width: 44, height: 44 }}>
+      <Image src="/bearcart-placeholder.svg" alt="" fill unoptimized className="object-contain opacity-40" />
     </span>
   );
 }
@@ -143,6 +165,7 @@ export function AdminDashboard({
   const [tab, setTab] = useState<"overview" | "reported" | "users">("overview");
   const [reportedTab, setReportedTab] = useState<"listings" | "requests" | "messages">("listings");
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [activityPage, setActivityPage] = useState(0);
 
   // user search — current admin first, then other admins, then members A→Z
   const [userQuery, setUserQuery] = useState("");
@@ -225,7 +248,7 @@ export function AdminDashboard({
     <div className="mx-auto max-w-5xl px-4 py-6">
       <p className="mb-1 text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-primary">Moderation</p>
       <h1 className="mb-1 flex items-center gap-2 text-2xl font-bold tracking-[-0.02em] text-foreground">
-        <ShieldCheck className="size-6 text-primary" /> Admin control desk
+        Admin control desk
       </h1>
       <p className="mb-5 text-sm text-muted-foreground">Moderate content and manage users.</p>
 
@@ -248,17 +271,22 @@ export function AdminDashboard({
 
       {/* ── Overview ── */}
       {tab === "overview" && (() => {
-        const max = Math.max(stats.reportedListings, stats.reportedRequests, stats.reportedMessages, stats.bannedUsers, stats.pendingReports, 1);
+        const reportedListingsCount = reportedListings.length;
+        const reportedRequestsCount = reportedRequests.length;
+        const reportedMessagesCount = reportedMessages.length;
+        const pendingReportsCount = reportedListingsCount + reportedRequestsCount + reportedMessagesCount;
+
+        const max = Math.max(reportedListingsCount, reportedRequestsCount, reportedMessagesCount, stats.bannedUsers, pendingReportsCount, 1);
         const pct = (v: number) => `${Math.round((v / max) * 100)}%`;
         return (
           <div className="space-y-8">
             {/* Moderation stats — amber band */}
             <div className="admin-stat-band">
-              <div className="tile"><span className="lbl">Reported listings</span><span className="num">{stats.reportedListings}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedListings) }} /></div>
-              <div className="tile"><span className="lbl">Reported requests</span><span className="num">{stats.reportedRequests}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedRequests) }} /></div>
-              <div className="tile"><span className="lbl">Reported messages</span><span className="num">{stats.reportedMessages}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedMessages) }} /></div>
+              <div className="tile"><span className="lbl">Reported listings</span><span className="num">{reportedListingsCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedListingsCount) }} /></div>
+              <div className="tile"><span className="lbl">Reported requests</span><span className="num">{reportedRequestsCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedRequestsCount) }} /></div>
+              <div className="tile"><span className="lbl">Reported messages</span><span className="num">{reportedMessagesCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedMessagesCount) }} /></div>
               <div className="tile"><span className="lbl">Banned users</span><span className="num">{stats.bannedUsers}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.bannedUsers) }} /></div>
-              <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{stats.pendingReports}</span></div>
+              <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{pendingReportsCount}</span></div>
             </div>
 
             {/* Platform stats — totals, plain cards (no peak highlight) */}
@@ -275,63 +303,101 @@ export function AdminDashboard({
             </div>
 
             {/* Recent activity feed */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Recent Activity
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setTab("reported")}
-                  className="font-mono text-[0.65rem] font-semibold text-primary transition-colors hover:text-primary/80"
-                >
-                  View all →
-                </button>
-              </div>
-              {recentActivity.length === 0 ? (
-                <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
-                  No recent activity.
-                </p>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
-                  {recentActivity.map((a, i) => {
-                    const { Icon, tone } = activityVisual(a.type);
-                    const inner = (
-                      <>
-                        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
-                          <Icon className="size-3.5" />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
-                        <TimeAgo iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
-                      </>
-                    );
-                    const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
-                    const interactive = "transition-colors hover:bg-muted/30";
+            {(() => {
+              const ACTIVITY_PAGE_SIZE = 10;
+              const activityPageCount = Math.max(1, Math.ceil(recentActivity.length / ACTIVITY_PAGE_SIZE));
+              const safeActivityPage = Math.min(activityPage, activityPageCount - 1);
+              const pageActivity = recentActivity.slice(
+                safeActivityPage * ACTIVITY_PAGE_SIZE,
+                safeActivityPage * ACTIVITY_PAGE_SIZE + ACTIVITY_PAGE_SIZE
+              );
+              return (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Recent Activity
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTab("reported")}
+                      className="font-mono text-[0.65rem] font-semibold text-primary transition-colors hover:text-primary/80"
+                    >
+                      View all →
+                    </button>
+                  </div>
+                  {recentActivity.length === 0 ? (
+                    <p className="rounded-xl border border-border bg-card py-8 text-center text-sm text-muted-foreground">
+                      No recent activity.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="overflow-hidden rounded-xl border border-border bg-card">
+                        {pageActivity.map((a, i) => {
+                          const { Icon, tone } = activityVisual(a.type);
+                          const inner = (
+                            <>
+                              <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                                <Icon className="size-3.5" />
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
+                              <EventTime iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
+                            </>
+                          );
+                          const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";
+                          const interactive = "transition-colors hover:bg-muted/30";
 
-                    if (a.jumpToReported) {
-                      return (
-                        <button key={i} type="button" onClick={() => setTab("reported")} className={`${rowClass} ${interactive}`}>
-                          {inner}
-                        </button>
-                      );
-                    }
-                    if (a.href) {
-                      return (
-                        <Link key={i} href={a.href} className={`${rowClass} ${interactive}`}>
-                          {inner}
-                        </Link>
-                      );
-                    }
-                    return <div key={i} className={rowClass}>{inner}</div>;
-                  })}
+                          if (a.jumpToReported) {
+                            return (
+                              <button key={i} type="button" onClick={() => setTab("reported")} className={`${rowClass} ${interactive}`}>
+                                {inner}
+                              </button>
+                            );
+                          }
+                          if (a.href) {
+                            return (
+                              <Link key={i} href={a.href} className={`${rowClass} ${interactive}`}>
+                                {inner}
+                              </Link>
+                            );
+                          }
+                          return <div key={i} className={rowClass}>{inner}</div>;
+                        })}
+                      </div>
+
+                      {/* Pagination */}
+                      {activityPageCount > 1 && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="font-mono text-[0.68rem] text-muted-foreground">
+                            Page {safeActivityPage + 1} of {activityPageCount} · {recentActivity.length} events
+                          </span>
+                          <div className="flex gap-1.5">
+                            <Button
+                              size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                              disabled={safeActivityPage === 0}
+                              onClick={() => setActivityPage((p) => Math.max(0, p - 1))}
+                            >
+                              <CaretLeft className="size-3.5" /> Prev
+                            </Button>
+                            <Button
+                              size="sm" variant="outline" className="h-7 gap-1 px-2.5 text-xs"
+                              disabled={safeActivityPage >= activityPageCount - 1}
+                              onClick={() => setActivityPage((p) => Math.min(activityPageCount - 1, p + 1))}
+                            >
+                              Next <CaretRight className="size-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Reports over time — last 7 days */}
             <div>
               <p className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Reports — Last 7 Days
+                Reports - Last 7 Days
               </p>
               <ReportsChart data={reportsPerDay} />
             </div>
@@ -367,7 +433,7 @@ export function AdminDashboard({
           {/* Listings queue */}
           {reportedTab === "listings" && (
             reportedListings.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   {/* Column header */}
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
@@ -381,7 +447,7 @@ export function AdminDashboard({
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
-                            href={`/listings/${post.id}`}
+                            href={`/listings/${post.slug ?? post.id}`}
                             className="text-sm font-semibold text-foreground hover:underline"
                           >
                             {post.title}
@@ -438,7 +504,7 @@ export function AdminDashboard({
           {/* Requests queue */}
           {reportedTab === "requests" && (
             reportedRequests.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Item</span>
@@ -450,7 +516,7 @@ export function AdminDashboard({
                       <div>
                         <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                           <a
-                            href={`/requests/${post.id}`}
+                            href="/requests"
                             className="text-sm font-semibold text-foreground hover:underline"
                           >
                             {post.title}
@@ -506,7 +572,7 @@ export function AdminDashboard({
           {/* Messages queue */}
           {reportedTab === "messages" && (
             reportedMessages.length === 0
-              ? <p className="py-8 text-center text-sm text-muted-foreground">Queue empty.</p>
+              ? <p className="py-32 text-center text-sm text-muted-foreground">Queue empty.</p>
               : <div className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-border bg-muted/40 px-4 py-2">
                     <span className="font-mono text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Message</span>
@@ -576,7 +642,7 @@ export function AdminDashboard({
               <input
                 value={userQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Filter users by name or account ID…"
+                placeholder="Search users by name or account ID…"
                 className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
               {searching && <span className="text-xs text-muted-foreground">…</span>}
@@ -591,7 +657,7 @@ export function AdminDashboard({
                     <thead>
                       <tr className="border-b border-border text-[0.6rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                         <th className="px-3.5 py-2 text-left font-medium">User</th>
-                        <th className="hidden w-[26%] px-3.5 py-2 text-left font-medium sm:table-cell">Account</th>
+                        <th className="hidden w-[18%] px-3.5 py-2 text-left font-medium sm:table-cell">Account</th>
                         <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Role</th>
                         <th className="hidden w-[12%] px-3.5 py-2 text-left font-medium sm:table-cell">Standing</th>
                         <th className="w-[150px] px-3.5 py-2 text-right font-medium sm:w-[210px]">Actions</th>
@@ -647,7 +713,7 @@ export function AdminDashboard({
             <div className="space-y-2">
               <Label>Ban type</Label>
               <RadioGroup value={banType} onValueChange={(v) => setBanType(v as Exclude<BanType, "none">)} className="space-y-1.5">
-                {([["post", "Post ban — cannot post listings or requests"], ["chat", "Chat ban — cannot send messages"], ["full", "Full ban — both post and chat"]] as const).map(([v, label]) => (
+                {([["post", "Post ban - cannot post listings or requests"], ["chat", "Chat ban - cannot send messages"], ["full", "Full ban - both post and chat"]] as const).map(([v, label]) => (
                   <div key={v} className="flex items-center gap-2">
                     <RadioGroupItem value={v} id={`ban-${v}`} />
                     <Label htmlFor={`ban-${v}`} className="font-normal">{label}</Label>
@@ -706,7 +772,7 @@ export function AdminDashboard({
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxSrc}
+            src={toStorageUrl(lightboxSrc)}
             alt="Full size preview"
             className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -745,7 +811,7 @@ function dialogDescription(p: Pending | null): string {
     case "ban": return "The user can still browse and log in, but is blocked from the selected actions. They are notified.";
     case "unban": return "The user regains full access.";
     case "promote": return "This grants the user full admin access to this dashboard and all moderation tools.";
-    case "demote-self": return "You will lose admin access immediately. Only you can do this to your own account — admins cannot demote other admins.";
+    case "demote-self": return "You will lose admin access immediately. Only you can do this to your own account - admins cannot demote other admins.";
     case "msg-dismiss": return "The report will be cleared. The message stays in the conversation.";
     case "msg-delete": return "The message will be soft-deleted and replaced with a deleted placeholder. The report is marked as actioned.";
   }
@@ -844,6 +910,8 @@ function activityVisual(type: ActivityType): {
       return { Icon: Trash, tone: AMBER };
     case "user_banned":
       return { Icon: Prohibit, tone: AMBER };
+    case "user_unbanned":
+      return { Icon: ArrowClockwise, tone: NEUTRAL };
     case "user_warned":
       return { Icon: Warning, tone: AMBER };
     case "message_deleted":
@@ -905,7 +973,7 @@ function UserCard({
           <MiniAvatar src={user.avatar_url} name={user.full_name} size={30} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <Link href={`/profile/${user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
+              <Link href={`/profile/${user.slug ?? user.id}`} className="truncate text-sm font-semibold text-foreground hover:underline">
                 {user.full_name}
               </Link>
               {BAN_BADGE[user.ban_type] && (
@@ -944,7 +1012,7 @@ function UserCard({
 
       {/* Actions — fixed-width column so Protected rows never collapse it */}
       <td className="px-3.5 py-3 text-right align-middle">
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="inline-flex min-h-[72px] flex-wrap items-center justify-end gap-1.5">
           {isSelf ? (
             user.is_admin && (
               <Button size="sm" variant="outline" className="h-7 gap-1.5 border-destructive/40 px-2.5 text-destructive hover:bg-destructive/10"

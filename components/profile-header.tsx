@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
-  PencilSimple, GraduationCap, Chalkboard, Star, Tag,
+  PencilSimple, StudentIcon, ChalkboardTeacherIcon, Tag,
   ShoppingCart, Eye,
 } from "@phosphor-icons/react";
 import { EditProfileModal } from "@/components/edit-profile-modal";
+import { toStorageUrl } from "@/lib/storage-url";
 import type { UserProfile, ProfileStats } from "@/lib/actions/profile";
 import { formatTimeAgo } from "@/lib/listing-helpers";
 
@@ -41,20 +42,13 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [editOpen, setEditOpen] = useState(false);
 
-  const roleLabel = profile.role === "faculty" ? "PSU Faculty" : "PSU Student";
-  const RoleIcon = profile.role === "faculty" ? Chalkboard : GraduationCap;
+  const roleLabel = profile.role === "faculty" ? "Faculty" : "Student";
+  const RoleIcon = profile.role === "faculty" ? ChalkboardTeacherIcon : StudentIcon;
 
   const statItems = [
-    { label: "Active Listings", value: stats.activeListings, icon: Tag },
+    { label: "Items Listed", value: stats.totalListed, icon: Tag },
     { label: "Total Sold", value: stats.totalSold, icon: ShoppingCart },
     { label: "Total Views", value: stats.totalViews, icon: Eye },
-    {
-      label: "Rating",
-      value: stats.averageRating !== null
-        ? `${stats.averageRating.toFixed(1)} ★`
-        : "No reviews yet",
-      icon: Star,
-    },
   ];
 
   const memberSince = (() => {
@@ -75,7 +69,7 @@ export function ProfileHeader({
             <div className="relative size-28 overflow-hidden rounded-full border-4 border-background bg-muted sm:size-36">
               {profile.avatar_url ? (
                 <Image
-                  src={profile.avatar_url}
+                  src={toStorageUrl(profile.avatar_url)}
                   alt={profile.full_name}
                   fill
                   unoptimized
@@ -124,7 +118,7 @@ export function ProfileHeader({
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-4 sm:gap-4">
+        <div className="grid grid-cols-3 gap-3 pb-6 sm:gap-4">
           {statItems.map((stat) => (
             <Card key={stat.label} className="flex flex-col items-center gap-1 p-4 text-center">
               <stat.icon className="size-5 text-primary" />

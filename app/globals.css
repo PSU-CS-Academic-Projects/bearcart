@@ -124,6 +124,13 @@
   }
 }
 
+/* Move sonner toast close button to top-right */
+[data-sonner-toast] [data-close-button] {
+  right: 0 !important;
+  left: unset !important;
+  transform: translate(50%, -50%) !important;
+}
+
 /* ── Admin Report Console Queue (from impeccable live 7e8c8220) ── */
 
 /* ── Admin Overview Stats — Amber Band (accepted variant 4, fill=0.7) ── */

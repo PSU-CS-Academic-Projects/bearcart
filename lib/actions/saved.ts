@@ -74,7 +74,7 @@ export async function getSavedListings() {
       `
       id, created_at,
       listing:listings (
-        id, title, price, category, condition, status, created_at,
+        id, slug, title, price, category, condition, status, created_at,
         listing_images ( id, image_url, is_cover, order )
       )
     `

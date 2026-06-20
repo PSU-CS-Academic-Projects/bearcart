@@ -27,7 +27,6 @@ export const FILIPINO_PROFANITY: string[] = [
   "pesteng yawa",
   "supot",
   "abnormal",
-  "animal",
   "inutil",
 
   // Bisaya / Cebuano

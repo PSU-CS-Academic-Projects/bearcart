@@ -16,7 +16,7 @@ import {
 } from "@/lib/actions/admin";
 
 export const metadata = {
-  title: "Admin Dashboard — BearCart",
+  title: "Admin Dashboard - BearCart",
 };
 
 export default async function AdminPage() {

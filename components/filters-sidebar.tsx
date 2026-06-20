@@ -14,11 +14,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  BookIcon,
-  DesktopIcon,
+  HandbagIcon,
+  LaptopIcon,
   TShirtIcon,
   HamburgerIcon,
-  GraduationCapIcon,
+  BackpackIcon,
   WrenchIcon,
   DotsThreeIcon,
   FadersIcon,
@@ -30,11 +30,11 @@ import {
 } from "@/lib/currency";
 
 const CATEGORIES = [
-  { name: "Books", icon: BookIcon },
-  { name: "Electronics", icon: DesktopIcon },
+  { name: "Accessories", icon: HandbagIcon },
+  { name: "Electronics", icon: LaptopIcon },
   { name: "Clothing", icon: TShirtIcon },
   { name: "Food", icon: HamburgerIcon },
-  { name: "School Supplies", icon: GraduationCapIcon },
+  { name: "School Supplies", icon: BackpackIcon },
   { name: "Services", icon: WrenchIcon },
   { name: "Others", icon: DotsThreeIcon },
 ];

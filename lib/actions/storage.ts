@@ -2,82 +2,12 @@
 
 import { createClient } from "@/lib/supabase-server";
 import { randomUUID } from "crypto";
-import { fileTypeFromBuffer } from "file-type";
-import sharp from "sharp";
+import { validateAndSanitize } from "@/lib/image-validation";
+import { processToWebp } from "@/lib/image-processing";
+import { enforceRateLimit } from "@/lib/ratelimit";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
-const MIME_TO_SHARP_FORMAT: Record<string, keyof sharp.FormatEnum> = {
-  "image/jpeg": "jpeg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
-
-const OUTPUT_MIME: Record<string, string> = {
-  "image/jpeg": "image/jpeg",
-  "image/png":  "image/png",
-  "image/webp": "image/webp",
-};
-
-const OUTPUT_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png":  "png",
-  "image/webp": "webp",
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function base64ToBuffer(base64Data: string): Buffer {
-  // Strip the data-URI prefix if present (data:<mime>;base64,<data>)
-  const commaIdx = base64Data.indexOf(",");
-  const raw = commaIdx !== -1 ? base64Data.slice(commaIdx + 1) : base64Data;
-  return Buffer.from(raw, "base64");
-}
-
-/**
- * Validates the real MIME type from magic bytes, then re-encodes through Sharp
- * to strip any embedded metadata / polyglot payload.
- * Returns { bytes, mimeType, extension } for the sanitised image.
- */
-async function validateAndSanitize(
-  base64Data: string
-): Promise<{ bytes: Buffer; mimeType: string; extension: string }> {
-  const raw = base64ToBuffer(base64Data);
-
-  // ── Magic-byte check ─────────────────────────────────────────────────
-  const detected = await fileTypeFromBuffer(raw);
-  if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
-    throw new Error(
-      `Invalid file type${detected ? ` (${detected.mime})` : ""}. Only JPEG, PNG, and WebP images are allowed.`
-    );
-  }
-
-  // ── Sharp re-encode (strips metadata, polyglots, embedded payloads) ──
-  const format = MIME_TO_SHARP_FORMAT[detected.mime];
-  let pipeline = sharp(raw);
-
-  if (format === "jpeg") {
-    pipeline = pipeline.jpeg({ quality: 85 });
-  } else if (format === "png") {
-    pipeline = pipeline.png({ compressionLevel: 8 });
-  } else if (format === "webp") {
-    pipeline = pipeline.webp({ quality: 85 });
-  }
-
-  const sanitised = await pipeline.toBuffer();
-
-  return {
-    bytes: sanitised,
-    mimeType: OUTPUT_MIME[detected.mime],
-    extension: OUTPUT_EXT[detected.mime],
-  };
-}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -95,6 +25,9 @@ export async function uploadImage(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  // Rate limit: 10 image uploads per minute per ID.
+  await enforceRateLimit("imageUpload", `user:${user.id}`);
 
   const { bytes, mimeType, extension } = await validateAndSanitize(base64Data);
 
