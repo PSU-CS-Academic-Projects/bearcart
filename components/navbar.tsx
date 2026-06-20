@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient, getCurrentUser } from "@/lib/supabase-server";
 import { getUnreadMessageCount } from "@/lib/actions/messages";
 import {
@@ -57,11 +58,13 @@ export async function Navbar() {
   }
 
   return (
-    <NavbarClient
-      user={navbarUser}
-      initialUnreadCount={initialUnreadCount}
-      initialNotificationCount={initialNotificationCount}
-      initialNotifications={initialNotifications}
-    />
+    <Suspense fallback={null}>
+      <NavbarClient
+        user={navbarUser}
+        initialUnreadCount={initialUnreadCount}
+        initialNotificationCount={initialNotificationCount}
+        initialNotifications={initialNotifications}
+      />
+    </Suspense>
   );
 }

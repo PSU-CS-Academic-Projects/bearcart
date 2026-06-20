@@ -74,7 +74,9 @@ async function buildUserSlug(user: User, fullName: string): Promise<string> {
   return clash ? `${base}_${user.id.slice(0, 6)}` : base;
 }
 
-export default function SetupPage() {
+import { Suspense } from "react";
+
+function SetupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/listings";
@@ -291,5 +293,19 @@ export default function SetupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      }
+    >
+      <SetupPageInner />
+    </Suspense>
   );
 }

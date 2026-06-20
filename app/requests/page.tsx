@@ -170,7 +170,9 @@ export default async function RequestsPage({ searchParams }: PageProps) {
 
         {/* Top Controls */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <RequestsMobileFiltersSheet />
+          <Suspense fallback={null}>
+            <RequestsMobileFiltersSheet />
+          </Suspense>
         </div>
 
         {/* Active Filter Badges */}

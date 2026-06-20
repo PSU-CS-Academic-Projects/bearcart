@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
+function LoginRedirect() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/listings";
   const triggered = useRef(false);
@@ -38,10 +38,23 @@ export default function LoginPage() {
       });
   }, [returnTo]);
 
-  // Brief loading state while redirect happens (< 1 second)
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <p className="text-sm text-muted-foreground">Redirecting to Google...</p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
+      <LoginRedirect />
+    </Suspense>
   );
 }
