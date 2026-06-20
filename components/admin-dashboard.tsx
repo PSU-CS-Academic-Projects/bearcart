@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/listing-helpers";
+import { formatTime, formatExactTime } from "@/lib/format-time";
 import {
   adminRestoreListing, adminTakedownListing,
   adminRestoreRequest, adminTakedownRequest,
@@ -35,10 +36,30 @@ import {
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 
 /**
- * Relative timestamps ("2 hours ago") differ between the server render and the
+ * Locale/timezone-dependent timestamps differ between the server render and the
  * client hydration moment, which trips a hydration mismatch. Render them only
  * after mount so server and first client paint agree (empty), then fill in.
+ *
+ * Shows the compact label (formatTime) with the full exact timestamp on hover
+ * (title) — admins can see precision in this audit feed even when the label is
+ * relative/short.
  */
+function EventTime({ iso, className }: { iso: string; className?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const date = new Date(iso);
+  return (
+    <span
+      className={className}
+      title={mounted ? formatExactTime(date) : undefined}
+      suppressHydrationWarning
+    >
+      {mounted ? formatTime(date) : ""}
+    </span>
+  );
+}
+
+/** Relative "5h ago" timestamp, used in the reported-content lists. */
 function TimeAgo({ iso, className }: { iso: string; className?: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -314,7 +335,7 @@ export function AdminDashboard({
                                 <Icon className="size-3.5" />
                               </span>
                               <span className="min-w-0 flex-1 truncate text-sm text-foreground">{a.description}</span>
-                              <TimeAgo iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
+                              <EventTime iso={a.timestamp} className="shrink-0 font-mono text-[0.68rem] text-muted-foreground" />
                             </>
                           );
                           const rowClass = "flex w-full items-center gap-3 border-b border-border/60 px-4 py-2.5 text-left last:border-b-0";

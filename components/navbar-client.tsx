@@ -114,7 +114,7 @@ function PeopleDropdownContent({
             <span className="text-sm font-medium text-foreground">{person.full_name}</span>
           </div>
           <span className="shrink-0 text-xs text-muted-foreground">
-            {person.postCount} {person.postCount === 1 ? "post" : "posts"}
+            {person.postCount} {person.postCount === 1 ? "listing" : "listings"}
           </span>
         </Link>
       ))}

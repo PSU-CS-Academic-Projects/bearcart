@@ -295,7 +295,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <Package className="size-8 text-muted-foreground" />
       </div>
       <h3 className="mb-2 text-lg font-semibold text-foreground">No sold items yet</h3>
-      <p className="text-sm text-muted-foreground">Items you sell will appear here</p>
+      <p className="text-sm text-muted-foreground">Items sold will appear here</p>
     </Card>
   );
 
