@@ -14,7 +14,9 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM = `"${process.env.BREVO_FROM_NAME ?? "BearCart"}" <${process.env.BREVO_FROM_EMAIL}>`;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 const LOGO_URL = `${APP_URL}/bearcart.svg`;
 
 // ─── Brand Tokens (inlined into email HTML) ──────────────────────────────────
