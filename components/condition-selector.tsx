@@ -23,6 +23,11 @@ const conditions = [
     label: "Fair",
     description: "Visible wear but still works",
   },
+  {
+    value: "poor",
+    label: "Poor",
+    description: "Heavily used, may have damages",
+  }
 ];
 
 interface ConditionSelectorProps {
@@ -38,14 +43,15 @@ export function ConditionSelector({
 }: ConditionSelectorProps) {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {conditions.map((condition) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {conditions.map((condition, i) => (
           <button
             key={condition.value}
             type="button"
             onClick={() => onChange(condition.value)}
             className={cn(
               "flex flex-col items-center rounded-lg border p-3 text-center transition-colors",
+              i === conditions.length - 1 && "col-span-2 sm:col-span-1",
               value === condition.value
                 ? "border-primary bg-primary/5 ring-2 ring-primary"
                 : error

@@ -81,7 +81,7 @@ export function HeroSection() {
                 <HamburgerIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">Food</span>
               </a>
-              <a href="/listings?category=supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
+              <a href="/listings?category=school supplies" className="group flex flex-col items-start gap-2 p-3 bg-white border border-[#e8e8e8] rounded-lg hover:border-[#C85F00]/30 hover:bg-[#fef8f0] transition-colors">
                 <BackpackIcon className="size-5 text-gray-600 group-hover:text-[#C85F00] transition-colors" />
                 <span className="text-xs font-semibold text-gray-800 leading-tight">School Supplies</span>
               </a>

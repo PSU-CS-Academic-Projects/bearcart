@@ -218,7 +218,8 @@ export async function getListings(filters: ListingFilters = {}) {
   if (activeCategories.length === 1) {
     query = query.ilike("category", activeCategories[0]);
   } else if (activeCategories.length > 1) {
-    query = query.in("category", activeCategories);
+    const orFilter = activeCategories.map((c) => `category.ilike.${c}`).join(",");
+    query = query.or(orFilter);
   }
   if (resolvedConditions.length === 1) {
     query = query.eq("condition", resolvedConditions[0]);
