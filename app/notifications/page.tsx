@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { NotificationsClient } from "@/components/notifications-client";
@@ -26,12 +27,14 @@ export default async function NotificationsPage({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
-      <NotificationsClient
-        userId={user.id}
-        initialPage={page}
-        initialFilter={filter}
-        initialData={initial}
-      />
+      <Suspense fallback={null}>
+        <NotificationsClient
+          userId={user.id}
+          initialPage={page}
+          initialFilter={filter}
+          initialData={initial}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -150,10 +150,14 @@ export default async function ListingsPage({ searchParams }: PageProps) {
 
         {/* Top Controls — quieter, data is the hero */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <ListingsMobileFiltersSheet />
+          <Suspense fallback={null}>
+            <ListingsMobileFiltersSheet />
+          </Suspense>
 
           <div className="ml-auto flex items-center text-sm">
-            <SortSelect />
+            <Suspense fallback={null}>
+              <SortSelect />
+            </Suspense>
           </div>
         </div>
 
