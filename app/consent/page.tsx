@@ -368,7 +368,9 @@ function DocModal({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function ConsentPage() {
+import { Suspense } from "react";
+
+function ConsentPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo") || "/listings";
@@ -567,5 +569,19 @@ export default function ConsentPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function ConsentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      }
+    >
+      <ConsentPageInner />
+    </Suspense>
   );
 }
