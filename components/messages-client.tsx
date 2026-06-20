@@ -400,7 +400,11 @@ export function MessagesClient({
           setArchivedConversations(patchStatus);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`[messages] realtime channel ${status} — live updates disabled.`);
+        }
+      });
 
     return () => { supabase.removeChannel(channel); };
   }, [currentUserId]);

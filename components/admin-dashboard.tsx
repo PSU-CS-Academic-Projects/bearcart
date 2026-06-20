@@ -271,17 +271,22 @@ export function AdminDashboard({
 
       {/* ── Overview ── */}
       {tab === "overview" && (() => {
-        const max = Math.max(stats.reportedListings, stats.reportedRequests, stats.reportedMessages, stats.bannedUsers, stats.pendingReports, 1);
+        const reportedListingsCount = reportedListings.length;
+        const reportedRequestsCount = reportedRequests.length;
+        const reportedMessagesCount = reportedMessages.length;
+        const pendingReportsCount = reportedListingsCount + reportedRequestsCount + reportedMessagesCount;
+
+        const max = Math.max(reportedListingsCount, reportedRequestsCount, reportedMessagesCount, stats.bannedUsers, pendingReportsCount, 1);
         const pct = (v: number) => `${Math.round((v / max) * 100)}%`;
         return (
           <div className="space-y-8">
             {/* Moderation stats — amber band */}
             <div className="admin-stat-band">
-              <div className="tile"><span className="lbl">Reported listings</span><span className="num">{stats.reportedListings}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedListings) }} /></div>
-              <div className="tile"><span className="lbl">Reported requests</span><span className="num">{stats.reportedRequests}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedRequests) }} /></div>
-              <div className="tile"><span className="lbl">Reported messages</span><span className="num">{stats.reportedMessages}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.reportedMessages) }} /></div>
+              <div className="tile"><span className="lbl">Reported listings</span><span className="num">{reportedListingsCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedListingsCount) }} /></div>
+              <div className="tile"><span className="lbl">Reported requests</span><span className="num">{reportedRequestsCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedRequestsCount) }} /></div>
+              <div className="tile"><span className="lbl">Reported messages</span><span className="num">{reportedMessagesCount}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(reportedMessagesCount) }} /></div>
               <div className="tile"><span className="lbl">Banned users</span><span className="num">{stats.bannedUsers}</span><div className="bar-bg" /><div className="bar-fill" style={{ width: pct(stats.bannedUsers) }} /></div>
-              <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{stats.pendingReports}</span></div>
+              <div className="tile peak"><span className="lbl">Pending reports</span><span className="num">{pendingReportsCount}</span></div>
             </div>
 
             {/* Platform stats — totals, plain cards (no peak highlight) */}
