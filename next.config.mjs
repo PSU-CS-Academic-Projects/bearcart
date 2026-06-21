@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ['sharp'],
+  outputFileTracingIncludes: {
+    '/**/*': ['./node_modules/sharp/**/*', './node_modules/@img/**/*'],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
