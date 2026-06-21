@@ -134,7 +134,7 @@ Trust is the product. Because every account is verified through the university G
 
 ## Video Demonstration
 
-* Video Link: https://www.youtube.com/watch?v=fc8DUKcnBAI**
+* Video Link: https://www.youtube.com/watch?v=fc8DUKcnBAI
 
 ---
 
