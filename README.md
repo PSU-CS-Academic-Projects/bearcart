@@ -1,4 +1,4 @@
-# BearCart - PSU Campus Marketplace
+# BearCart - PalSU Campus Marketplace
 
 > A full-stack Next.js campus marketplace that lets verified Palawan State University students and faculty buy, sell, and request items within their campus community - with Google SSO restricted to PalSU accounts, real-time chat, and protected by a multi-layer content moderation pipeline.
 
@@ -14,7 +14,6 @@
 | Instructor | Ma'am Divine Grace Caabay |
 
 ### Members
-
 
 * Dianara Kristy D. Garciano
 * Ross Ivan T. Venturillo
